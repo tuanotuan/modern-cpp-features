@@ -12,6 +12,7 @@ cmake-build-*/
 *.dylib
 *.a
 *.lib
+test.cpp
 
 # Existing no-extension sample binary name
 **/app
