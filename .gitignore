@@ -1,0 +1,17 @@
+# Build directories
+build/
+cmake-build-*/
+
+# C/C++ build outputs
+*.exe
+*.out
+*.o
+*.obj
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+
+# Existing no-extension sample binary name
+**/app
