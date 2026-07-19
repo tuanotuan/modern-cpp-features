@@ -4,6 +4,7 @@ import { parse as parseYaml } from "yaml";
 import { readFile } from "node:fs/promises";
 
 import {
+  archiveQuestionsForLessons,
   discoverKnowledgeDirectories,
   mergeDiscoveredLessons,
   writeContentManifest,
@@ -22,14 +23,32 @@ async function main() {
   const sourcePaths = await discoverKnowledgeDirectories(repoRoot);
   const result = mergeDiscoveredLessons(registry, sourcePaths);
 
+  if (
+    result.additions.length ||
+    result.removals.length ||
+    result.moves.length
+  ) {
+    await writeLessonRegistry(webRoot, result.registry);
+  }
   if (result.additions.length === 0) {
     console.log("No unregistered lessons found.");
   } else {
-    await writeLessonRegistry(webRoot, result.registry);
     console.log(`Registered ${result.additions.length} new lesson(s):`);
     for (const lesson of result.additions) {
       console.log(`- ${lesson.id} <- ${lesson.sourcePath}`);
     }
+  }
+  for (const move of result.moves) {
+    console.log(`Moved ${move.id}: ${move.from} -> ${move.to}`);
+  }
+  if (result.removals.length) {
+    const archived = await archiveQuestionsForLessons(
+      webRoot,
+      result.removals.map((lesson) => lesson.id),
+    );
+    console.log(
+      `Removed ${result.removals.length} lesson(s) and archived ${archived.length} question(s).`,
+    );
   }
 
   const manifest = await writeContentManifest(repoRoot, webRoot);

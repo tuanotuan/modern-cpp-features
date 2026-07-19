@@ -1,6 +1,6 @@
 # Supabase setup
 
-Phase 4 uses Supabase Auth and Postgres for private, cross-device progress.
+Supabase stores private cross-device progress, AI history, and question approvals.
 
 1. Create a free project at <https://database.new>.
 2. Copy the Project URL and publishable key into `web/.env.local`.
@@ -22,5 +22,7 @@ Phase 4 uses Supabase Auth and Postgres for private, cross-device progress.
 `ALLOWED_GITHUB_LOGIN` defaults to `tuanotuan`. Authentication, progress, and AI
 routes reject every other GitHub identity so the free AI quota remains personal.
 
-The migration enables RLS. Authenticated users can only read and mutate rows
-whose `user_id` matches their JWT identity.
+The migrations enable RLS. Authenticated users can only read and mutate rows
+whose `user_id` matches their JWT identity. Question approvals are bound to an
+exact question version and source hash, so a source edit automatically sends the
+question back to the Review Queue.

@@ -237,6 +237,7 @@ export async function loadContentManifest(
   for (const question of questions) {
     const lesson = lessonById.get(question.lessonId);
     if (!lesson) {
+      if (question.status === "archived") continue;
       throw new Error(
         `Question ${question.id} references unknown lesson ${question.lessonId}`,
       );
@@ -254,7 +255,10 @@ export async function loadContentManifest(
 
   const questionsWithReviewStatus = questions.map((question) => {
     const lesson = lessonById.get(question.lessonId);
-    if (!lesson) throw new Error(`Missing lesson ${question.lessonId}`);
+    if (!lesson) {
+      if (question.status === "archived") return question;
+      throw new Error(`Missing lesson ${question.lessonId}`);
+    }
 
     return {
       ...question,

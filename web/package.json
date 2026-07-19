@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "content:draft": "tsx scripts/generate-question-drafts.ts",
+    "content:auto": "tsx scripts/auto-refresh-content.ts",
     "content:discover": "tsx scripts/discover-content.ts",
     "content:generate": "tsx scripts/generate-content.ts",
     "content:check": "tsx scripts/generate-content.ts --check",

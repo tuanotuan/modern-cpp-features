@@ -20,6 +20,8 @@ Phase 0–5 provides:
 - deterministic discovery for newly added `knowledge.md` lessons;
 - question-level source snapshots that automatically quarantine stale questions;
 - Gemini-generated question drafts with a human review gate.
+- a private web Review Queue with exact-version/hash bulk approval;
+- GitHub Actions reconciliation for note additions, edits, renames, and deletes.
 
 ## Local commands
 

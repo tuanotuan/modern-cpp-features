@@ -30,7 +30,8 @@ Each question contains:
 
 When a note changes, its content hash changes. Questions referencing that lesson
 are emitted as `needs_review` in the app manifest without rewriting past
-attempts. Only `verified` questions are eligible for daily practice.
+attempts. A question enters daily practice when it is committed as `verified` or
+the signed-in owner approves its exact version and source hash in the web queue.
 
 ## Updating knowledge
 
@@ -38,16 +39,26 @@ Keep notes in one of the existing source roots: `cpp98_foundation`, `cpp11`, or
 `cpp20`. Every lesson directory needs a `knowledge.md`; `main.cpp` remains
 optional.
 
-After adding or editing a note, run:
+On `main`, GitHub Actions runs the safe automation automatically after a note is
+added, edited, renamed, or deleted. It:
+
+- registers new lessons and preserves stable IDs across detectable renames;
+- archives questions whose lesson was deleted;
+- marks questions grounded in an older hash as `needs_review`;
+- asks Gemini for two new drafts when a changed lesson has no question grounded
+  in its current hash;
+- validates and commits the refreshed registry/question bank/manifest.
+
+The repository needs a GitHub Actions secret named `GEMINI_API_KEY`. For a local
+preview of the same deterministic reconciliation, run:
 
 ```bash
 npm run content:refresh
 npm run content:status
 ```
 
-`content:refresh` discovers unregistered lesson directories, gives them a stable
-ID/order, refreshes the generated manifest, and reports stale questions. Review
-the inferred tags and prerequisites in `lesson-registry.yaml` after discovery.
+`content:refresh` performs discovery/archive/manifest refresh without calling
+Gemini. `content:auto` is the full CI command including safe draft generation.
 
 ## Drafting and approving questions
 
@@ -57,22 +68,26 @@ Generate one to five grounded drafts for a lesson with Gemini:
 npm run content:draft -- --lesson cpp11-range-based-for --count 2
 ```
 
-Drafts are appended to `questions/generated.yaml` with `status: draft`; they do
-not appear in daily practice. Review the prompt, canonical answer, rubric, and
-citations in YAML, then approve a single question:
+Drafts are appended to `questions/generated.yaml` with `status: draft`. They
+appear in the signed-in owner's Review Queue but do not enter daily practice
+until the owner presses **Duyệt tất cả**. Approval is private in Supabase and is
+invalidated automatically when the question version or source hash changes.
+
+Maintainers can alternatively approve a single question in the repository:
 
 ```bash
 npm run content:review -- --id cpp11-range-based-for-001
 ```
 
-Approval captures the current source hash. Re-approving a stale question bumps
-its version; approving a new draft keeps version 1. AI never changes a question
-to `verified` by itself.
+Repository approval captures the current source hash. Re-approving a stale
+question bumps its version; approving a new draft keeps version 1. AI never
+changes a question to `verified` by itself.
 
 ## Commands
 
 ```bash
 npm run content:generate
+npm run content:auto
 npm run content:check
 npm run content:status
 npm test

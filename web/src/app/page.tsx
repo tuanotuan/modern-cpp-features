@@ -1,5 +1,6 @@
 import manifestJson from "@/generated/content-manifest.json";
 import { contentManifestSchema } from "@/lib/content/schema";
+import { isQuestionApproved } from "@/lib/practice/approvals";
 import { loadCloudContext } from "@/lib/practice/cloud-server";
 
 import { PracticeApp, type PracticeQuestion } from "./practice-app";
@@ -17,8 +18,8 @@ export default async function Home({
   const authCode = Array.isArray(params.auth) ? params.auth[0] : params.auth;
   const lessons = new Map(manifest.lessons.map((lesson) => [lesson.id, lesson]));
 
-  const questions: PracticeQuestion[] = manifest.questions
-    .filter((question) => question.status === "verified")
+  const mappedQuestions: PracticeQuestion[] = manifest.questions
+    .filter((question) => question.status !== "archived")
     .map((question) => {
       const lesson = lessons.get(question.lessonId);
       if (!lesson) throw new Error(`Missing lesson ${question.lessonId}`);
@@ -41,10 +42,23 @@ export default async function Home({
         }),
       };
     });
+  const questions = mappedQuestions.filter(
+    (question) =>
+      question.status === "verified" ||
+      isQuestionApproved(question, cloud.approvals),
+  );
+  const reviewQueue = cloud.account
+    ? mappedQuestions.filter(
+        (question) =>
+          new Set(["draft", "needs_review"]).has(question.status) &&
+          !isQuestionApproved(question, cloud.approvals),
+      )
+    : [];
 
   return (
     <PracticeApp
       questions={questions}
+      reviewQueue={reviewQueue}
       sourceRevision={manifest.sourceRevision}
       cloudEnabled={cloud.enabled}
       account={cloud.account}
