@@ -300,9 +300,10 @@ export function PracticeApp({
     }
   }
 
-  async function askCoachFollowUp() {
+  async function askCoachFollowUp(contentOverride?: string) {
     if (!current || !coachFeedback[current.id]) return;
-    const content = followUpInputs[current.id]?.trim() ?? "";
+    const content =
+      contentOverride?.trim() ?? followUpInputs[current.id]?.trim() ?? "";
     const existingMessages = followUpChats[current.id] ?? [];
     if (!content || existingMessages.length >= 8) return;
 
@@ -553,6 +554,20 @@ export function PracticeApp({
                       <CoachFeedbackPanel
                         feedback={coachFeedback[current.id]}
                         model={coachModels[current.id]}
+                        learningActionLoading={followUpLoading === current.id}
+                        learningActionDisabled={
+                          (followUpChats[current.id]?.length ?? 0) >= 8
+                        }
+                        onExpandNextStep={() =>
+                          void askCoachFollowUp(
+                            `Hãy biến bước tiếp theo này thành một bài học mini dễ hiểu, có ví dụ C++ ngắn và một bài tập nhỏ: ${coachFeedback[current.id].nextStep}`,
+                          )
+                        }
+                        onExploreInterviewerQuestion={() =>
+                          void askCoachFollowUp(
+                            `Hãy đào sâu câu hỏi interviewer này. Trước tiên giải thích nó đang kiểm tra kiến thức gì, rồi dẫn dắt tôi tự tìm câu trả lời thay vì đưa đáp án ngay: ${coachFeedback[current.id].followUpQuestion}`,
+                          )
+                        }
                       />
                       <CoachFollowUpPanel
                         question={current}
@@ -944,9 +959,17 @@ const coverageLabels: Record<CoachFeedback["coverage"][number]["status"], string
 function CoachFeedbackPanel({
   feedback,
   model,
+  learningActionLoading,
+  learningActionDisabled,
+  onExpandNextStep,
+  onExploreInterviewerQuestion,
 }: {
   feedback: CoachFeedback;
   model?: string;
+  learningActionLoading: boolean;
+  learningActionDisabled: boolean;
+  onExpandNextStep: () => void;
+  onExploreInterviewerQuestion: () => void;
 }) {
   const suggestedRating = ratingOptions.find(
     (option) => option.value === feedback.suggestedRating,
@@ -1040,21 +1063,37 @@ function CoachFeedbackPanel({
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl bg-[#e8efe2] p-5">
+          <div className="flex flex-col rounded-2xl bg-[#e8efe2] p-5">
             <p className="font-mono text-[11px] font-bold tracking-wider text-[#356b58] uppercase">
               Bước tiếp theo
             </p>
             <p className="mt-2 text-sm leading-6 text-[#465c52]">
               <InlineCode text={feedback.nextStep} />
             </p>
+            <button
+              type="button"
+              onClick={onExpandNextStep}
+              disabled={learningActionLoading || learningActionDisabled}
+              className="mt-4 w-fit rounded-xl border border-[#356b58]/20 bg-white/65 px-3.5 py-2 text-xs font-bold text-[#245748] transition hover:-translate-y-0.5 hover:bg-white disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 focus:ring-4 focus:ring-[#d7ff91]/60 focus:outline-none"
+            >
+              {learningActionLoading ? "AI đang mở rộng…" : "Học tiếp phần này →"}
+            </button>
           </div>
-          <div className="rounded-2xl bg-[#d7ff91]/55 p-5">
+          <div className="flex flex-col rounded-2xl bg-[#d7ff91]/55 p-5">
             <p className="font-mono text-[11px] font-bold tracking-wider text-[#356b58] uppercase">
               Interviewer hỏi tiếp
             </p>
             <p className="mt-2 text-sm leading-6 font-semibold text-[#29493d]">
               <InlineCode text={feedback.followUpQuestion} />
             </p>
+            <button
+              type="button"
+              onClick={onExploreInterviewerQuestion}
+              disabled={learningActionLoading || learningActionDisabled}
+              className="mt-4 w-fit rounded-xl bg-[#173f35] px-3.5 py-2 text-xs font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#245748] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 focus:ring-4 focus:ring-white/70 focus:outline-none"
+            >
+              {learningActionLoading ? "AI đang mở rộng…" : "Đào sâu câu này →"}
+            </button>
           </div>
         </div>
 
