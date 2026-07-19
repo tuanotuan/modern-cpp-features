@@ -229,3 +229,75 @@ questions:
     sourceHash: e9060a1301c4e23e5338a9e3224d05afcd5cd1aab0074963e75ab012c467cb72
     status: draft
     version: 1
+  - id: cpp98-array-one-past-end-001
+    lessonId: cpp98-array-one-past-end
+    type: pitfall
+    difficulty: beginner
+    estimatedMinutes: 3
+    prompt: Giả sử bạn có một mảng được khai báo là `int prices[5]`. Con trỏ `prices + 5` trỏ đến vị trí
+      nào trong bộ nhớ, và tại sao việc thực hiện thao tác `*(prices + 5)` lại bị coi là một lỗi
+      nghiêm trọng?
+    hint: Hãy nhớ lại khái niệm về vị trí ngay sau phần tử cuối cùng và quy tắc giải tham chiếu
+      (dereferencing).
+    answer:
+      short: Con trỏ `prices + 5` trỏ đến vị trí "one-past-end" (ngay sau phần tử cuối cùng). Việc giải
+        tham chiếu nó là lỗi vì vị trí này không chứa phần tử hợp lệ, dẫn đến hành vi không xác định
+        (undefined behavior).
+      detailed: Trong mô hình bộ nhớ của C++, `prices + 5` trỏ đến vị trí ngay sau phần tử cuối cùng của
+        mảng (`prices[4]`). Đây được gọi là vị trí 'one-past-end'. Mặc dù C++ cho phép tạo và giữ
+        con trỏ này để làm mốc đánh dấu, nhưng nó không đại diện cho một đối tượng thực sự trong
+        mảng. Do đó, việc giải tham chiếu (dereferencing) bằng toán tử `*` sẽ cố gắng truy cập vào
+        vùng nhớ không thuộc quyền sở hữu của mảng, gây ra hành vi không xác định (undefined
+        behavior).
+    rubric:
+      required:
+        - Xác định được prices + 5 là vị trí one-past-end
+        - Khẳng định giải tham chiếu là hành vi không xác định (undefined behavior)
+        - Giải thích được vị trí này không phải là một phần tử thực sự
+      bonus:
+        - Nhắc đến việc chỉ có duy nhất một vị trí sau mảng là hợp lệ để trỏ tới
+      misconceptions:
+        - Nhầm lẫn rằng prices + 5 trỏ đến phần tử cuối cùng (prices[4])
+    sources:
+      - sectionId: one-past-end
+      - sectionId: common-mistakes
+      - sectionId: memory-model
+    sourceHash: a2cecfa2c0f84182c8927b8f56c3b3af6f1f35e093a57eae06a0f35003520866
+    status: draft
+    version: 1
+  - id: cpp98-array-one-past-end-002
+    lessonId: cpp98-array-one-past-end
+    type: scenario
+    difficulty: intermediate
+    estimatedMinutes: 5
+    prompt: Trong các hệ thống giao dịch tài chính yêu cầu hiệu năng cao, tại sao việc sử dụng mảng và
+      quy ước `[begin, end)` (với `end` là con trỏ one-past-end) lại được ưu tiên khi xử lý danh
+      sách giá (prices)? Những thao tác nào là hợp lệ với con trỏ `end` này?
+    hint: Hãy xem xét về cách sắp xếp bộ nhớ (memory layout) và cách các thuật toán STL hoạt động.
+    answer:
+      short: Mảng cung cấp lưu trữ liên tục và thân thiện với bộ nhớ đệm (cache). Quy ước `[begin, end)`
+        giúp các thuật toán STL và vòng lặp hoạt động nhất quán. Các thao tác hợp lệ với `end` gồm
+        so sánh, phép trừ và dùng làm điều kiện dừng vòng lặp.
+      detailed: "Mảng được ưu tiên vì các phần tử được lưu trữ liên tục, giúp truy cập nhanh và tận dụng
+        tốt bộ nhớ đệm (cache locality), rất quan trọng trong trading. Quy ước `[begin, end)` của
+        STL sử dụng con trỏ one-past-end làm điểm mốc để xác định phạm vi nửa mở. Với con trỏ `end`
+        này, lập trình viên có thể thực hiện các thao tác hợp lệ như: so sánh (ví dụ `p != end` để
+        dừng vòng lặp) và phép trừ (để tính toán số lượng phần tử trong mảng). Tuy nhiên, tuyệt đối
+        không được giải tham chiếu con trỏ này."
+    rubric:
+      required:
+        - Giải thích được lợi ích của lưu trữ liên tục (contiguous storage/cache locality)
+        - Nêu được vai trò của one-past-end trong việc dừng vòng lặp hoặc STL
+        - "Liệt kê các thao tác hợp lệ: so sánh, phép trừ"
+      bonus:
+        - Kết nối được với các thuật toán STL như sort, find hoặc copy
+      misconceptions:
+        - Cho rằng con trỏ end có thể dùng để truy cập dữ liệu
+    sources:
+      - sectionId: what-problem-does-this-solve
+      - sectionId: one-past-end
+      - sectionId: stl-connection
+      - sectionId: notes-for-trading-code
+    sourceHash: a2cecfa2c0f84182c8927b8f56c3b3af6f1f35e093a57eae06a0f35003520866
+    status: draft
+    version: 1
