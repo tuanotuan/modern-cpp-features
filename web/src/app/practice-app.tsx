@@ -137,6 +137,9 @@ export function PracticeApp({
   >({});
   const [followUpLoading, setFollowUpLoading] = useState<string | null>(null);
   const [followUpErrors, setFollowUpErrors] = useState<Record<string, string>>({});
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(
+    null,
+  );
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(() =>
     cloudSetupError ? "error" : account ? "syncing" : "local",
   );
@@ -195,6 +198,7 @@ export function PracticeApp({
     setCoachAnswers(restoredCoachAnswers);
     setFollowUpInputs(restoredInputs);
     setFollowUpChats(restoredChats);
+    setSelectedQuestionId(session.activeQuestionId ?? null);
     setSessionHydrated(true);
   }, [sessionQuestions]);
 
@@ -241,7 +245,10 @@ export function PracticeApp({
     try {
       window.localStorage.setItem(
         STUDY_SESSION_KEY,
-        serializeStudySession(savedQuestions),
+        serializeStudySession(
+          savedQuestions,
+          selectedQuestionId ?? undefined,
+        ),
       );
     } catch {
       // Practice remains usable if browser storage is unavailable or full.
@@ -255,6 +262,7 @@ export function PracticeApp({
     followUpInputs,
     hints,
     revealed,
+    selectedQuestionId,
     sessionHydrated,
     sessionQuestions,
     visibleSources,
@@ -302,12 +310,28 @@ export function PracticeApp({
   const remainingIds = queue.filter(
     (questionId) => latest.get(questionId)?.reviewedOn !== today,
   );
-  const current = questionById.get(remainingIds[0]);
   const completedToday = new Set(
     progress.reviews
       .filter((review) => review.reviewedOn === today)
       .map((review) => review.questionId),
   ).size;
+  const selectedQuestion = selectedQuestionId
+    ? questionById.get(selectedQuestionId)
+    : undefined;
+  const current =
+    selectedQuestion && latest.get(selectedQuestion.id)?.reviewedOn !== today
+      ? selectedQuestion
+      : questionById.get(remainingIds[0]);
+  const isRandomQuestion = Boolean(
+    current && selectedQuestionId === current.id && !remainingIds.includes(current.id),
+  );
+  const randomCandidates = availableQuestions.filter(
+    (question) =>
+      question.id !== current?.id && latest.get(question.id)?.reviewedOn !== today,
+  );
+  const hasAnswered = Boolean(
+    current && (coachFeedback[current.id] || revealed.has(current.id)),
+  );
   const dailyTotal = completedToday + remainingIds.length;
   const streak = calculateStreak(progress.reviews, today);
 
@@ -345,6 +369,7 @@ export function PracticeApp({
     if (!current) return;
     const updated = recordReview(progress, current.id, rating, today);
     saveProgress(JSON.stringify(updated));
+    setSelectedQuestionId(null);
     clearQuestionStudySession(current.id);
     if (account) {
       const newReview = updated.reviews.find(
@@ -353,6 +378,13 @@ export function PracticeApp({
       );
       if (newReview) void syncReviews([newReview]);
     }
+  }
+
+  function showRandomQuestion() {
+    if (!randomCandidates.length) return;
+    const next = randomCandidates[Math.floor(Math.random() * randomCandidates.length)];
+    setSelectedQuestionId(next.id);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function clearQuestionStudySession(questionId: string) {
@@ -609,25 +641,45 @@ export function PracticeApp({
               <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <span className="rounded-full bg-[#d7ff91] px-3 py-1 font-mono text-xs font-bold text-[#173f35]">
-                    {completedToday === 0 ? "CÂU HÔM NAY" : "ÔN ĐẾN HẠN"}
+                    {isRandomQuestion
+                      ? "CÂU NGẪU NHIÊN"
+                      : completedToday === 0
+                        ? "CÂU HÔM NAY"
+                        : "ÔN ĐẾN HẠN"}
                   </span>
                   <span className="font-mono text-xs text-[#6c7b73]">
-                    {completedToday + 1}/{dailyTotal}
+                    {isRandomQuestion
+                      ? "ngoài lịch hôm nay"
+                      : `${completedToday + 1}/${dailyTotal}`}
                   </span>
                 </div>
-                <span className="font-mono text-xs text-[#6c7b73]">{today}</span>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={showRandomQuestion}
+                    disabled={!randomCandidates.length}
+                    className="rounded-xl border border-[#173f35]/18 bg-white/65 px-3 py-2 text-xs font-bold text-[#356b58] transition hover:-translate-y-0.5 hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 focus:ring-4 focus:ring-[#d7ff91]/55 focus:outline-none"
+                  >
+                    ↻ Câu khác ngẫu nhiên
+                  </button>
+                  <span className="font-mono text-xs text-[#6c7b73]">{today}</span>
+                </div>
               </div>
 
               <article className="overflow-hidden rounded-[2rem] border border-[#173f35]/15 bg-white/65 shadow-[0_20px_70px_rgba(23,63,53,0.08)] backdrop-blur-sm">
                 <div className="p-6 sm:p-9 lg:p-11">
-                  <div className="flex flex-wrap gap-2">
-                    <Tag>{standardLabels[current.standard]}</Tag>
-                    <Tag>{current.type.replace("_", " ")}</Tag>
-                    <Tag>{current.difficulty}</Tag>
-                    <Tag>~{current.estimatedMinutes} phút</Tag>
-                  </div>
+                  {hasAnswered ? (
+                    <div className="flex flex-wrap gap-2">
+                      <Tag>{standardLabels[current.standard]}</Tag>
+                      <Tag>{current.type.replace("_", " ")}</Tag>
+                      <Tag>{current.difficulty}</Tag>
+                      <Tag>~{current.estimatedMinutes} phút</Tag>
+                    </div>
+                  ) : null}
 
-                  <h1 className="mt-7 max-w-4xl text-3xl leading-[1.16] font-semibold tracking-[-0.04em] text-[#17221d] sm:text-4xl lg:text-[2.85rem]">
+                  <h1
+                    className={`${hasAnswered ? "mt-7" : ""} max-w-4xl text-3xl leading-[1.16] font-semibold tracking-[-0.04em] text-[#17221d] sm:text-4xl lg:text-[2.85rem]`}
+                  >
                     <InlineCode text={current.prompt} />
                   </h1>
 
@@ -881,17 +933,19 @@ export function PracticeApp({
                 </p>
               </div>
 
-              <div className="rounded-3xl border border-[#173f35]/15 bg-white/55 p-6">
-                <p className="text-xs font-bold tracking-[0.14em] text-[#ba4b2f] uppercase">
-                  Chủ đề
-                </p>
-                <p className="mt-3 text-xl font-semibold tracking-tight">
-                  {current.lessonTitle}
-                </p>
-                <p className="mt-2 font-mono text-xs leading-5 text-[#6c7b73]">
-                  {current.sourcePath}
-                </p>
-              </div>
+              {hasAnswered ? (
+                <div className="rounded-3xl border border-[#173f35]/15 bg-white/55 p-6">
+                  <p className="text-xs font-bold tracking-[0.14em] text-[#ba4b2f] uppercase">
+                    Chủ đề
+                  </p>
+                  <p className="mt-3 text-xl font-semibold tracking-tight">
+                    {current.lessonTitle}
+                  </p>
+                  <p className="mt-2 font-mono text-xs leading-5 text-[#6c7b73]">
+                    {current.sourcePath}
+                  </p>
+                </div>
+              ) : null}
 
               <div className="rounded-3xl border border-[#356b58]/20 bg-[#eef4e9] p-6">
                 <div className="flex items-center justify-between gap-2">
@@ -912,6 +966,8 @@ export function PracticeApp({
             completedToday={completedToday}
             streak={streak}
             today={today}
+            hasRandomQuestion={randomCandidates.length > 0}
+            onRandomQuestion={showRandomQuestion}
           />
         )}
 
@@ -943,10 +999,14 @@ function CompletionScreen({
   completedToday,
   streak,
   today,
+  hasRandomQuestion,
+  onRandomQuestion,
 }: {
   completedToday: number;
   streak: number;
   today: string;
+  hasRandomQuestion: boolean;
+  onRandomQuestion: () => void;
 }) {
   return (
     <section className="grid min-h-[72vh] place-items-center py-12">
@@ -964,6 +1024,15 @@ function CompletionScreen({
           {completedToday} câu đã tự chấm. Streak hiện tại là {streak} ngày—mai quay lại
           hệ thống sẽ chọn câu mới và kéo các câu đến hạn lên.
         </p>
+        {hasRandomQuestion ? (
+          <button
+            type="button"
+            onClick={onRandomQuestion}
+            className="mt-7 rounded-2xl bg-[#173f35] px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#245748] focus:ring-4 focus:ring-[#d7ff91] focus:outline-none"
+          >
+            ↻ Luyện thêm câu ngẫu nhiên
+          </button>
+        ) : null}
       </div>
     </section>
   );
