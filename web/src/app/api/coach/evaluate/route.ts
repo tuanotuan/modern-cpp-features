@@ -3,6 +3,12 @@ import { coachRequestSchema } from "@/lib/ai/contracts";
 import { CoachConfigurationError, evaluateWithGemini } from "@/lib/ai/gemini";
 import { consumeCoachRequest } from "@/lib/ai/rate-limit";
 import { contentManifestSchema } from "@/lib/content/schema";
+import {
+  isQuestionApproved,
+  rowsToApprovals,
+  type QuestionApproval,
+  type QuestionApprovalRow,
+} from "@/lib/practice/approvals";
 import { isAllowedPracticeUser } from "@/lib/supabase/authorization";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -65,9 +71,24 @@ export async function POST(request: Request) {
     );
   }
 
-  const question = manifest.questions.find(
-    (item) => item.id === parsed.data.questionId && item.status === "verified",
-  );
+  let approvals: QuestionApproval[] = [];
+  if (supabase) {
+    const { data: approvalRows, error: approvalError } = await supabase
+      .from("question_approvals")
+      .select("question_id, question_version, source_hash");
+    if (approvalError) {
+      return Response.json(
+        { error: "Không đọc được question approvals.", code: "approval_lookup_failed" },
+        { status: 502 },
+      );
+    }
+    approvals = rowsToApprovals((approvalRows ?? []) as QuestionApprovalRow[]);
+  }
+
+  const question = manifest.questions.find((item) => {
+    if (item.id !== parsed.data.questionId) return false;
+    return item.status === "verified" || isQuestionApproved(item, approvals);
+  });
   if (!question) {
     return Response.json(
       { error: "Không tìm thấy câu hỏi đã duyệt.", code: "question_not_found" },

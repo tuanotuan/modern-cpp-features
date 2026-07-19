@@ -1,8 +1,8 @@
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import fg from "fast-glob";
-import { stringify as stringifyYaml } from "yaml";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
 import { loadContentManifest, sectionIdFromHeading } from "./loader";
 import type {
@@ -11,6 +11,7 @@ import type {
   LessonRegistryEntry,
   Question,
 } from "./schema";
+import { questionFileSchema } from "./schema";
 
 const SOURCE_ROOTS = {
   cpp98_foundation: "cpp98",
@@ -30,11 +31,26 @@ export async function discoverKnowledgeDirectories(repoRoot: string) {
 export function mergeDiscoveredLessons(
   registry: LessonRegistry,
   sourcePaths: string[],
-): { registry: LessonRegistry; additions: LessonRegistryEntry[] } {
+): {
+  registry: LessonRegistry;
+  additions: LessonRegistryEntry[];
+  removals: LessonRegistryEntry[];
+  moves: Array<{ id: string; from: string; to: string }>;
+} {
+  const discoveredPaths = new Set(sourcePaths.map(normalizeSourcePath));
   const knownPaths = new Set(
     registry.lessons.map((lesson) => normalizeSourcePath(lesson.sourcePath)),
   );
   const knownIds = new Set(registry.lessons.map((lesson) => lesson.id));
+  const missing = new Map(
+    registry.lessons
+      .filter(
+        (lesson) =>
+          isManagedSourcePath(lesson.sourcePath) &&
+          !discoveredPaths.has(normalizeSourcePath(lesson.sourcePath)),
+      )
+      .map((lesson) => [lesson.id, lesson]),
+  );
   const nextOrder = new Map<string, number>();
 
   for (const standard of Object.values(SOURCE_ROOTS)) {
@@ -48,6 +64,7 @@ export function mergeDiscoveredLessons(
   }
 
   const additions: LessonRegistryEntry[] = [];
+  const moves: Array<{ id: string; from: string; to: string }> = [];
   for (const rawSourcePath of [...new Set(sourcePaths.map(normalizeSourcePath))].sort()) {
     if (knownPaths.has(rawSourcePath)) continue;
 
@@ -63,6 +80,13 @@ export function mergeDiscoveredLessons(
 
     const id = `${standard}-${slug}`;
     if (knownIds.has(id)) {
+      const movedLesson = missing.get(id);
+      if (movedLesson) {
+        moves.push({ id, from: movedLesson.sourcePath, to: rawSourcePath });
+        missing.delete(id);
+        knownPaths.add(rawSourcePath);
+        continue;
+      }
       throw new Error(
         `Discovered lesson ID ${id} collides with an existing lesson; register ${rawSourcePath} manually.`,
       );
@@ -82,13 +106,60 @@ export function mergeDiscoveredLessons(
     knownIds.add(id);
   }
 
+  const removals = [...missing.values()];
+  const removedIds = new Set(removals.map((lesson) => lesson.id));
+  const moveById = new Map(moves.map((move) => [move.id, move]));
+
   return {
     registry: {
       ...registry,
-      lessons: [...registry.lessons, ...additions],
+      lessons: [
+        ...registry.lessons
+          .filter((lesson) => !removedIds.has(lesson.id))
+          .map((lesson) => {
+            const move = moveById.get(lesson.id);
+            return move ? { ...lesson, sourcePath: move.to } : lesson;
+          }),
+        ...additions,
+      ],
     },
     additions,
+    removals,
+    moves,
   };
+}
+
+export async function archiveQuestionsForLessons(
+  webRoot: string,
+  lessonIds: string[],
+) {
+  const removed = new Set(lessonIds);
+  if (!removed.size) return [];
+
+  const archivedIds: string[] = [];
+  const files = await fg("content/questions/*.yaml", {
+    cwd: webRoot,
+    absolute: true,
+    onlyFiles: true,
+  });
+  for (const file of files.sort()) {
+    const document = questionFileSchema.parse(
+      parseYaml(await readFile(file, "utf8")),
+    );
+    let changed = false;
+    document.questions = document.questions.map((question) => {
+      if (!removed.has(question.lessonId) || question.status === "archived") {
+        return question;
+      }
+      changed = true;
+      archivedIds.push(question.id);
+      return { ...question, status: "archived", version: question.version + 1 };
+    });
+    if (changed) {
+      await writeFile(file, stringifyYaml(document, { lineWidth: 100 }));
+    }
+  }
+  return archivedIds;
 }
 
 export async function writeLessonRegistry(
@@ -127,4 +198,9 @@ export function approveQuestion(
 
 function normalizeSourcePath(sourcePath: string) {
   return sourcePath.replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/$/, "");
+}
+
+function isManagedSourcePath(sourcePath: string) {
+  const [root] = normalizeSourcePath(sourcePath).split("/");
+  return root in SOURCE_ROOTS;
 }

@@ -77,6 +77,7 @@ function saveProgress(raw: string) {
 
 export function PracticeApp({
   questions,
+  reviewQueue,
   sourceRevision,
   cloudEnabled,
   account,
@@ -85,6 +86,7 @@ export function PracticeApp({
   authNotice,
 }: {
   questions: PracticeQuestion[];
+  reviewQueue: PracticeQuestion[];
   sourceRevision: string;
   cloudEnabled: boolean;
   account: PracticeAccount | null;
@@ -114,6 +116,11 @@ export function PracticeApp({
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(() =>
     cloudSetupError ? "error" : account ? "syncing" : "local",
   );
+  const [availableQuestions, setAvailableQuestions] = useState(questions);
+  const [pendingReview, setPendingReview] = useState(reviewQueue);
+  const [approvalStatus, setApprovalStatus] = useState<
+    "idle" | "saving" | "error"
+  >("idle");
   const initialSyncStarted = useRef(false);
 
   useEffect(() => {
@@ -146,9 +153,11 @@ export function PracticeApp({
   }
 
   const today = localDateKey();
-  const questionById = new Map(questions.map((question) => [question.id, question]));
+  const questionById = new Map(
+    availableQuestions.map((question) => [question.id, question]),
+  );
   const queue = buildDailyQueue(
-    questions.map((question) => question.id),
+    availableQuestions.map((question) => question.id),
     progress.reviews,
     today,
   );
@@ -164,6 +173,36 @@ export function PracticeApp({
   ).size;
   const dailyTotal = completedToday + remainingIds.length;
   const streak = calculateStreak(progress.reviews, today);
+
+  async function approveAllPending() {
+    if (!pendingReview.length || approvalStatus === "saving") return;
+    setApprovalStatus("saving");
+    try {
+      const response = await fetch("/api/questions/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          questions: pendingReview.map((question) => ({
+            questionId: question.id,
+            questionVersion: question.version,
+            sourceHash: question.sourceHash,
+          })),
+        }),
+      });
+      if (!response.ok) throw new Error("Approval failed");
+      setAvailableQuestions((currentQuestions) => {
+        const known = new Set(currentQuestions.map((question) => question.id));
+        return [
+          ...currentQuestions,
+          ...pendingReview.filter((question) => !known.has(question.id)),
+        ];
+      });
+      setPendingReview([]);
+      setApprovalStatus("idle");
+    } catch {
+      setApprovalStatus("error");
+    }
+  }
 
   function rateCurrent(rating: Rating) {
     if (!current) return;
@@ -301,6 +340,37 @@ export function PracticeApp({
           >
             {authNotice}
           </p>
+        ) : null}
+
+        {!current && pendingReview.length ? (
+          <section className="mt-7 rounded-3xl border border-[#ba4b2f]/25 bg-[#fff4df] p-6 sm:p-8">
+            <p className="font-mono text-xs tracking-[0.15em] text-[#ba4b2f] uppercase">
+              Review queue
+            </p>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-semibold">
+                  {pendingReview.length} câu chờ duyệt
+                </h1>
+                <p className="mt-1 text-sm text-[#64736c]">
+                  Duyệt xong, các câu này sẽ được đưa vào lịch ôn cá nhân.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void approveAllPending()}
+                disabled={approvalStatus === "saving"}
+                className="rounded-2xl bg-[#ba4b2f] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#963a25] disabled:cursor-wait disabled:opacity-60"
+              >
+                {approvalStatus === "saving" ? "Đang duyệt…" : "Duyệt tất cả"}
+              </button>
+            </div>
+            {approvalStatus === "error" ? (
+              <p className="mt-3 text-xs font-semibold text-[#a3321f]">
+                Chưa lưu được approval. Kiểm tra migration rồi thử lại.
+              </p>
+            ) : null}
+          </section>
         ) : null}
 
         {current ? (
@@ -467,6 +537,47 @@ export function PracticeApp({
             </section>
 
             <aside className="space-y-4 lg:pt-12">
+              {pendingReview.length ? (
+                <div className="rounded-3xl border border-[#ba4b2f]/25 bg-[#fff4df] p-6">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-mono text-xs tracking-[0.15em] text-[#ba4b2f] uppercase">
+                        Review queue
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold">
+                        {pendingReview.length} câu chờ duyệt
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-[#ba4b2f] px-2.5 py-1 font-mono text-xs font-bold text-white">
+                      {pendingReview.length}
+                    </span>
+                  </div>
+                  <ul className="mt-4 space-y-2 text-sm text-[#596a62]">
+                    {pendingReview.slice(0, 3).map((question) => (
+                      <li key={question.id} className="line-clamp-2">
+                        <span className="font-mono text-[10px] font-bold text-[#ba4b2f] uppercase">
+                          {question.status === "draft" ? "AI draft" : "Nguồn đã đổi"}
+                        </span>{" "}
+                        · {question.prompt}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={() => void approveAllPending()}
+                    disabled={approvalStatus === "saving"}
+                    className="mt-5 w-full rounded-2xl bg-[#ba4b2f] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#963a25] disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {approvalStatus === "saving" ? "Đang duyệt…" : "Duyệt tất cả"}
+                  </button>
+                  {approvalStatus === "error" ? (
+                    <p className="mt-3 text-xs font-semibold text-[#a3321f]">
+                      Chưa lưu được approval. Kiểm tra migration rồi thử lại.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
               <div className="rounded-3xl bg-[#173f35] p-6 text-white">
                 <p className="font-mono text-xs tracking-[0.15em] text-[#d7ff91] uppercase">
                   Tiến độ hôm nay

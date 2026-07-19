@@ -47,8 +47,20 @@ describe("content automation", () => {
 
   it("rejects an automatically derived ID collision", () => {
     expect(() =>
-      mergeDiscoveredLessons(registry, ["cpp11/99_auto"]),
+      mergeDiscoveredLessons(registry, ["cpp11/1_auto", "cpp11/99_auto"]),
     ).toThrow(/collides/);
+  });
+
+  it("detects removed lessons and treats a stable-ID path change as a move", () => {
+    expect(mergeDiscoveredLessons(registry, []).removals).toEqual(
+      registry.lessons,
+    );
+    const moved = mergeDiscoveredLessons(registry, ["cpp11/99_auto"]);
+    expect(moved.removals).toEqual([]);
+    expect(moved.moves).toEqual([
+      { id: "cpp11-auto", from: "cpp11/1_auto", to: "cpp11/99_auto" },
+    ]);
+    expect(moved.registry.lessons[0].sourcePath).toBe("cpp11/99_auto");
   });
 
   it("approves drafts without bumping v1 and bumps reviewed questions", () => {

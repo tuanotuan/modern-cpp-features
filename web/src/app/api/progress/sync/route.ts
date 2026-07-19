@@ -1,6 +1,11 @@
 import manifestJson from "@/generated/content-manifest.json";
 import { rowsToProgress, syncProgressSchema, type PracticeReviewRow } from "@/lib/practice/cloud";
 import { contentManifestSchema } from "@/lib/content/schema";
+import {
+  activeQuestionIds,
+  rowsToApprovals,
+  type QuestionApprovalRow,
+} from "@/lib/practice/approvals";
 import { isAllowedPracticeUser } from "@/lib/supabase/authorization";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -8,11 +13,6 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 
 const manifest = contentManifestSchema.parse(manifestJson);
-const verifiedQuestionIds = new Set(
-  manifest.questions
-    .filter((question) => question.status === "verified")
-    .map((question) => question.id),
-);
 
 export async function POST(request: Request) {
   if (!isSupabaseConfigured()) {
@@ -33,9 +33,19 @@ export async function POST(request: Request) {
   }
 
   const parsed = syncProgressSchema.safeParse(body);
+  const { data: approvalRows, error: approvalError } = await supabase
+    .from("question_approvals")
+    .select("question_id, question_version, source_hash");
+  if (approvalError) {
+    return Response.json({ error: "Không đọc được question approvals." }, { status: 502 });
+  }
+  const allowedQuestionIds = activeQuestionIds(
+    manifest.questions,
+    rowsToApprovals((approvalRows ?? []) as QuestionApprovalRow[]),
+  );
   if (
     !parsed.success ||
-    parsed.data.reviews.some((review) => !verifiedQuestionIds.has(review.questionId))
+    parsed.data.reviews.some((review) => !allowedQuestionIds.has(review.questionId))
   ) {
     return Response.json({ error: "Progress payload không hợp lệ." }, { status: 400 });
   }

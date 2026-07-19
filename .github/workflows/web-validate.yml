@@ -17,10 +17,46 @@ on:
       - ".github/workflows/web-validate.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  refresh-content:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run content:auto
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AI_MODEL: gemini-3-flash-preview
+      - run: npm run validate
+      - name: Commit refreshed content
+        working-directory: .
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "Content already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/content web/src/generated
+          git commit -m "chore(content): refresh interview question queue"
+          git push
+
   validate:
+    if: github.event_name == 'pull_request' || github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
     defaults:
       run:
