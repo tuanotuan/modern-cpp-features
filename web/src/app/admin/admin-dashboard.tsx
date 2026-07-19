@@ -152,16 +152,6 @@ export function AdminDashboard({
                 Revision <span className="font-mono">{initialSnapshot.sourceRevision.slice(0, 10)}</span>
               </p>
             </div>
-            {reviewQueue.length ? (
-              <button
-                type="button"
-                onClick={() => void approve(reviewQueue.map((question) => question.id))}
-                disabled={savingIds.size > 0}
-                className="rounded-2xl bg-[#ba4b2f] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#963a25] disabled:cursor-wait disabled:opacity-60"
-              >
-                {savingIds.size ? "Đang duyệt…" : `Duyệt tất cả (${reviewQueue.length})`}
-              </button>
-            ) : null}
           </div>
           {notice ? (
             <p className="mt-4 rounded-2xl border border-[#173f35]/15 bg-white/65 px-4 py-3 text-sm font-semibold">
@@ -175,6 +165,48 @@ export function AdminDashboard({
           <MetricCard label="Ngân hàng câu hỏi" value={questions.filter((item) => item.status !== "archived").length} detail={`${activeCount} câu đang dùng`} />
           <MetricCard label="Review queue" value={reviewQueue.length} detail={`${staleCount} câu cần rà lại nguồn`} tone={reviewQueue.length ? "warning" : "default"} />
           <MetricCard label="Lượt ôn đã lưu" value={initialSnapshot.metrics.totalReviews} detail={`${initialSnapshot.metrics.practicedQuestions} câu đã từng luyện`} />
+        </section>
+
+        <section className="mt-8 rounded-[2rem] border border-[#ba4b2f]/20 bg-[#fff7e8] p-5 sm:p-7">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="font-mono text-xs font-bold tracking-[0.16em] text-[#ba4b2f] uppercase">
+                Review queue
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold">
+                Danh sách chờ duyệt
+              </h2>
+              <p className="mt-2 text-sm text-[#64736c]">
+                Mở từng câu để đối chiếu đáp án, rubric và nguồn trước khi đưa vào lịch luyện.
+              </p>
+            </div>
+            {reviewQueue.length ? (
+              <button
+                type="button"
+                onClick={() => void approve(reviewQueue.map((question) => question.id))}
+                disabled={savingIds.size > 0}
+                className="rounded-xl border border-[#ba4b2f]/35 bg-white/70 px-4 py-2.5 text-xs font-bold text-[#8e3825] transition hover:bg-white disabled:cursor-wait disabled:opacity-60"
+              >
+                {savingIds.size ? "Đang duyệt…" : `Duyệt tất cả (${reviewQueue.length})`}
+              </button>
+            ) : null}
+          </div>
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            {reviewQueue.map((question) => (
+              <QueueReviewCard
+                key={question.id}
+                question={question}
+                saving={savingIds.has(question.id)}
+                onApprove={() => void approve([question.id])}
+              />
+            ))}
+            {!reviewQueue.length ? (
+              <div className="rounded-2xl border border-dashed border-[#356b58]/25 bg-white/45 px-5 py-10 text-center text-sm text-[#52645c] lg:col-span-2">
+                Queue đã sạch — không có câu nào cần duyệt.
+              </div>
+            ) : null}
+          </div>
         </section>
 
         <section className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
@@ -252,6 +284,45 @@ export function AdminDashboard({
   );
 }
 
+function QueueReviewCard({ question, saving, onApprove }: { question: AdminQuestion; saving: boolean; onApprove: () => void }) {
+  return (
+    <article className="rounded-2xl border border-[#173f35]/12 bg-white/80 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          <StatusBadge status={question.adminStatus} />
+          <span className="rounded-full bg-[#edf0e8] px-2.5 py-1 font-mono text-[10px] font-bold uppercase">
+            {standardLabels[question.standard]}
+          </span>
+          <span className="rounded-full bg-[#edf0e8] px-2.5 py-1 font-mono text-[10px] font-bold uppercase">
+            {question.type.replace("_", " ")}
+          </span>
+        </div>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={onApprove}
+          className="rounded-xl bg-[#ba4b2f] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#963a25] disabled:cursor-wait disabled:opacity-60"
+        >
+          {saving ? "Đang duyệt…" : "Duyệt câu này"}
+        </button>
+      </div>
+      <h3 className="mt-4 font-semibold leading-6">{question.prompt}</h3>
+      <p className="mt-2 font-mono text-[11px] text-[#718078]">
+        {question.id} · {question.lessonTitle}
+      </p>
+      <details className="group mt-4 border-t border-[#173f35]/10 pt-4">
+        <summary className="cursor-pointer list-none text-xs font-bold text-[#356b58]">
+          <span className="group-open:hidden">Xem đáp án, rubric và nguồn ↓</span>
+          <span className="hidden group-open:inline">Thu gọn ↑</span>
+        </summary>
+        <div className="mt-4">
+          <QuestionDetails question={question} />
+        </div>
+      </details>
+    </article>
+  );
+}
+
 function QuestionCard({ question, saving, onApprove }: { question: AdminQuestion; saving: boolean; onApprove: () => void }) {
   const reviewable = question.adminStatus === "pending" || question.adminStatus === "stale";
   return (
@@ -269,19 +340,33 @@ function QuestionCard({ question, saving, onApprove }: { question: AdminQuestion
         <span className="mt-1 text-xl text-[#64736c] transition group-open:rotate-45">+</span>
       </summary>
       <div className="border-t border-[#173f35]/10 px-4 py-5 sm:px-5">
-        {question.code ? <pre className="overflow-x-auto rounded-xl bg-[#10362d] p-4 text-xs leading-6 text-[#e8f4e9]"><code>{question.code}</code></pre> : null}
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
-          <InfoBlock label="Đáp án ngắn"><p>{question.answer.short}</p></InfoBlock>
-          <InfoBlock label="Hint"><p>{question.hint}</p></InfoBlock>
-          <InfoBlock label="Giải thích"><p className="whitespace-pre-line">{question.answer.detailed}</p></InfoBlock>
-          <InfoBlock label="Rubric"><ul className="list-disc space-y-1 pl-4">{question.rubric.required.map((item) => <li key={item}>{item}</li>)}</ul></InfoBlock>
-        </div>
+        <QuestionDetails question={question} />
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-[#64736c]">Nguồn: {question.sourceHeadings.join(" · ")}</p>
           {reviewable ? <button type="button" disabled={saving} onClick={onApprove} className="rounded-xl bg-[#ba4b2f] px-4 py-2 text-xs font-bold text-white disabled:opacity-60">{saving ? "Đang duyệt…" : "Duyệt câu này"}</button> : null}
         </div>
       </div>
     </details>
+  );
+}
+
+function QuestionDetails({ question }: { question: AdminQuestion }) {
+  return (
+    <>
+      {question.code ? (
+        <pre className="overflow-x-auto rounded-xl bg-[#10362d] p-4 text-xs leading-6 text-[#e8f4e9]">
+          <code>{question.code}</code>
+        </pre>
+      ) : null}
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <InfoBlock label="Đáp án ngắn"><p>{question.answer.short}</p></InfoBlock>
+        <InfoBlock label="Hint"><p>{question.hint}</p></InfoBlock>
+        <InfoBlock label="Giải thích"><p className="whitespace-pre-line">{question.answer.detailed}</p></InfoBlock>
+        <InfoBlock label="Rubric"><ul className="list-disc space-y-1 pl-4">{question.rubric.required.map((item) => <li key={item}>{item}</li>)}</ul></InfoBlock>
+      </div>
+      <p className="mt-4 text-xs text-[#64736c]">
+        Nguồn: {question.sourceHeadings.join(" · ")}
+      </p>
+    </>
   );
 }
 
