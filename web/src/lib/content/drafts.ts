@@ -175,7 +175,7 @@ export async function retryProviderRateLimit<T>(
     try {
       return await operation();
     } catch (error) {
-      if (!isRateLimitError(error) || attempt >= maxAttempts) throw error;
+      if (!isProviderRateLimitError(error) || attempt >= maxAttempts) throw error;
       const delayMs = providerRetryDelayMs(error);
       console.warn(
         `Gemini rate-limited draft generation; retrying attempt ${attempt + 1}/${maxAttempts} in ${Math.ceil(delayMs / 1000)}s.`,
@@ -185,7 +185,7 @@ export async function retryProviderRateLimit<T>(
   }
 }
 
-function isRateLimitError(error: unknown) {
+export function isProviderRateLimitError(error: unknown) {
   if (typeof error !== "object" || error === null) return false;
   const status =
     "statusCode" in error

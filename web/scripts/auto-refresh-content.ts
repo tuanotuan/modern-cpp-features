@@ -13,11 +13,11 @@ import {
 } from "../src/lib/content/automation";
 import {
   generateQuestionDraftsWithGemini,
+  isProviderRateLimitError,
   nextQuestionIds,
 } from "../src/lib/content/drafts";
 import { findRepoRoot, loadContentManifest } from "../src/lib/content/loader";
 import {
-  contentManifestSchema,
   lessonRegistrySchema,
   questionFileSchema,
   type Question,
@@ -29,14 +29,6 @@ async function main() {
   const webRoot = path.resolve(import.meta.dirname, "..");
   loadEnvConfig(webRoot);
   const repoRoot = await findRepoRoot(webRoot);
-  const previousManifest = contentManifestSchema.parse(
-    JSON.parse(
-      await readFile(
-        path.join(webRoot, "src", "generated", "content-manifest.json"),
-        "utf8",
-      ),
-    ),
-  );
   const registryPath = path.join(webRoot, "content", "lesson-registry.yaml");
   const registry = lessonRegistrySchema.parse(
     parseYaml(await readFile(registryPath, "utf8")),
@@ -56,12 +48,6 @@ async function main() {
     reconciliation.removals.map((lesson) => lesson.id),
   );
   const liveManifest = await loadContentManifest(repoRoot, webRoot);
-  const previousHashByLesson = new Map(
-    previousManifest.lessons.map((lesson) => [lesson.id, lesson.sourceHash]),
-  );
-  const changedLessons = liveManifest.lessons.filter(
-    (lesson) => previousHashByLesson.get(lesson.id) !== lesson.sourceHash,
-  );
 
   const generatedPath = path.join(
     webRoot,
@@ -81,20 +67,35 @@ async function main() {
 
   const allQuestionIds = liveManifest.questions.map((question) => question.id);
   const created: Question[] = [];
-  for (const lesson of changedLessons) {
-    const alreadyGrounded = liveManifest.questions.some(
+  const lessonsNeedingDrafts = liveManifest.lessons.filter(
+    (lesson) =>
+      !liveManifest.questions.some(
       (question) =>
         question.lessonId === lesson.id &&
         question.sourceHash === lesson.sourceHash &&
         question.status !== "archived",
-    );
-    if (alreadyGrounded) continue;
+      ),
+  );
+  const deferredLessonIds: string[] = [];
 
-    console.log(`Generating safe drafts for changed lesson ${lesson.id}...`);
-    const aiDrafts = await generateQuestionDraftsWithGemini({
-      lesson,
-      count: DRAFTS_PER_CHANGED_LESSON,
-    });
+  for (const [lessonIndex, lesson] of lessonsNeedingDrafts.entries()) {
+    console.log(`Generating safe drafts for lesson ${lesson.id}...`);
+    let aiDrafts;
+    try {
+      aiDrafts = await generateQuestionDraftsWithGemini({
+        lesson,
+        count: DRAFTS_PER_CHANGED_LESSON,
+      });
+    } catch (error) {
+      if (!isProviderRateLimitError(error)) throw error;
+      deferredLessonIds.push(
+        ...lessonsNeedingDrafts.slice(lessonIndex).map((item) => item.id),
+      );
+      console.warn(
+        `Gemini free quota is exhausted; deferred draft generation for: ${deferredLessonIds.join(", ")}.`,
+      );
+      break;
+    }
     const ids = nextQuestionIds(
       lesson.id,
       [...allQuestionIds, ...created.map((question) => question.id)],
@@ -122,7 +123,7 @@ async function main() {
   }
   const finalManifest = await writeContentManifest(repoRoot, webRoot);
   console.log(
-    `Auto refresh complete: +${reconciliation.additions.length} lessons, -${reconciliation.removals.length} lessons, ${archived.length} archived questions, ${created.length} new drafts, ${finalManifest.questions.filter((question) => question.status === "needs_review").length} stale questions.`,
+    `Auto refresh complete: +${reconciliation.additions.length} lessons, -${reconciliation.removals.length} lessons, ${archived.length} archived questions, ${created.length} new drafts, ${deferredLessonIds.length} deferred lessons, ${finalManifest.questions.filter((question) => question.status === "needs_review").length} stale questions.`,
   );
 }
 

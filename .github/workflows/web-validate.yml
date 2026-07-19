@@ -1,6 +1,9 @@
 name: Validate C++ Recall
 
 on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
   push:
     paths:
       - "cpp98_foundation/**"
@@ -21,7 +24,10 @@ permissions:
 
 jobs:
   refresh-content:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     defaults:
       run:

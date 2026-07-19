@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { nextQuestionIds, retryProviderRateLimit } from "./drafts";
+import {
+  isProviderRateLimitError,
+  nextQuestionIds,
+  retryProviderRateLimit,
+} from "./drafts";
 
 describe("question draft IDs", () => {
   it("continues a lesson's numeric sequence without collisions", () => {
@@ -43,5 +47,11 @@ describe("question draft IDs", () => {
       }),
     ).rejects.toThrow("Unauthorized");
     expect(attempts).toBe(1);
+  });
+
+  it("recognizes provider rate-limit errors for deferred generation", () => {
+    expect(isProviderRateLimitError({ statusCode: 429 })).toBe(true);
+    expect(isProviderRateLimitError({ status: 429 })).toBe(true);
+    expect(isProviderRateLimitError({ statusCode: 500 })).toBe(false);
   });
 });
