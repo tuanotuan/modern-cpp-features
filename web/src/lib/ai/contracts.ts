@@ -34,6 +34,67 @@ export const coachFeedbackSchema = z.object({
 export type CoachFeedback = z.infer<typeof coachFeedbackSchema>;
 export type CoachRequest = z.infer<typeof coachRequestSchema>;
 
+export const coachFollowUpMessageSchema = z.object({
+  role: z.enum(["user", "assistant"]),
+  content: z.string().trim().min(1).max(2000),
+});
+
+export const coachFollowUpRequestSchema = z
+  .object({
+    questionId: z
+      .string()
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+      .max(100),
+    candidateAnswer: z.string().trim().min(10).max(6000),
+    feedback: coachFeedbackSchema,
+    messages: z.array(coachFollowUpMessageSchema).min(1).max(8),
+  })
+  .superRefine(({ messages }, context) => {
+    if (messages.at(-1)?.role !== "user") {
+      context.addIssue({
+        code: "custom",
+        path: ["messages"],
+        message: "The last follow-up message must be from the user.",
+      });
+    }
+
+    messages.forEach((message, index) => {
+      const expectedRole = index % 2 === 0 ? "user" : "assistant";
+      if (message.role !== expectedRole) {
+        context.addIssue({
+          code: "custom",
+          path: ["messages", index, "role"],
+          message: `Expected ${expectedRole} at message ${index}.`,
+        });
+      }
+    });
+  });
+
+export const coachFollowUpResponseSchema = z.object({
+  answer: z.string().trim().min(1).max(1800),
+  sourceSectionIds: z.array(z.string().trim().min(1).max(120)).max(4),
+  checkQuestion: z.string().trim().min(1).max(400),
+});
+
+export type CoachFollowUpMessage = z.infer<typeof coachFollowUpMessageSchema>;
+export type CoachFollowUpRequest = z.infer<typeof coachFollowUpRequestSchema>;
+export type CoachFollowUpResponse = z.infer<typeof coachFollowUpResponseSchema>;
+
+export const coachFollowUpResponseJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    answer: { type: "string" },
+    sourceSectionIds: {
+      type: "array",
+      items: { type: "string" },
+      maxItems: 4,
+    },
+    checkQuestion: { type: "string" },
+  },
+  required: ["answer", "sourceSectionIds", "checkQuestion"],
+} as const;
+
 export const coachFeedbackJsonSchema = {
   type: "object",
   additionalProperties: false,

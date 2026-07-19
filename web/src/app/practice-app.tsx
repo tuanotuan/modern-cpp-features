@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
-import type { CoachFeedback } from "@/lib/ai/contracts";
+import type {
+  CoachFeedback,
+  CoachFollowUpResponse,
+} from "@/lib/ai/contracts";
 import type { Question } from "@/lib/content/schema";
 import type { PracticeAccount } from "@/lib/practice/cloud-server";
 import {
@@ -23,6 +26,12 @@ const STORAGE_KEY = "cpp-recall:progress:v1";
 const EMPTY_SNAPSHOT = "__empty__";
 const storageListeners = new Set<() => void>();
 type SyncStatus = "local" | "syncing" | "synced" | "error";
+type FollowUpChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+  sourceSectionIds?: string[];
+  checkQuestion?: string;
+};
 
 const ratingOptions: Array<{
   value: Rating;
@@ -111,8 +120,15 @@ export function PracticeApp({
     {},
   );
   const [coachModels, setCoachModels] = useState<Record<string, string>>({});
+  const [coachAnswers, setCoachAnswers] = useState<Record<string, string>>({});
   const [coachLoading, setCoachLoading] = useState<string | null>(null);
   const [coachErrors, setCoachErrors] = useState<Record<string, string>>({});
+  const [followUpInputs, setFollowUpInputs] = useState<Record<string, string>>({});
+  const [followUpChats, setFollowUpChats] = useState<
+    Record<string, FollowUpChatMessage[]>
+  >({});
+  const [followUpLoading, setFollowUpLoading] = useState<string | null>(null);
+  const [followUpErrors, setFollowUpErrors] = useState<Record<string, string>>({});
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(() =>
     cloudSetupError ? "error" : account ? "syncing" : "local",
   );
@@ -268,6 +284,11 @@ export function PracticeApp({
         ...models,
         [current.id]: payload.model || "Gemini",
       }));
+      setCoachAnswers((evaluatedAnswers) => ({
+        ...evaluatedAnswers,
+        [current.id]: answer,
+      }));
+      setFollowUpChats((chats) => ({ ...chats, [current.id]: [] }));
     } catch (error) {
       setCoachErrors((errors) => ({
         ...errors,
@@ -276,6 +297,66 @@ export function PracticeApp({
       }));
     } finally {
       setCoachLoading(null);
+    }
+  }
+
+  async function askCoachFollowUp() {
+    if (!current || !coachFeedback[current.id]) return;
+    const content = followUpInputs[current.id]?.trim() ?? "";
+    const existingMessages = followUpChats[current.id] ?? [];
+    if (!content || existingMessages.length >= 8) return;
+
+    const requestMessages = [
+      ...existingMessages.map(({ role, content: messageContent }) => ({
+        role,
+        content: messageContent,
+      })),
+      { role: "user" as const, content },
+    ];
+    setFollowUpLoading(current.id);
+    setFollowUpErrors((errors) => ({ ...errors, [current.id]: "" }));
+
+    try {
+      const response = await fetch("/api/coach/follow-up", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          questionId: current.id,
+          candidateAnswer: coachAnswers[current.id],
+          feedback: coachFeedback[current.id],
+          messages: requestMessages,
+        }),
+      });
+      const payload = (await response.json()) as {
+        reply?: CoachFollowUpResponse;
+        error?: string;
+      };
+      if (!response.ok || !payload.reply) {
+        throw new Error(payload.error || "AI chưa giải thích thêm được.");
+      }
+
+      setFollowUpChats((chats) => ({
+        ...chats,
+        [current.id]: [
+          ...(chats[current.id] ?? []),
+          { role: "user", content },
+          {
+            role: "assistant",
+            content: payload.reply!.answer,
+            sourceSectionIds: payload.reply!.sourceSectionIds,
+            checkQuestion: payload.reply!.checkQuestion,
+          },
+        ],
+      }));
+      setFollowUpInputs((inputs) => ({ ...inputs, [current.id]: "" }));
+    } catch (error) {
+      setFollowUpErrors((errors) => ({
+        ...errors,
+        [current.id]:
+          error instanceof Error ? error.message : "AI chưa giải thích thêm được.",
+      }));
+    } finally {
+      setFollowUpLoading(null);
     }
   }
 
@@ -468,10 +549,26 @@ export function PracticeApp({
                   ) : null}
 
                   {coachFeedback[current.id] ? (
-                    <CoachFeedbackPanel
-                      feedback={coachFeedback[current.id]}
-                      model={coachModels[current.id]}
-                    />
+                    <>
+                      <CoachFeedbackPanel
+                        feedback={coachFeedback[current.id]}
+                        model={coachModels[current.id]}
+                      />
+                      <CoachFollowUpPanel
+                        question={current}
+                        messages={followUpChats[current.id] ?? []}
+                        input={followUpInputs[current.id] ?? ""}
+                        error={followUpErrors[current.id]}
+                        loading={followUpLoading === current.id}
+                        onInput={(value) =>
+                          setFollowUpInputs((inputs) => ({
+                            ...inputs,
+                            [current.id]: value,
+                          }))
+                        }
+                        onSubmit={askCoachFollowUp}
+                      />
+                    </>
                   ) : null}
                 </div>
 
@@ -966,6 +1063,130 @@ function CoachFeedbackPanel({
           đối chiếu đáp án nguồn.
         </p>
       </div>
+    </section>
+  );
+}
+
+function CoachFollowUpPanel({
+  question,
+  messages,
+  input,
+  error,
+  loading,
+  onInput,
+  onSubmit,
+}: {
+  question: PracticeQuestion;
+  messages: FollowUpChatMessage[];
+  input: string;
+  error?: string;
+  loading: boolean;
+  onInput: (value: string) => void;
+  onSubmit: () => void;
+}) {
+  const limitReached = messages.length >= 8;
+  const sourceById = new Map(
+    question.sourceSections.map((section) => [section.id, section]),
+  );
+
+  return (
+    <section className="mt-5 rounded-3xl border border-[#173f35]/16 bg-white/70 p-5 shadow-[0_12px_35px_rgba(23,63,53,0.05)] sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="font-mono text-xs font-bold tracking-[0.14em] text-[#356b58] uppercase">
+            Chưa hiểu? Hỏi tiếp AI
+          </p>
+          <p className="mt-2 text-sm leading-6 text-[#64736c]">
+            AI sẽ giải thích lại dựa trên câu này, feedback vừa chấm và note nguồn.
+          </p>
+        </div>
+        <span className="rounded-full bg-[#edf3e9] px-3 py-1 font-mono text-[11px] text-[#52645c]">
+          {Math.floor(messages.length / 2)}/4 lượt
+        </span>
+      </div>
+
+      {messages.length ? (
+        <div className="mt-5 space-y-4" aria-live="polite">
+          {messages.map((message, index) => {
+            const citedSections = (message.sourceSectionIds ?? [])
+              .map((id) => sourceById.get(id))
+              .filter((section): section is NonNullable<typeof section> => Boolean(section));
+            return (
+              <div
+                key={`${message.role}-${index}`}
+                className={
+                  message.role === "user"
+                    ? "ml-auto max-w-[88%] rounded-2xl rounded-br-md bg-[#173f35] px-4 py-3 text-sm leading-6 text-white"
+                    : "max-w-[94%] rounded-2xl rounded-bl-md border border-[#356b58]/15 bg-[#f6faef] px-4 py-4 text-sm leading-6 text-[#465c52]"
+                }
+              >
+                <p className="whitespace-pre-line">
+                  <InlineCode text={message.content} />
+                </p>
+                {citedSections.length ? (
+                  <div className="mt-3 flex flex-wrap gap-2 border-t border-[#173f35]/10 pt-3">
+                    {citedSections.map((section) => (
+                      <span
+                        key={section.id}
+                        title={`#${section.id}`}
+                        className="rounded-full bg-[#e8efe2] px-2.5 py-1 text-[11px] font-semibold text-[#356b58]"
+                      >
+                        Nguồn: {section.heading}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+                {message.checkQuestion ? (
+                  <p className="mt-3 rounded-xl bg-[#d7ff91]/45 px-3 py-2 text-xs font-semibold text-[#29493d]">
+                    Tự kiểm tra: <InlineCode text={message.checkQuestion} />
+                  </p>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
+      <form
+        className="mt-5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit();
+        }}
+      >
+        <label htmlFor={`follow-up-${question.id}`} className="sr-only">
+          Câu hỏi bổ sung cho AI coach
+        </label>
+        <textarea
+          id={`follow-up-${question.id}`}
+          value={input}
+          onChange={(event) => onInput(event.target.value)}
+          maxLength={2000}
+          rows={3}
+          disabled={loading || limitReached}
+          placeholder="Ví dụ: Tại sao chỗ này lại là undefined behavior? Giải thích bằng ví dụ nhỏ được không?"
+          className="w-full resize-y rounded-2xl border border-[#173f35]/18 bg-white px-4 py-3 text-sm leading-6 text-[#1e352d] outline-none transition placeholder:text-[#819087] focus:border-[#356b58] focus:ring-4 focus:ring-[#d7ff91]/45 disabled:bg-[#edf1ea]"
+        />
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-[#78867f]">
+            {limitReached
+              ? "Đã đủ 4 lượt. Chấm lại để bắt đầu hội thoại mới."
+              : "Enter xuống dòng · tối đa 2.000 ký tự"}
+          </p>
+          <button
+            type="submit"
+            disabled={!input.trim() || loading || limitReached}
+            className="rounded-xl bg-[#173f35] px-5 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 focus:ring-4 focus:ring-[#d7ff91] focus:outline-none"
+          >
+            {loading ? "AI đang giải thích…" : "Hỏi tiếp AI"}
+          </button>
+        </div>
+        {error ? (
+          <p className="mt-3 rounded-xl bg-[#f8e8df] px-3 py-2 text-sm text-[#8e3825]" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </form>
     </section>
   );
 }
