@@ -1,0 +1,1 @@
+-- No shared seed data. Lessons and questions are generated from the Git repository.

@@ -1,0 +1,126 @@
+schemaVersion: 1
+lessons:
+  - id: cpp98-object-variable-memory
+    sourcePath: cpp98_foundation/object variable memory
+    standard: cpp98
+    order: 1
+    tags: [memory, lifetime, object-model]
+  - id: cpp98-address-pointer
+    sourcePath: cpp98_foundation/address pointer
+    standard: cpp98
+    order: 2
+    tags: [pointer, address, lifetime]
+    prerequisites: [cpp98-object-variable-memory]
+  - id: cpp98-reference
+    sourcePath: cpp98_foundation/reference
+    standard: cpp98
+    order: 3
+    tags: [reference, aliasing, lifetime]
+    prerequisites: [cpp98-object-variable-memory]
+  - id: cpp98-array-one-past-end
+    sourcePath: cpp98_foundation/array & one-past-end
+    standard: cpp98
+    order: 4
+    tags: [array, pointer-arithmetic, bounds]
+    prerequisites: [cpp98-address-pointer]
+  - id: cpp98-struct-padding
+    sourcePath: cpp98_foundation/struct & padding
+    standard: cpp98
+    order: 5
+    tags: [struct, alignment, performance]
+    prerequisites: [cpp98-object-variable-memory]
+  - id: cpp11-auto
+    sourcePath: cpp11/1_auto
+    standard: cpp11
+    order: 1
+    tags: [type-deduction, reference, performance]
+  - id: cpp11-nullptr
+    sourcePath: cpp11/2_nullptr
+    standard: cpp11
+    order: 2
+    tags: [pointer, type-safety, overload]
+    prerequisites: [cpp98-address-pointer]
+  - id: cpp11-range-based-for
+    sourcePath: cpp11/3_range-based for
+    standard: cpp11
+    order: 3
+    tags: [iteration, container, performance]
+    prerequisites: [cpp11-auto]
+  - id: cpp11-using-alias
+    sourcePath: cpp11/4_using alias
+    standard: cpp11
+    order: 4
+    tags: [alias, readability, templates]
+  - id: cpp11-old-style-enum
+    sourcePath: cpp11/5_enum
+    standard: cpp11
+    order: 5
+    tags: [enum, type-safety, foundation]
+  - id: cpp11-enum-class
+    sourcePath: cpp11/5_enum class
+    standard: cpp11
+    order: 6
+    tags: [enum, type-safety, scope]
+    prerequisites: [cpp11-old-style-enum]
+  - id: cpp11-initializer-list
+    sourcePath: cpp11/6_initializer list
+    standard: cpp11
+    order: 7
+    tags: [initialization, narrowing, constructor]
+  - id: cpp11-lambda-basic
+    sourcePath: cpp11/7_lambda basic
+    standard: cpp11
+    order: 8
+    tags: [lambda, callable, algorithm]
+  - id: cpp11-lambda-capture-value
+    sourcePath: cpp11/8_lambda capture by value
+    standard: cpp11
+    order: 9
+    tags: [lambda, capture, lifetime]
+    prerequisites: [cpp11-lambda-basic]
+  - id: cpp11-lambda-capture-reference
+    sourcePath: cpp11/9_lambda capture by reference
+    standard: cpp11
+    order: 10
+    tags: [lambda, capture, lifetime, mutation]
+    prerequisites: [cpp11-lambda-basic]
+  - id: cpp11-mutable-lambda
+    sourcePath: cpp11/10_mutable lambda
+    standard: cpp11
+    order: 11
+    tags: [lambda, mutable, capture]
+    prerequisites: [cpp11-lambda-capture-value]
+  - id: cpp11-lambda-algorithms
+    sourcePath: cpp11/11_lambda with sort or for_each
+    standard: cpp11
+    order: 12
+    tags: [lambda, algorithm, sort, for-each]
+    prerequisites: [cpp11-lambda-basic]
+  - id: cpp11-constexpr
+    sourcePath: cpp11/12_constexpr
+    standard: cpp11
+    order: 13
+    tags: [compile-time, constant, performance]
+  - id: cpp11-static-assert
+    sourcePath: cpp11/13_ static_assert
+    standard: cpp11
+    order: 14
+    tags: [compile-time, assertion, constraint]
+    prerequisites: [cpp11-constexpr]
+  - id: cpp11-defaulted-functions
+    sourcePath: cpp11/14_defaulted function
+    standard: cpp11
+    order: 15
+    tags: [special-member-function, class-design]
+  - id: cpp11-deleted-functions
+    sourcePath: cpp11/15_delete function
+    standard: cpp11
+    order: 16
+    tags: [special-member-function, class-design, ownership]
+    prerequisites: [cpp11-defaulted-functions]
+  - id: cpp20-designated-initializers
+    sourcePath: cpp20/01_designated initializer
+    standard: cpp20
+    order: 1
+    tags: [initialization, aggregate, readability]
+    prerequisites: [cpp11-initializer-list]

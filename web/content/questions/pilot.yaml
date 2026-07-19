@@ -1,0 +1,327 @@
+schemaVersion: 1
+questions:
+  - id: cpp11-auto-001
+    lessonId: cpp11-auto
+    type: recall
+    difficulty: beginner
+    estimatedMinutes: 2
+    prompt: Khác nhau giữa `auto`, `auto&` và `const auto&` là gì?
+    hint: Nghĩ về copy, khả năng sửa object gốc và chi phí copy.
+    answer:
+      short: >-
+        `auto` tạo một value mới theo type deduction, `auto&` bind tới object gốc
+        và có thể sửa nó, còn `const auto&` bind read-only và tránh copy.
+      detailed: >-
+        Khi khai báo từ một lvalue thông thường, `auto` loại bỏ reference và
+        top-level const nên biến nhận được là một value riêng. `auto&` giữ quan hệ
+        reference với object gốc. `const auto&` cũng không copy object nhưng không
+        cho phép sửa object thông qua reference đó; đây là lựa chọn phổ biến khi
+        chỉ đọc object lớn trong container.
+    rubric:
+      required:
+        - Nêu được `auto` tạo value riêng trong trường hợp thông thường.
+        - Nêu được `auto&` tham chiếu và có thể sửa object gốc.
+        - Nêu được `const auto&` là read-only và tránh copy.
+      bonus:
+        - Nhắc tới việc `auto` bỏ top-level const và reference khi deduction.
+      misconceptions:
+        - "`auto` là dynamic type giống Python."
+        - "`const auto&` luôn tạo một bản copy const."
+    sources:
+      - sectionId: difference-between-auto-auto-and-const-auto
+    status: verified
+    version: 1
+
+  - id: cpp11-auto-002
+    lessonId: cpp11-auto
+    type: code_reasoning
+    difficulty: beginner
+    estimatedMinutes: 2
+    prompt: Đoạn loop này có thay đổi các phần tử trong `names` không? Giải thích và sửa lại nếu mục tiêu là thêm dấu `!` vào từng phần tử.
+    code: |-
+      std::vector<std::string> names{"Ana", "Binh"};
+      for (auto name : names) {
+          name += "!";
+      }
+    hint: Type của `name` có phải reference không?
+    answer:
+      short: >-
+        Không. `name` là một bản copy. Dùng `for (auto& name : names)` để sửa từng
+        phần tử gốc.
+      detailed: >-
+        Range-based for với `auto name` copy mỗi `std::string` vào biến loop.
+        Thay đổi biến đó không tác động container và còn tạo copy không cần thiết.
+        `auto& name` bind trực tiếp tới phần tử; nếu chỉ đọc thì dùng
+        `const auto& name`.
+    rubric:
+      required:
+        - Kết luận `names` không đổi.
+        - Giải thích `name` là copy.
+        - Sửa thành `auto&`.
+      bonus:
+        - Nhắc `const auto&` cho trường hợp chỉ đọc.
+      misconceptions:
+        - Range-based for luôn trả về reference.
+    sources:
+      - sectionId: common-mistakes-when-using-auto
+    status: verified
+    version: 1
+
+  - id: cpp11-nullptr-001
+    lessonId: cpp11-nullptr
+    type: scenario
+    difficulty: intermediate
+    estimatedMinutes: 3
+    prompt: Vì sao `nullptr` an toàn hơn `NULL` hoặc `0` khi chương trình có overload nhận cả integer và pointer?
+    hint: So sánh type của ba biểu thức và cách overload resolution nhìn chúng.
+    answer:
+      short: >-
+        `nullptr` có type riêng là `std::nullptr_t` và chuyển đổi được sang pointer,
+        nên biểu đạt đúng ý định null pointer. `NULL` thường là macro số nguyên và
+        `0` là integer literal, vì vậy chúng có thể chọn nhầm hoặc làm mơ hồ overload.
+      detailed: >-
+        C++11 giới thiệu `nullptr` để overload resolution phân biệt rõ null pointer
+        với integer. `NULL` là macro do implementation định nghĩa và thường mang
+        dạng hằng số nguyên; do đó hành vi chọn overload có thể không truyền đạt ý
+        định pointer. Khi muốn nói “không có object hợp lệ”, dùng `nullptr`.
+    rubric:
+      required:
+        - Nêu type riêng `std::nullptr_t`.
+        - Giải thích `NULL` hoặc `0` có tính chất integer.
+        - Liên hệ tới overload resolution và type safety.
+      bonus:
+        - Không khẳng định mọi implementation đều định nghĩa `NULL` giống hệt nhau.
+      misconceptions:
+        - "`nullptr` chỉ là cách viết khác của integer `0`."
+    sources:
+      - sectionId: why-nullptr-is-better-than-null
+    status: verified
+    version: 1
+
+  - id: cpp11-lambda-reference-001
+    lessonId: cpp11-lambda-capture-reference
+    type: pitfall
+    difficulty: intermediate
+    estimatedMinutes: 3
+    prompt: Rủi ro chính khi trả về hoặc lưu một lambda capture local variable bằng reference là gì?
+    hint: So sánh lifetime của lambda với lifetime của local variable.
+    answer:
+      short: >-
+        Lambda có thể giữ reference sau khi local variable đã hết lifetime, tạo
+        dangling reference; sử dụng nó dẫn tới undefined behavior.
+      detailed: >-
+        Reference capture không sở hữu hay kéo dài lifetime của object được capture.
+        Nếu callback chạy sau khi scope tạo nó kết thúc, reference bên trong không
+        còn trỏ tới object sống. Cần bảo đảm lifetime, capture một value phù hợp,
+        hoặc thay đổi ownership design.
+    rubric:
+      required:
+        - Nêu được dangling reference.
+        - Giải thích nguyên nhân là lifetime của local kết thúc trước lambda.
+        - Nêu hậu quả undefined behavior khi dùng reference đó.
+      bonus:
+        - Đề xuất capture by value hoặc ownership/lifetime rõ ràng.
+      misconceptions:
+        - Lambda tự động kéo dài lifetime của mọi reference capture.
+    sources:
+      - sectionId: common-mistakes
+    status: verified
+    version: 1
+
+  - id: cpp11-constexpr-001
+    lessonId: cpp11-constexpr
+    type: recall
+    difficulty: intermediate
+    estimatedMinutes: 3
+    prompt: Phân biệt `const` và `constexpr`. Một giá trị `const` có luôn là compile-time constant không?
+    hint: Immutability và khả năng constant evaluation là hai khái niệm khác nhau.
+    answer:
+      short: >-
+        `const` chủ yếu nói rằng object không bị sửa qua tên đó; nó vẫn có thể nhận
+        giá trị ở runtime. `constexpr` yêu cầu giá trị có khả năng được constant
+        evaluated. Vì vậy không phải mọi `const` đều là compile-time constant.
+      detailed: >-
+        Một biến `const` có thể được khởi tạo từ input runtime và chỉ bảo đảm tính
+        bất biến sau khi khởi tạo. Biến `constexpr` phải có initializer phù hợp cho
+        constant expression. Hàm `constexpr` có thể tạo kết quả compile time khi
+        được gọi với dữ liệu compile time, nhưng cũng có thể được gọi ở runtime nếu
+        ngữ cảnh cho phép.
+    rubric:
+      required:
+        - Gắn `const` với immutability.
+        - Gắn `constexpr` với constant evaluation.
+        - Trả lời rõ không phải mọi `const` đều là compile-time constant.
+      bonus:
+        - Nêu được hàm `constexpr` có thể được gọi trong runtime context.
+      misconceptions:
+        - Mọi biến `const` đều được tính khi compile.
+    sources:
+      - sectionId: const-vs-constexpr
+    status: verified
+    version: 1
+
+  - id: cpp11-deleted-functions-001
+    lessonId: cpp11-deleted-functions
+    type: scenario
+    difficulty: intermediate
+    estimatedMinutes: 3
+    prompt: Một class sở hữu resource độc quyền không được phép copy. `= delete` giúp thiết kế interface đó như thế nào?
+    hint: Nghĩ tới copy constructor, copy assignment và thời điểm lỗi được phát hiện.
+    answer:
+      short: >-
+        Khai báo copy constructor và copy assignment với `= delete` để mọi hành vi
+        copy bị compiler từ chối, đồng thời interface nói rõ operation đó bị cấm.
+      detailed: >-
+        Deleted function vẫn tham gia vào overload resolution nhưng nếu được chọn
+        thì chương trình ill-formed và lỗi xuất hiện ở compile time. Với resource
+        ownership độc quyền, xóa copy operations ngăn accidental sharing hoặc
+        double ownership. Đây không phải thao tác giải phóng object hay memory.
+    rubric:
+      required:
+        - Nêu copy constructor và copy assignment có thể bị delete.
+        - Nêu lỗi compile time.
+        - Giải thích mục tiêu bảo vệ ownership và làm rõ interface.
+      bonus:
+        - Phân biệt deleted function với thao tác delete memory.
+      misconceptions:
+        - "`= delete` chạy lúc runtime để xóa object."
+    sources:
+      - sectionId: common-use-cases
+      - sectionId: compile-time-protection
+    status: verified
+    version: 1
+
+  - id: cpp20-designated-initializers-001
+    lessonId: cpp20-designated-initializers
+    type: code_reasoning
+    difficulty: intermediate
+    estimatedMinutes: 3
+    prompt: Đoạn C++20 dưới đây có hợp lệ không? Nêu hai constraint quan trọng của designated initializers.
+    code: |-
+      struct RiskConfig {
+          int maxPosition;
+          double maxLoss;
+      };
+
+      RiskConfig config{
+          .maxLoss = 5000.0,
+          .maxPosition = 1000
+      };
+    hint: Kiểm tra loại object và thứ tự khai báo member.
+    answer:
+      short: >-
+        Không hợp lệ trong C++20 vì designator phải theo thứ tự khai báo member.
+        Feature này áp dụng cho aggregate types và không phải named arguments.
+      detailed: >-
+        `RiskConfig` là aggregate phù hợp, nhưng `maxLoss` được chỉ định trước
+        `maxPosition`, ngược declaration order. Cần viết `.maxPosition` trước
+        `.maxLoss`. Designated initializers khởi tạo aggregate members bằng tên;
+        chúng không cung cấp named parameters cho constructor/function.
+    rubric:
+      required:
+        - Kết luận code không hợp lệ.
+        - Chỉ ra lỗi thứ tự member.
+        - Nêu constraint aggregate type.
+      bonus:
+        - Phân biệt với named parameters.
+      misconceptions:
+        - Designator có thể xuất hiện theo thứ tự bất kỳ như trong C.
+    sources:
+      - sectionId: member-order-still-matters
+      - sectionId: aggregate-types-only
+    status: verified
+    version: 1
+
+  - id: cpp98-address-pointer-001
+    lessonId: cpp98-address-pointer
+    type: recall
+    difficulty: beginner
+    estimatedMinutes: 2
+    prompt: Phân biệt object, address, pointer và thao tác dereference.
+    hint: "`ptr` và `*ptr` biểu diễn hai thứ khác nhau."
+    answer:
+      short: >-
+        Object nằm tại một địa chỉ trong memory; pointer là biến lưu địa chỉ đó;
+        dereference pointer bằng `*ptr` để truy cập object được trỏ tới.
+      detailed: >-
+        Toán tử `&object` lấy address của object. Pointer như `int* ptr` có thể lưu
+        address phù hợp. Bản thân `ptr` là giá trị địa chỉ, còn `*ptr` là lvalue chỉ
+        object tại địa chỉ đó. Chỉ dereference khi pointer trỏ tới object còn sống
+        và hợp lệ.
+    rubric:
+      required:
+        - Phân biệt address với object.
+        - Nêu pointer lưu address.
+        - Nêu dereference truy cập object.
+      bonus:
+        - Nhắc điều kiện pointer phải hợp lệ và object còn lifetime.
+      misconceptions:
+        - Pointer chính là object mà nó trỏ tới.
+    sources:
+      - sectionId: memory-model
+    status: verified
+    version: 1
+
+  - id: cpp98-address-pointer-002
+    lessonId: cpp98-address-pointer
+    type: pitfall
+    difficulty: intermediate
+    estimatedMinutes: 3
+    prompt: Dangling pointer là gì, và vì sao việc pointer khác null vẫn chưa đủ để bảo đảm dereference an toàn?
+    hint: Pointer có thể giữ lại address sau khi lifetime của object kết thúc.
+    answer:
+      short: >-
+        Dangling pointer giữ địa chỉ của object không còn sống. Nó có thể khác null
+        nhưng dereference vẫn gây undefined behavior vì lifetime đã kết thúc.
+      detailed: >-
+        Null check chỉ loại trừ null pointer; nó không chứng minh address còn thuộc
+        về một object hợp lệ. Pointer có thể dangling sau khi local scope kết thúc,
+        resource bị giải phóng hoặc owner di chuyển. Cần quản lý lifetime/ownership,
+        không chỉ kiểm tra `ptr != nullptr`.
+    rubric:
+      required:
+        - Định nghĩa pointer trỏ tới object đã hết lifetime.
+        - Nêu pointer vẫn có thể khác null.
+        - Nêu dereference là undefined behavior.
+      bonus:
+        - Liên hệ tới ownership thay vì chỉ null check.
+      misconceptions:
+        - Mọi non-null pointer đều hợp lệ để dereference.
+    sources:
+      - sectionId: common-mistakes
+    status: verified
+    version: 1
+
+  - id: cpp98-struct-padding-001
+    lessonId: cpp98-struct-padding
+    type: scenario
+    difficulty: intermediate
+    estimatedMinutes: 3
+    prompt: Vì sao `sizeof(struct)` có thể lớn hơn tổng `sizeof` các field, và đổi thứ tự field có thể giúp gì?
+    hint: CPU alignment có thể tạo khoảng trống giữa hoặc sau các member.
+    answer:
+      short: >-
+        Compiler có thể chèn padding để các member đáp ứng alignment. Gom các field
+        có alignment tương tự hoặc đặt field lớn trước đôi khi giảm khoảng trống và
+        kích thước struct, nhưng kích thước cụ thể phụ thuộc implementation/ABI.
+      detailed: >-
+        Mỗi member thường phải bắt đầu ở offset phù hợp với alignment của type và
+        toàn bộ struct cũng có alignment để phần tử trong array được đặt đúng. Vì
+        vậy có thể có internal và tail padding. Reorder member có thể giảm padding,
+        cải thiện cache density, nhưng phải đo trên target ABI và cân nhắc semantic
+        readability thay vì giả định một layout tuyệt đối.
+    rubric:
+      required:
+        - Nêu padding phục vụ alignment.
+        - Nêu có thể có khoảng trống giữa hoặc sau member.
+        - Nêu field order có thể ảnh hưởng size.
+      bonus:
+        - Nêu layout/size cụ thể phụ thuộc implementation hoặc ABI.
+        - Liên hệ tới cache density.
+      misconceptions:
+        - "`sizeof(struct)` luôn bằng tổng kích thước field."
+        - Reorder luôn tạo cùng kết quả trên mọi platform.
+    sources:
+      - sectionId: padding
+    status: verified
+    version: 1
