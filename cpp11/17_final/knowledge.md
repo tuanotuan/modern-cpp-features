@@ -27,84 +27,100 @@ class Derived : public Base
 public:
     void run() override final;
 };
+```
 
-Derived::run() overrides Base::run(), but no class derived from Derived may override it again.
+`Derived::run()` overrides `Base::run()`, but no class derived from `Derived` may override it again.
 
-3. Class-Level final
+## 3. Class-Level `final`
 
-A class marked final cannot be used as a base class.
+A class marked `final` cannot be used as a base class.
 
+```cpp
 class Connection final
 {
 };
+```
 
-Any attempt to inherit from Connection causes a compilation error.
+Any attempt to inherit from `Connection` causes a compilation error.
 
-4. Relationship with virtual and override
+## 4. Relationship with `virtual` and `override`
 
-virtual means:
+`virtual` means:
 
 Derived classes may replace this behavior.
 
-override means:
+`override` means:
 
 Verify that this function correctly replaces a base virtual function.
 
-final means:
+`final` means:
 
 Do not allow any further replacement.
 
 A common modern C++ declaration is:
 
+```cpp
 void run() override final;
-5. Common Errors
-Overriding a Final Function
+```
 
-A derived class cannot override a function already marked final.
+## 5. Common Errors
 
-Inheriting from a Final Class
+### Overriding a Final Function
 
-A class marked final cannot have derived classes.
+A derived class cannot override a function already marked `final`.
 
-Using final on a Non-Virtual Function
+### Inheriting from a Final Class
 
-Function-level final is only valid for virtual functions.
+A class marked `final` cannot have derived classes.
 
-Applying final Too Early
+### Using `final` on a Non-Virtual Function
 
-Excessive use of final may prevent legitimate extension of a class hierarchy.
+Function-level `final` is only valid for virtual functions.
 
-6. Practical Uses
+### Applying `final` Too Early
 
-final is useful when:
+Excessive use of `final` may prevent legitimate extension of a class hierarchy.
 
-A validated algorithm must not be changed
-A security or risk rule must remain fixed
-A class is not designed for inheritance
-Further overriding would violate an invariant
-An implementation represents the final layer of a hierarchy
-7. Recommended Style
+## 6. Practical Uses
+
+`final` is useful when:
+
+- A validated algorithm must not be changed
+- A security or risk rule must remain fixed
+- A class is not designed for inheritance
+- Further overriding would violate an invariant
+- An implementation represents the final layer of a hierarchy
+
+## 7. Recommended Style
 
 Use:
 
+```cpp
 void function() override final;
+```
 
-when a derived function both overrides a base function and must not be overridden again.
+when a derived function both overrides a base virtual function and must not be overridden again.
 
 Use:
 
+```cpp
 class ClassName final;
+```
 
 when the class is intentionally not designed as a base class.
 
-Do not add final everywhere. Use it only when the design intentionally forbids further extension.
+Do not add `final` everywhere. Use it only when the design intentionally forbids further extension.
 
-8. Mental Model
+## 8. Mental Model
+
+```text
 virtual  -> extension is allowed
 override -> extension is checked
 final    -> extension stops here
-9. Key Takeaway
+```
 
-final protects class hierarchies from unintended extension.
+## 9. Key Takeaway
+
+`final` protects class hierarchies from unintended extension.
 
 It converts an architectural restriction into a compile-time rule.
