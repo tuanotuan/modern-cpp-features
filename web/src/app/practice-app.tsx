@@ -9,6 +9,11 @@ import type {
 import type { Question } from "@/lib/content/schema";
 import type { PracticeAccount } from "@/lib/practice/cloud-server";
 import {
+  parseStudySession,
+  serializeStudySession,
+  type QuestionStudySession,
+} from "@/lib/practice/study-session";
+import {
   buildDailyQueue,
   calculateStreak,
   latestReviews,
@@ -23,6 +28,7 @@ import {
 } from "@/lib/practice/scheduler";
 
 const STORAGE_KEY = "cpp-recall:progress:v1";
+const STUDY_SESSION_KEY = "cpp-recall:study-session:v1";
 const EMPTY_SNAPSHOT = "__empty__";
 const storageListeners = new Set<() => void>();
 type SyncStatus = "local" | "syncing" | "synced" | "error";
@@ -115,7 +121,9 @@ export function PracticeApp({
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [revealed, setRevealed] = useState<Set<string>>(() => new Set());
   const [hints, setHints] = useState<Set<string>>(() => new Set());
-  const [showSource, setShowSource] = useState(false);
+  const [visibleSources, setVisibleSources] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [coachFeedback, setCoachFeedback] = useState<Record<string, CoachFeedback>>(
     {},
   );
@@ -138,6 +146,119 @@ export function PracticeApp({
     "idle" | "saving" | "error"
   >("idle");
   const initialSyncStarted = useRef(false);
+  const sessionHydrationStarted = useRef(false);
+  const [sessionHydrated, setSessionHydrated] = useState(false);
+  const sessionQuestions = useMemo(() => {
+    const byId = new Map<string, PracticeQuestion>();
+    [...availableQuestions, ...pendingReview].forEach((question) =>
+      byId.set(question.id, question),
+    );
+    return [...byId.values()];
+  }, [availableQuestions, pendingReview]);
+
+  useEffect(() => {
+    if (sessionHydrationStarted.current) return;
+    sessionHydrationStarted.current = true;
+
+    const session = parseStudySession(
+      window.localStorage.getItem(STUDY_SESSION_KEY),
+      sessionQuestions,
+    );
+    const restoredAnswers: Record<string, string> = {};
+    const restoredFeedback: Record<string, CoachFeedback> = {};
+    const restoredModels: Record<string, string> = {};
+    const restoredCoachAnswers: Record<string, string> = {};
+    const restoredInputs: Record<string, string> = {};
+    const restoredChats: Record<string, FollowUpChatMessage[]> = {};
+    const restoredRevealed = new Set<string>();
+    const restoredHints = new Set<string>();
+    const restoredVisibleSources = new Set<string>();
+
+    Object.entries(session.questions).forEach(([questionId, saved]) => {
+      if (saved.answer !== undefined) restoredAnswers[questionId] = saved.answer;
+      if (saved.revealed) restoredRevealed.add(questionId);
+      if (saved.hint) restoredHints.add(questionId);
+      if (saved.sourceVisible) restoredVisibleSources.add(questionId);
+      if (saved.coachFeedback) restoredFeedback[questionId] = saved.coachFeedback;
+      if (saved.coachModel) restoredModels[questionId] = saved.coachModel;
+      if (saved.coachAnswer) restoredCoachAnswers[questionId] = saved.coachAnswer;
+      if (saved.followUpInput) restoredInputs[questionId] = saved.followUpInput;
+      if (saved.followUpChat) restoredChats[questionId] = saved.followUpChat;
+    });
+
+    setAnswers(restoredAnswers);
+    setRevealed(restoredRevealed);
+    setHints(restoredHints);
+    setVisibleSources(restoredVisibleSources);
+    setCoachFeedback(restoredFeedback);
+    setCoachModels(restoredModels);
+    setCoachAnswers(restoredCoachAnswers);
+    setFollowUpInputs(restoredInputs);
+    setFollowUpChats(restoredChats);
+    setSessionHydrated(true);
+  }, [sessionQuestions]);
+
+  useEffect(() => {
+    if (!sessionHydrated) return;
+
+    const savedQuestions: Record<string, QuestionStudySession> = {};
+    sessionQuestions.forEach((question) => {
+      const answer = answers[question.id];
+      const feedback = coachFeedback[question.id];
+      const model = coachModels[question.id];
+      const coachAnswer = coachAnswers[question.id];
+      const followUpInput = followUpInputs[question.id];
+      const followUpChat = followUpChats[question.id];
+      const isRevealed = revealed.has(question.id);
+      const hasHint = hints.has(question.id);
+      const sourceVisible = visibleSources.has(question.id);
+      const hasSession = Boolean(
+        answer ||
+          feedback ||
+          followUpInput ||
+          followUpChat?.length ||
+          isRevealed ||
+          hasHint ||
+          sourceVisible,
+      );
+      if (!hasSession) return;
+
+      savedQuestions[question.id] = {
+        questionVersion: question.version,
+        sourceHash: question.sourceHash,
+        ...(answer ? { answer } : {}),
+        ...(isRevealed ? { revealed: true } : {}),
+        ...(hasHint ? { hint: true } : {}),
+        ...(sourceVisible ? { sourceVisible: true } : {}),
+        ...(feedback ? { coachFeedback: feedback } : {}),
+        ...(model ? { coachModel: model } : {}),
+        ...(coachAnswer ? { coachAnswer } : {}),
+        ...(followUpInput ? { followUpInput } : {}),
+        ...(followUpChat?.length ? { followUpChat } : {}),
+      };
+    });
+
+    try {
+      window.localStorage.setItem(
+        STUDY_SESSION_KEY,
+        serializeStudySession(savedQuestions),
+      );
+    } catch {
+      // Practice remains usable if browser storage is unavailable or full.
+    }
+  }, [
+    answers,
+    coachAnswers,
+    coachFeedback,
+    coachModels,
+    followUpChats,
+    followUpInputs,
+    hints,
+    revealed,
+    sessionHydrated,
+    sessionQuestions,
+    visibleSources,
+  ]);
 
   useEffect(() => {
     if (snapshot === null || !account || initialSyncStarted.current) return;
@@ -224,7 +345,7 @@ export function PracticeApp({
     if (!current) return;
     const updated = recordReview(progress, current.id, rating, today);
     saveProgress(JSON.stringify(updated));
-    setShowSource(false);
+    clearQuestionStudySession(current.id);
     if (account) {
       const newReview = updated.reviews.find(
         (review) =>
@@ -232,6 +353,20 @@ export function PracticeApp({
       );
       if (newReview) void syncReviews([newReview]);
     }
+  }
+
+  function clearQuestionStudySession(questionId: string) {
+    setAnswers((values) => omitRecordKey(values, questionId));
+    setCoachFeedback((values) => omitRecordKey(values, questionId));
+    setCoachModels((values) => omitRecordKey(values, questionId));
+    setCoachAnswers((values) => omitRecordKey(values, questionId));
+    setCoachErrors((values) => omitRecordKey(values, questionId));
+    setFollowUpInputs((values) => omitRecordKey(values, questionId));
+    setFollowUpChats((values) => omitRecordKey(values, questionId));
+    setFollowUpErrors((values) => omitRecordKey(values, questionId));
+    setRevealed((values) => withoutSetValue(values, questionId));
+    setHints((values) => withoutSetValue(values, questionId));
+    setVisibleSources((values) => withoutSetValue(values, questionId));
   }
 
   async function syncReviews(reviews: Review[]) {
@@ -366,12 +501,13 @@ export function PracticeApp({
       ...currentAnswers,
       [questionId]: value,
     }));
-    setCoachFeedback((currentFeedback) =>
-      Object.fromEntries(
-        Object.entries(currentFeedback).filter(([id]) => id !== questionId),
-      ),
-    );
-    setCoachErrors((errors) => ({ ...errors, [questionId]: "" }));
+    setCoachFeedback((values) => omitRecordKey(values, questionId));
+    setCoachModels((values) => omitRecordKey(values, questionId));
+    setCoachAnswers((values) => omitRecordKey(values, questionId));
+    setCoachErrors((values) => omitRecordKey(values, questionId));
+    setFollowUpInputs((values) => omitRecordKey(values, questionId));
+    setFollowUpChats((values) => omitRecordKey(values, questionId));
+    setFollowUpErrors((values) => omitRecordKey(values, questionId));
   }
 
   function toggleSet(
@@ -384,6 +520,18 @@ export function PracticeApp({
       else next.add(id);
       return next;
     });
+  }
+
+  function omitRecordKey<T>(values: Record<string, T>, key: string) {
+    return Object.fromEntries(
+      Object.entries(values).filter(([entryKey]) => entryKey !== key),
+    ) as Record<string, T>;
+  }
+
+  function withoutSetValue(values: Set<string>, value: string) {
+    const next = new Set(values);
+    next.delete(value);
+    return next;
   }
 
   return (
@@ -489,16 +637,22 @@ export function PracticeApp({
                     </pre>
                   ) : null}
 
-                  <label
-                    className="mt-8 block text-sm font-semibold text-[#344a40]"
-                    htmlFor="candidate-answer"
-                  >
-                    Câu trả lời của mày
-                  </label>
+                  <div className="mt-8 flex flex-wrap items-center justify-between gap-2">
+                    <label
+                      className="text-sm font-semibold text-[#344a40]"
+                      htmlFor="candidate-answer"
+                    >
+                      Câu trả lời của mày
+                    </label>
+                    <span className="font-mono text-[11px] text-[#6c7b73]">
+                      ● tự lưu trên trình duyệt
+                    </span>
+                  </div>
                   <textarea
                     id="candidate-answer"
                     value={answers[current.id] ?? ""}
                     onChange={(event) => updateAnswer(current.id, event.target.value)}
+                    maxLength={6000}
                     className="mt-2 min-h-36 w-full resize-y rounded-2xl border border-[#173f35]/20 bg-[#fbfaf5] px-4 py-3 leading-7 outline-none transition focus:border-[#356b58] focus:ring-4 focus:ring-[#d7ff91]/45"
                     placeholder="Tự trả lời như đang ngồi phỏng vấn…"
                   />
@@ -615,12 +769,16 @@ export function PracticeApp({
 
                     <button
                       type="button"
-                      onClick={() => setShowSource((visible) => !visible)}
+                      onClick={() => toggleSet(setVisibleSources, current.id)}
                       className="mt-6 text-sm font-bold text-[#356b58] underline decoration-[#356b58]/35 underline-offset-4"
                     >
-                      {showSource ? "Ẩn note nguồn" : "Đối chiếu note nguồn"}
+                      {visibleSources.has(current.id)
+                        ? "Ẩn note nguồn"
+                        : "Đối chiếu note nguồn"}
                     </button>
-                    {showSource ? <SourceNotes question={current} /> : null}
+                    {visibleSources.has(current.id) ? (
+                      <SourceNotes question={current} />
+                    ) : null}
 
                     <div className="mt-8 border-t border-[#173f35]/12 pt-7">
                       <p className="text-center text-sm font-semibold text-[#465c52]">
