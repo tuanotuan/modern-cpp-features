@@ -301,3 +301,237 @@ questions:
     sourceHash: a2cecfa2c0f84182c8927b8f56c3b3af6f1f35e093a57eae06a0f35003520866
     status: draft
     version: 1
+  - id: cpp11-using-alias-001
+    lessonId: cpp11-using-alias
+    type: code_reasoning
+    difficulty: intermediate
+    estimatedMinutes: 5
+    prompt: Trong C++11, tại sao việc sử dụng `using` alias được coi là ưu việt hơn so với `typedef`
+      truyền thống, đặc biệt là khi làm việc với các kiểu dữ liệu generic (templates)? Hãy minh họa
+      bằng cách tạo một alias cho `std::vector<T>`.
+    code: |-
+      template <typename T>
+      using Vec = std::vector<T>;
+
+      // So sánh với cách làm cũ dùng typedef (phải bọc trong struct/class)
+      // template <typename T>
+      // struct MyStorage {
+      //     typedef std::vector<T> type;
+      // };
+    hint: Hãy xem xét cú pháp khi định nghĩa alias cho template và tính dễ đọc của nó so với cách tiếp
+      cận cũ.
+    answer:
+      short: '`using` hỗ trợ trực tiếp "alias templates", giúp cú pháp ngắn gọn và dễ đọc hơn nhiều so với
+        `typedef`.'
+      detailed: Trong khi `typedef` yêu cầu các thủ thuật phức tạp (như bọc trong một struct) để tạo alias
+        cho template, `using` trong C++11 cho phép định nghĩa trực tiếp (alias templates). Cú pháp
+        của `using` tuân theo logic `Tên_Mới = Kiểu_Cũ`, giúp người đọc dễ dàng nhận biết tên mới
+        đang đại diện cho kiểu dữ liệu nào, đặc biệt hữu ích khi xử lý các container phức tạp của
+        STL.
+    rubric:
+      required:
+        - Nêu được khái niệm alias templates
+        - Giải thích được sự khác biệt về cú pháp (using rõ ràng hơn typedef)
+        - Xác nhận typedef không hỗ trợ trực tiếp template alias như using
+      bonus:
+        - Đề cập đến việc cải thiện khả năng bảo trì mã nguồn khi làm việc với STL
+      misconceptions:
+        - Lầm tưởng rằng typedef và using có hiệu năng khác nhau (thực tế chúng chỉ khác về cú pháp
+          và tính năng biên dịch)
+    sources:
+      - sectionId: using-vs-typedef
+      - sectionId: minimum-syntax
+    sourceHash: b24249c84b39083ab8375737fe4a34a883a0231974228c5461bff57a8426812c
+    status: draft
+    version: 1
+  - id: cpp11-using-alias-002
+    lessonId: cpp11-using-alias
+    type: pitfall
+    difficulty: intermediate
+    estimatedMinutes: 7
+    prompt: >-
+      Xét đoạn mã sau trong một hệ thống giao dịch tài chính:
+
+
+      `using Price = double;` 
+
+      `using Quantity = double;` 
+
+
+      Nếu một lập trình viên vô tình gán một giá trị kiểu `Price` vào một biến kiểu `Quantity`,
+      trình biên dịch có đưa ra cảnh báo hoặc lỗi không? Tại sao? Điều này ảnh hưởng gì đến tính an
+      toàn (type safety) của hệ thống?
+    hint: Hãy nhớ rằng alias chỉ là một 'tên gọi khác' chứ không phải là một kiểu dữ liệu độc lập hoàn
+      toàn mới.
+    answer:
+      short: Không, trình biên dịch sẽ không báo lỗi vì `using` không tạo ra kiểu dữ liệu mới (strong
+        type).
+      detailed: Một sai lầm phổ biến là coi `using` alias tạo ra một kiểu dữ liệu mới độc lập. Thực tế,
+        `Price` và `Quantity` trong trường hợp này đều chỉ là các tên gọi khác của kiểu `double`.
+        Trình biên dịch coi chúng là hoàn toàn giống nhau, do đó nó không thể ngăn chặn việc trộn
+        lẫn hoặc gán nhầm giữa các khái niệm nghiệp vụ khác nhau. Để có tính an toàn cao hơn (strong
+        type safety), lập trình viên cần sử dụng các kỹ thuật khác như wrapper structs.
+    rubric:
+      required:
+        - Khẳng định trình biên dịch không báo lỗi
+        - Giải thích được alias không phải là kiểu dữ liệu mới (not a new strong type)
+        - Nêu được rủi ro về việc trộn lẫn các khái niệm nghiệp vụ (domain concepts)
+      bonus:
+        - Đề cập đến giải pháp thay thế như wrapper structs để đạt được strong type safety
+      misconceptions:
+        - Tin rằng using tạo ra một lớp bảo vệ kiểu dữ liệu (type safety layer) mạnh mẽ
+    sources:
+      - sectionId: common-mistakes
+      - sectionId: notes-for-trading-performance-sensitive-code
+    sourceHash: b24249c84b39083ab8375737fe4a34a883a0231974228c5461bff57a8426812c
+    status: draft
+    version: 1
+  - id: cpp11-old-style-enum-001
+    lessonId: cpp11-old-style-enum
+    type: pitfall
+    difficulty: beginner
+    estimatedMinutes: 3
+    prompt: Tại sao đoạn mã sau đây lại gây ra lỗi biên dịch (compiler error) trong C++? Vấn đề này phản
+      ánh nhược điểm gì của old-style enum?
+    code: |-
+      enum Side {
+          Buy,
+          Sell
+      };
+
+      enum Action {
+          Buy,
+          Cancel
+      };
+    hint: Hãy xem xét phạm vi (scope) của các tên hằng số như 'Buy' trong old-style enum.
+    answer:
+      short: Lỗi xung đột tên (name conflict) do các giá trị enum bị rò rỉ vào phạm vi bao quanh
+        (surrounding scope).
+      detailed: Trong old-style enum, các tên hằng số (như Buy, Sell) không được đóng gói trong phạm vi
+        của enum đó mà bị 'rò rỉ' trực tiếp ra phạm vi bên ngoài. Do đó, khi hai enum khác nhau
+        (Side và Action) cùng định nghĩa một tên hằng số là 'Buy' trong cùng một phạm vi, trình biên
+        dịch sẽ báo lỗi xung đột tên. Đây là một trong những lý do chính khiến C++11 giới thiệu
+        'enum class' để giải quyết vấn đề về phạm vi.
+    rubric:
+      required:
+        - Giải thích được lỗi xung đột tên (name conflict/redefinition)
+        - Chỉ ra được nguyên nhân là do tên enum bị rò rỉ ra scope bên ngoài (leak into surrounding
+          scope)
+      bonus:
+        - Nhắc đến việc C++11 dùng enum class để khắc phục lỗi này
+      misconceptions:
+        - Nhầm lẫn rằng lỗi do giá trị số (0, 1) trùng nhau thay vì do tên định danh trùng nhau
+    sources:
+      - sectionId: common-mistakes
+      - sectionId: why-this-matters-before-enum-class
+    sourceHash: ceecf76389592924d7bfee7907e79e219cb88ac5f3eb0daea6fbc9925be58271
+    status: draft
+    version: 1
+  - id: cpp11-old-style-enum-002
+    lessonId: cpp11-old-style-enum
+    type: code_reasoning
+    difficulty: intermediate
+    estimatedMinutes: 5
+    prompt: Giả sử bạn có một enum `Side { Buy, Sell };`. Đoạn mã `int x = Buy;` có biên dịch được
+      không? Tại sao đặc điểm này lại được coi là một vấn đề về an toàn kiểu dữ liệu (type safety)
+      trong các hệ thống lớn?
+    hint: Hãy nhớ lại khả năng chuyển đổi ngầm định của old-style enum sang kiểu số nguyên.
+    answer:
+      short: Có thể biên dịch được do khả năng chuyển đổi ngầm định sang int, nhưng nó làm yếu tính an
+        toàn kiểu dữ liệu.
+      detailed: Đoạn mã hoàn toàn hợp lệ vì old-style enum có thể tự động chuyển đổi ngầm định (implicitly
+        convert) sang kiểu số nguyên (int). Tuy nhiên, điều này làm yếu tính an toàn kiểu dữ liệu
+        (type safety) vì trình biên dịch sẽ không ngăn chặn được việc gán hoặc so sánh nhầm lẫn giữa
+        các enum khác nhau hoặc giữa enum với số nguyên không liên quan, dẫn đến các lỗi logic khó
+        phát hiện trong các hệ thống phức tạp như hệ thống giao dịch (trading systems).
+    rubric:
+      required:
+        - Xác nhận là có thể biên dịch được
+        - Nêu được khái niệm chuyển đổi ngầm định sang int (implicit conversion to int)
+        - Giải thích tại sao nó làm yếu tính an toàn kiểu (weakens type safety)
+      bonus:
+        - Đề cập đến việc khó phát hiện lỗi logic khi so sánh nhầm các loại enum khác nhau
+      misconceptions:
+        - Nghĩ rằng enum không thể gán cho int
+    sources:
+      - sectionId: common-mistakes
+      - sectionId: why-this-matters-before-enum-class
+      - sectionId: notes-for-trading-code
+    sourceHash: ceecf76389592924d7bfee7907e79e219cb88ac5f3eb0daea6fbc9925be58271
+    status: draft
+    version: 1
+  - id: cpp11-enum-class-001
+    lessonId: cpp11-enum-class
+    type: pitfall
+    difficulty: intermediate
+    estimatedMinutes: 5
+    prompt: Tại sao việc sử dụng `enum class` lại được coi là an toàn hơn so với `enum` truyền thống
+      (unscoped enum) trong C++? Hãy phân tích dựa trên hai vấn đề chính mà nó giải quyết.
+    hint: Hãy tập trung vào phạm vi của các tên hằng số và khả năng tự động chuyển đổi kiểu dữ liệu.
+    answer:
+      short: Nó ngăn chặn rò rỉ tên vào phạm vi xung quanh và loại bỏ việc chuyển đổi ngầm định sang kiểu
+        số nguyên.
+      detailed: >-
+        C++11 giới thiệu `enum class` để giải quyết hai nhược điểm lớn của `enum` cũ: 
+
+        1. Rò rỉ tên (Name leakage): Với `enum` cũ, các giá trị (như Buy, Sell) được đưa trực tiếp
+        vào phạm vi bao quanh, dễ gây xung đột tên. `enum class` yêu cầu truy cập thông qua tên enum
+        (ví dụ: `Side::Buy`). 
+
+        2. Định kiểu mạnh (Strong typing): `enum` cũ có thể tự động chuyển đổi sang `int`, dẫn đến
+        các phép so sánh hoặc gán sai logic mà trình biên dịch không cảnh báo. `enum class` không
+        cho phép chuyển đổi ngầm định này, giúp mã nguồn rõ ràng và an toàn hơn.
+    rubric:
+      required:
+        - Giải thích được khái niệm rò rỉ tên (name leakage/scope leakage)
+        - Giải thích được việc không cho phép chuyển đổi ngầm định sang int (implicit conversion)
+      bonus:
+        - Đưa ra ví dụ cụ thể về cú pháp Side::Buy
+        - Đề cập đến việc cải thiện tính dễ đọc trong các hệ thống domain-specific như Trading
+      misconceptions:
+        - Cho rằng enum class chỉ là cách viết khác của enum mà không thay đổi hành vi biên dịch.
+    sources:
+      - sectionId: what-problem-does-it-solve
+      - sectionId: why-enum-class-is-better-than-old-enum
+    sourceHash: 6181e10b4b838470fb4fba54fd62cf49b6fdaa7601c95cbbdeb9f5111da26096
+    status: draft
+    version: 1
+  - id: cpp11-enum-class-002
+    lessonId: cpp11-enum-class
+    type: code_reasoning
+    difficulty: beginner
+    estimatedMinutes: 5
+    prompt: Xét đoạn mã sau đây. Đoạn mã này có biên dịch thành công không? Nếu không, hãy chỉ ra dòng
+      gây lỗi và giải thích cách sửa lỗi dựa trên các quy tắc của `enum class`.
+    code: |-
+      enum class Side { Buy, Sell };
+
+      int main() {
+          Side mySide = Side::Buy;
+          int value = mySide;
+          return 0;
+      }
+    hint: Hãy nhớ rằng `enum class` có tính chất định kiểu mạnh (strongly typed).
+    answer:
+      short: Đoạn mã bị lỗi ở dòng `int value = mySide;`. Cần sử dụng `static_cast<int>(mySide)` để sửa
+        lỗi.
+      detailed: Lỗi xảy ra ở dòng `int value = mySide;` vì `enum class` không hỗ trợ chuyển đổi ngầm định
+        sang kiểu `int`. Đây là một tính năng an toàn để tránh việc sử dụng nhầm lẫn các giá trị
+        enum như các số nguyên thông thường. Để khắc phục khi thực sự cần lấy giá trị số nguyên (ví
+        dụ để lưu trữ hoặc log), bạn phải thực hiện ép kiểu tường minh bằng cách sử dụng
+        `static_cast<int>(mySide)`.
+    rubric:
+      required:
+        - Xác định đúng dòng gán `int value = mySide` là dòng lỗi
+        - Giải thích được lý do là do thiếu chuyển đổi ngầm định
+        - Đưa ra giải pháp sử dụng static_cast
+      bonus:
+        - Giải thích tại sao tính năng này lại hữu ích trong việc tránh lỗi logic
+      misconceptions:
+        - Nghĩ rằng lỗi nằm ở dòng khai báo `Side::Buy`
+    sources:
+      - sectionId: common-mistakes
+      - sectionId: why-enum-class-is-better-than-old-enum
+    sourceHash: 6181e10b4b838470fb4fba54fd62cf49b6fdaa7601c95cbbdeb9f5111da26096
+    status: draft
+    version: 1
