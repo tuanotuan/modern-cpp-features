@@ -9,12 +9,18 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "content:draft": "tsx scripts/generate-question-drafts.ts",
+    "content:discover": "tsx scripts/discover-content.ts",
     "content:generate": "tsx scripts/generate-content.ts",
     "content:check": "tsx scripts/generate-content.ts --check",
+    "content:refresh": "npm run content:discover",
+    "content:review": "tsx scripts/review-question.ts",
+    "content:status": "tsx scripts/content-status.ts",
     "validate": "npm run content:check && npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
     "@google/genai": "^2.12.0",
+    "@next/env": "^16.2.10",
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.7",
     "fast-glob": "^3.3.3",

@@ -30,6 +30,7 @@ questions:
     sources:
       - sectionId: difference-between-auto-auto-and-const-auto
     status: verified
+    sourceHash: d883070d939f311c2aed28298b494d8a3d9c03861c39a2e872fcbc546eaa2d89
     version: 1
 
   - id: cpp11-auto-002
@@ -65,6 +66,7 @@ questions:
     sources:
       - sectionId: common-mistakes-when-using-auto
     status: verified
+    sourceHash: d883070d939f311c2aed28298b494d8a3d9c03861c39a2e872fcbc546eaa2d89
     version: 1
 
   - id: cpp11-nullptr-001
@@ -96,6 +98,7 @@ questions:
     sources:
       - sectionId: why-nullptr-is-better-than-null
     status: verified
+    sourceHash: 65a5be159d9eb8779f5807aaedfeb383d1decfe9047e63817955e3aa66be51e5
     version: 1
 
   - id: cpp11-lambda-reference-001
@@ -126,6 +129,7 @@ questions:
     sources:
       - sectionId: common-mistakes
     status: verified
+    sourceHash: 186fb6fb811d886dea845b29557cd0f71ccff6dee6bca7c0db525c850498969c
     version: 1
 
   - id: cpp11-constexpr-001
@@ -158,6 +162,7 @@ questions:
     sources:
       - sectionId: const-vs-constexpr
     status: verified
+    sourceHash: 616889384744c8e3aa8a42f820102f2677cfd819cba85a54a57115ccff84bada
     version: 1
 
   - id: cpp11-deleted-functions-001
@@ -189,6 +194,7 @@ questions:
       - sectionId: common-use-cases
       - sectionId: compile-time-protection
     status: verified
+    sourceHash: a75201d0283a6c61873928e453e28672027ae45fa72c14091c3f5da01bd053be
     version: 1
 
   - id: cpp20-designated-initializers-001
@@ -230,6 +236,7 @@ questions:
       - sectionId: member-order-still-matters
       - sectionId: aggregate-types-only
     status: verified
+    sourceHash: 77220c505e8b03b2f6646e03eee9a3e31bbcdfa6b1b0bf0cd6db45d2a56c7f24
     version: 1
 
   - id: cpp98-address-pointer-001
@@ -260,6 +267,7 @@ questions:
     sources:
       - sectionId: memory-model
     status: verified
+    sourceHash: aa153e754d77a72d89eff13c9d2c517e950c1d947061bca1289f9ea3a40c045c
     version: 1
 
   - id: cpp98-address-pointer-002
@@ -290,6 +298,7 @@ questions:
     sources:
       - sectionId: common-mistakes
     status: verified
+    sourceHash: aa153e754d77a72d89eff13c9d2c517e950c1d947061bca1289f9ea3a40c045c
     version: 1
 
   - id: cpp98-struct-padding-001
@@ -324,4 +333,5 @@ questions:
     sources:
       - sectionId: padding
     status: verified
+    sourceHash: d87a0674a56e2699438c3775f1bead1dfb83a0d32716b8434d0a1e92e4f7398a
     version: 1

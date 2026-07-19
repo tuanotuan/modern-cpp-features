@@ -1,0 +1,84 @@
+schemaVersion: 1
+questions:
+  - id: cpp11-range-based-for-001
+    lessonId: cpp11-range-based-for
+    type: pitfall
+    difficulty: intermediate
+    estimatedMinutes: 5
+    prompt: Giả sử bạn đang làm việc với một hệ thống giao dịch (trading system) có một
+      `std::vector<Position>` chứa hàng ngàn đối tượng. Đoạn mã sau có vấn đề gì về hiệu suất và
+      tính đúng đắn nếu mục tiêu là cập nhật giá (`last_price`) cho từng vị thế?
+    code: |-
+      for (auto pos : positions) {
+          pos.last_price = current_market_price;
+      }
+    hint: Hãy chú ý đến cách biến `pos` được khai báo và liệu nó có thực sự tham chiếu đến dữ liệu gốc
+      trong vector hay không.
+    answer:
+      short: Đoạn mã tạo bản sao của từng đối tượng (gây tốn hiệu suất) và không cập nhật được dữ liệu gốc
+        trong vector.
+      detailed: >-
+        Có hai vấn đề nghiêm trọng trong đoạn mã này: 
+
+        1. Hiệu suất: Việc sử dụng `auto pos` sẽ tạo một bản sao (copy) của mỗi cấu trúc `Position`
+        trong mỗi lần lặp. Trong các hệ thống nhạy cảm về hiệu suất như trading, việc sao chép các
+        đối tượng lớn một cách không cần thiết sẽ gây chậm hệ thống.
+
+        2. Tính đúng đắn: Vì `pos` chỉ là một bản sao cục bộ, lệnh gán `pos.last_price` chỉ thay đổi
+        giá trị trên bản sao đó. Sau khi vòng lặp kết thúc, dữ liệu gốc trong `positions` vẫn không
+        thay đổi. Để khắc phục cả hai vấn đề, cần sử dụng tham chiếu: `for (auto& pos : positions)`.
+    rubric:
+      required:
+        - Giải thích được rằng `auto` tạo ra bản sao (copy)
+        - Chỉ ra được dữ liệu gốc không bị thay đổi
+        - Đề xuất giải pháp sử dụng `auto&`
+      bonus:
+        - Đề cập đến việc sao chép đối tượng lớn ảnh hưởng đến hiệu suất trong trading
+      misconceptions:
+        - Lầm tưởng rằng `auto` sẽ tự động suy luận ra tham chiếu trong vòng lặp range-based for
+    sources:
+      - sectionId: minimum-syntax
+      - sectionId: common-mistakes
+      - sectionId: notes-for-trading-performance-sensitive-code
+    sourceHash: c4f64c954dbcb3f643cce352b7d46c0ccec30159b70e772f38ffee06c0af2aa7
+    status: draft
+    version: 1
+  - id: cpp11-range-based-for-002
+    lessonId: cpp11-range-based-for
+    type: scenario
+    difficulty: beginner
+    estimatedMinutes: 4
+    prompt: Trong quá trình tái cấu trúc mã nguồn (refactoring), bạn muốn chuyển đổi các vòng lặp sử
+      dụng iterator cũ sang range-based for. Tuy nhiên, có những tình huống cụ thể nào mà bạn KHÔNG
+      NÊN sử dụng range-based for?
+    hint: Hãy nghĩ về các trường hợp bạn cần can thiệp sâu vào vị trí của phần tử hoặc thay đổi kích
+      thước của danh sách.
+    answer:
+      short: Không nên dùng khi cần chỉ số (index), khi cần xóa phần tử trong lúc lặp, hoặc khi cần điều
+        khiển iterator phức tạp.
+      detailed: >-
+        Mặc dù range-based for giúp mã nguồn sạch hơn, nhưng nên tránh sử dụng trong các trường hợp
+        sau:
+
+        1. Khi cần sử dụng chỉ số (index) của phần tử (ví dụ: cần biến `i` để tính toán logic).
+
+        2. Khi cần thay đổi cấu trúc của container ngay trong vòng lặp, chẳng hạn như xóa (erase)
+        phần tử, vì việc này có thể làm mất hiệu lực (invalidate) các iterator ngầm định của vòng
+        lặp.
+
+        3. Khi cần các kiểu duyệt phức tạp hơn là đi qua từng phần tử từ đầu đến cuối (ví dụ: duyệt
+        ngược, hoặc nhảy cách quãng).
+    rubric:
+      required:
+        - Nêu được trường hợp cần chỉ số (index)
+        - Nêu được trường hợp xóa/thêm phần tử làm invalidate iterator
+      bonus:
+        - Nêu được trường hợp cần điều khiển iterator phức tạp (duyệt ngược, nhảy bước)
+      misconceptions:
+        - Cho rằng range-based for có thể thay thế hoàn toàn mọi loại vòng lặp for truyền thống
+    sources:
+      - sectionId: common-mistakes
+      - sectionId: when-should-you-use-it
+    sourceHash: c4f64c954dbcb3f643cce352b7d46c0ccec30159b70e772f38ffee06c0af2aa7
+    status: draft
+    version: 1

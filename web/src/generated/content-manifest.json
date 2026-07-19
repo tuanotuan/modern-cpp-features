@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "sourceCommitSha": "957ab3ee5e51cb73b9907f7564cacdaa3c7a2fb4",
+  "sourceRevision": "cfd9e837d53731df58cf0e07f5f71bcb717151e003fbbaca60daaf930baa0132",
   "lessons": [
     {
       "id": "cpp98-object-variable-memory",
@@ -1819,6 +1819,83 @@
   ],
   "questions": [
     {
+      "id": "cpp11-range-based-for-001",
+      "lessonId": "cpp11-range-based-for",
+      "type": "pitfall",
+      "difficulty": "intermediate",
+      "estimatedMinutes": 5,
+      "prompt": "Giả sử bạn đang làm việc với một hệ thống giao dịch (trading system) có một `std::vector<Position>` chứa hàng ngàn đối tượng. Đoạn mã sau có vấn đề gì về hiệu suất và tính đúng đắn nếu mục tiêu là cập nhật giá (`last_price`) cho từng vị thế?",
+      "code": "for (auto pos : positions) {\n    pos.last_price = current_market_price;\n}",
+      "hint": "Hãy chú ý đến cách biến `pos` được khai báo và liệu nó có thực sự tham chiếu đến dữ liệu gốc trong vector hay không.",
+      "answer": {
+        "short": "Đoạn mã tạo bản sao của từng đối tượng (gây tốn hiệu suất) và không cập nhật được dữ liệu gốc trong vector.",
+        "detailed": "Có hai vấn đề nghiêm trọng trong đoạn mã này: \n1. Hiệu suất: Việc sử dụng `auto pos` sẽ tạo một bản sao (copy) của mỗi cấu trúc `Position` trong mỗi lần lặp. Trong các hệ thống nhạy cảm về hiệu suất như trading, việc sao chép các đối tượng lớn một cách không cần thiết sẽ gây chậm hệ thống.\n2. Tính đúng đắn: Vì `pos` chỉ là một bản sao cục bộ, lệnh gán `pos.last_price` chỉ thay đổi giá trị trên bản sao đó. Sau khi vòng lặp kết thúc, dữ liệu gốc trong `positions` vẫn không thay đổi. Để khắc phục cả hai vấn đề, cần sử dụng tham chiếu: `for (auto& pos : positions)`."
+      },
+      "rubric": {
+        "required": [
+          "Giải thích được rằng `auto` tạo ra bản sao (copy)",
+          "Chỉ ra được dữ liệu gốc không bị thay đổi",
+          "Đề xuất giải pháp sử dụng `auto&`"
+        ],
+        "bonus": [
+          "Đề cập đến việc sao chép đối tượng lớn ảnh hưởng đến hiệu suất trong trading"
+        ],
+        "misconceptions": [
+          "Lầm tưởng rằng `auto` sẽ tự động suy luận ra tham chiếu trong vòng lặp range-based for"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "minimum-syntax"
+        },
+        {
+          "sectionId": "common-mistakes"
+        },
+        {
+          "sectionId": "notes-for-trading-performance-sensitive-code"
+        }
+      ],
+      "sourceHash": "c4f64c954dbcb3f643cce352b7d46c0ccec30159b70e772f38ffee06c0af2aa7",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp11-range-based-for-002",
+      "lessonId": "cpp11-range-based-for",
+      "type": "scenario",
+      "difficulty": "beginner",
+      "estimatedMinutes": 4,
+      "prompt": "Trong quá trình tái cấu trúc mã nguồn (refactoring), bạn muốn chuyển đổi các vòng lặp sử dụng iterator cũ sang range-based for. Tuy nhiên, có những tình huống cụ thể nào mà bạn KHÔNG NÊN sử dụng range-based for?",
+      "hint": "Hãy nghĩ về các trường hợp bạn cần can thiệp sâu vào vị trí của phần tử hoặc thay đổi kích thước của danh sách.",
+      "answer": {
+        "short": "Không nên dùng khi cần chỉ số (index), khi cần xóa phần tử trong lúc lặp, hoặc khi cần điều khiển iterator phức tạp.",
+        "detailed": "Mặc dù range-based for giúp mã nguồn sạch hơn, nhưng nên tránh sử dụng trong các trường hợp sau:\n1. Khi cần sử dụng chỉ số (index) của phần tử (ví dụ: cần biến `i` để tính toán logic).\n2. Khi cần thay đổi cấu trúc của container ngay trong vòng lặp, chẳng hạn như xóa (erase) phần tử, vì việc này có thể làm mất hiệu lực (invalidate) các iterator ngầm định của vòng lặp.\n3. Khi cần các kiểu duyệt phức tạp hơn là đi qua từng phần tử từ đầu đến cuối (ví dụ: duyệt ngược, hoặc nhảy cách quãng)."
+      },
+      "rubric": {
+        "required": [
+          "Nêu được trường hợp cần chỉ số (index)",
+          "Nêu được trường hợp xóa/thêm phần tử làm invalidate iterator"
+        ],
+        "bonus": [
+          "Nêu được trường hợp cần điều khiển iterator phức tạp (duyệt ngược, nhảy bước)"
+        ],
+        "misconceptions": [
+          "Cho rằng range-based for có thể thay thế hoàn toàn mọi loại vòng lặp for truyền thống"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "common-mistakes"
+        },
+        {
+          "sectionId": "when-should-you-use-it"
+        }
+      ],
+      "sourceHash": "c4f64c954dbcb3f643cce352b7d46c0ccec30159b70e772f38ffee06c0af2aa7",
+      "status": "draft",
+      "version": 1
+    },
+    {
       "id": "cpp11-auto-001",
       "lessonId": "cpp11-auto",
       "type": "recall",
@@ -1849,6 +1926,7 @@
           "sectionId": "difference-between-auto-auto-and-const-auto"
         }
       ],
+      "sourceHash": "d883070d939f311c2aed28298b494d8a3d9c03861c39a2e872fcbc546eaa2d89",
       "status": "verified",
       "version": 1
     },
@@ -1883,6 +1961,7 @@
           "sectionId": "common-mistakes-when-using-auto"
         }
       ],
+      "sourceHash": "d883070d939f311c2aed28298b494d8a3d9c03861c39a2e872fcbc546eaa2d89",
       "status": "verified",
       "version": 1
     },
@@ -1916,6 +1995,7 @@
           "sectionId": "why-nullptr-is-better-than-null"
         }
       ],
+      "sourceHash": "65a5be159d9eb8779f5807aaedfeb383d1decfe9047e63817955e3aa66be51e5",
       "status": "verified",
       "version": 1
     },
@@ -1949,6 +2029,7 @@
           "sectionId": "common-mistakes"
         }
       ],
+      "sourceHash": "186fb6fb811d886dea845b29557cd0f71ccff6dee6bca7c0db525c850498969c",
       "status": "verified",
       "version": 1
     },
@@ -1982,6 +2063,7 @@
           "sectionId": "const-vs-constexpr"
         }
       ],
+      "sourceHash": "616889384744c8e3aa8a42f820102f2677cfd819cba85a54a57115ccff84bada",
       "status": "verified",
       "version": 1
     },
@@ -2018,6 +2100,7 @@
           "sectionId": "compile-time-protection"
         }
       ],
+      "sourceHash": "a75201d0283a6c61873928e453e28672027ae45fa72c14091c3f5da01bd053be",
       "status": "verified",
       "version": 1
     },
@@ -2055,6 +2138,7 @@
           "sectionId": "aggregate-types-only"
         }
       ],
+      "sourceHash": "77220c505e8b03b2f6646e03eee9a3e31bbcdfa6b1b0bf0cd6db45d2a56c7f24",
       "status": "verified",
       "version": 1
     },
@@ -2088,6 +2172,7 @@
           "sectionId": "memory-model"
         }
       ],
+      "sourceHash": "aa153e754d77a72d89eff13c9d2c517e950c1d947061bca1289f9ea3a40c045c",
       "status": "verified",
       "version": 1
     },
@@ -2121,6 +2206,7 @@
           "sectionId": "common-mistakes"
         }
       ],
+      "sourceHash": "aa153e754d77a72d89eff13c9d2c517e950c1d947061bca1289f9ea3a40c045c",
       "status": "verified",
       "version": 1
     },
@@ -2156,6 +2242,7 @@
           "sectionId": "padding"
         }
       ],
+      "sourceHash": "d87a0674a56e2699438c3775f1bead1dfb83a0d32716b8434d0a1e92e4f7398a",
       "status": "verified",
       "version": 1
     }

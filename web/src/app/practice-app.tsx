@@ -77,7 +77,7 @@ function saveProgress(raw: string) {
 
 export function PracticeApp({
   questions,
-  sourceCommitSha,
+  sourceRevision,
   cloudEnabled,
   account,
   initialCloudProgress,
@@ -85,7 +85,7 @@ export function PracticeApp({
   authNotice,
 }: {
   questions: PracticeQuestion[];
-  sourceCommitSha: string;
+  sourceRevision: string;
   cloudEnabled: boolean;
   account: PracticeAccount | null;
   initialCloudProgress: PracticeProgress;
@@ -538,7 +538,7 @@ export function PracticeApp({
           <span>
             {account ? `Private sync · ${account.displayName}` : "Progress lưu trên trình duyệt này"}
           </span>
-          <span>notes@{sourceCommitSha.slice(0, 7)}</span>
+          <span>notes@{sourceRevision.slice(0, 7)}</span>
         </footer>
       </div>
     </main>

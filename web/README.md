@@ -5,7 +5,7 @@ root.
 
 ## Current phase
 
-Phase 0–4 provides:
+Phase 0–5 provides:
 
 - a stable registry for all 22 lessons;
 - a tolerant Markdown parser that preserves note sections and C++ examples;
@@ -17,12 +17,15 @@ Phase 0–4 provides:
 - grounded Gemini feedback against the exact rubric and source-note sections.
 - optional GitHub OAuth and private cross-device progress/AI history in Supabase;
 - offline-first local progress that merges into cloud state after sign-in.
+- deterministic discovery for newly added `knowledge.md` lessons;
+- question-level source snapshots that automatically quarantine stale questions;
+- Gemini-generated question drafts with a human review gate.
 
 ## Local commands
 
 ```bash
 npm install
-npm run content:generate
+npm run content:refresh
 npm run dev
 ```
 

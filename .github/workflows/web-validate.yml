@@ -1,0 +1,36 @@
+name: Validate C++ Recall
+
+on:
+  push:
+    paths:
+      - "cpp98_foundation/**"
+      - "cpp11/**"
+      - "cpp20/**"
+      - "web/**"
+      - ".github/workflows/web-validate.yml"
+  pull_request:
+    paths:
+      - "cpp98_foundation/**"
+      - "cpp11/**"
+      - "cpp20/**"
+      - "web/**"
+      - ".github/workflows/web-validate.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run validate

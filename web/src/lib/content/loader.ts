@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
@@ -145,15 +144,15 @@ function sha256(...values: string[]) {
   return hash.digest("hex");
 }
 
-function resolveSourceCommitSha(repoRoot: string) {
-  const fromEnvironment =
-    process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA;
-  if (fromEnvironment) return fromEnvironment;
-
-  return execFileSync("git", ["rev-parse", "HEAD"], {
-    cwd: repoRoot,
-    encoding: "utf8",
-  }).trim();
+export function resolveQuestionStatus(
+  status: Question["status"],
+  reviewedSourceHash: string,
+  currentSourceHash: string,
+): Question["status"] {
+  if (status === "verified" && reviewedSourceHash !== currentSourceHash) {
+    return "needs_review";
+  }
+  return status;
 }
 
 async function loadQuestions(webRoot: string) {
@@ -253,10 +252,26 @@ export async function loadContentManifest(
     }
   }
 
+  const questionsWithReviewStatus = questions.map((question) => {
+    const lesson = lessonById.get(question.lessonId);
+    if (!lesson) throw new Error(`Missing lesson ${question.lessonId}`);
+
+    return {
+      ...question,
+      status: resolveQuestionStatus(
+        question.status,
+        question.sourceHash,
+        lesson.sourceHash,
+      ),
+    };
+  });
+
   return contentManifestSchema.parse({
     schemaVersion: 1,
-    sourceCommitSha: resolveSourceCommitSha(repoRoot),
+    sourceRevision: sha256(
+      ...lessons.map((lesson) => `${lesson.id}:${lesson.sourceHash}`),
+    ),
     lessons,
-    questions,
+    questions: questionsWithReviewStatus,
   });
 }
