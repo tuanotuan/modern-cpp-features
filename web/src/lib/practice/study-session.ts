@@ -25,6 +25,7 @@ const questionStudySessionSchema = z.object({
 
 const studySessionSchema = z.object({
   version: z.literal(1),
+  activeQuestionId: z.string().optional(),
   questions: z.record(z.string(), questionStudySessionSchema),
 });
 
@@ -63,13 +64,23 @@ export function parseStudySession(
     }),
   );
 
-  return { version: 1, questions };
+  const activeQuestionId = parsed.data.activeQuestionId;
+  return {
+    version: 1,
+    ...(activeQuestionId && identityById.has(activeQuestionId)
+      ? { activeQuestionId }
+      : {}),
+    questions,
+  };
 }
 
 export function serializeStudySession(
   questions: Record<string, QuestionStudySession>,
+  activeQuestionId?: string,
 ): string {
-  return JSON.stringify(studySessionSchema.parse({ version: 1, questions }));
+  return JSON.stringify(
+    studySessionSchema.parse({ version: 1, activeQuestionId, questions }),
+  );
 }
 
 function emptyStudySession(): StudySession {
