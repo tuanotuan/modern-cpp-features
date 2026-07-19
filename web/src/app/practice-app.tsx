@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import type {
@@ -1059,21 +1060,29 @@ function AccountControl({
 }) {
   if (account) {
     return (
-      <form action="/auth/logout" method="post">
-        <button
-          type="submit"
-          title="Đăng xuất"
-          className="flex items-center gap-2 rounded-full border border-[#173f35]/15 bg-white/65 px-2.5 py-1.5 transition hover:border-[#356b58]/40"
+      <div className="flex items-center gap-2">
+        <Link
+          href="/admin"
+          className="rounded-full border border-[#173f35]/15 bg-white/65 px-3 py-2 font-mono text-[10px] font-bold uppercase transition hover:border-[#356b58]/40"
         >
-          <span className="grid size-7 place-items-center rounded-full bg-[#173f35] text-xs font-bold text-[#d7ff91]">
-            {account.displayName.slice(0, 1).toUpperCase()}
-          </span>
-          <span className="hidden max-w-28 truncate text-xs font-semibold sm:block">
-            {account.login ? `@${account.login}` : account.displayName}
-          </span>
-          <SyncDot status={syncStatus} />
-        </button>
-      </form>
+          Admin
+        </Link>
+        <form action="/auth/logout" method="post">
+          <button
+            type="submit"
+            title="Đăng xuất"
+            className="flex items-center gap-2 rounded-full border border-[#173f35]/15 bg-white/65 px-2.5 py-1.5 transition hover:border-[#356b58]/40"
+          >
+            <span className="grid size-7 place-items-center rounded-full bg-[#173f35] text-xs font-bold text-[#d7ff91]">
+              {account.displayName.slice(0, 1).toUpperCase()}
+            </span>
+            <span className="hidden max-w-28 truncate text-xs font-semibold sm:block">
+              {account.login ? `@${account.login}` : account.displayName}
+            </span>
+            <SyncDot status={syncStatus} />
+          </button>
+        </form>
+      </div>
     );
   }
 
