@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { GeneratedLesson } from "./schema";
 
 const DEFAULT_MODEL = "gemini-3-flash-preview";
+const MAX_PROVIDER_ATTEMPTS = 3;
 
 const aiQuestionDraftSchema = z.object({
   type: z.enum(["recall", "code_reasoning", "pitfall", "scenario"]),
@@ -114,25 +115,27 @@ export async function generateQuestionDraftsWithGemini({
   }
 
   const client = new GoogleGenAI({ apiKey });
-  const interaction = await client.interactions.create(
-    {
-      model: process.env.AI_MODEL || DEFAULT_MODEL,
-      store: false,
-      system_instruction:
-        "You create grounded C++ interview questions from the supplied private study note. Return Vietnamese questions and answers. Never introduce facts not supported by the note.",
-      input: buildDraftPrompt(lesson, count),
-      generation_config: {
-        thinking_level: "high",
-        temperature: 0.35,
-        max_output_tokens: 6000,
+  const interaction = await retryProviderRateLimit(() =>
+    client.interactions.create(
+      {
+        model: process.env.AI_MODEL || DEFAULT_MODEL,
+        store: false,
+        system_instruction:
+          "You create grounded C++ interview questions from the supplied private study note. Return Vietnamese questions and answers. Never introduce facts not supported by the note.",
+        input: buildDraftPrompt(lesson, count),
+        generation_config: {
+          thinking_level: "high",
+          temperature: 0.35,
+          max_output_tokens: 6000,
+        },
+        response_format: {
+          type: "text",
+          mime_type: "application/json",
+          schema: aiDraftResponseJsonSchema,
+        },
       },
-      response_format: {
-        type: "text",
-        mime_type: "application/json",
-        schema: aiDraftResponseJsonSchema,
-      },
-    },
-    { timeout: 60_000, maxRetries: 1 },
+      { timeout: 60_000, maxRetries: 1 },
+    ),
   );
 
   if (!interaction.output_text) throw new Error("Gemini returned an empty response");
@@ -155,6 +158,48 @@ export async function generateQuestionDraftsWithGemini({
   }
 
   return result.questions;
+}
+
+export async function retryProviderRateLimit<T>(
+  operation: () => Promise<T>,
+  {
+    maxAttempts = MAX_PROVIDER_ATTEMPTS,
+    sleep = (milliseconds: number) =>
+      new Promise<void>((resolve) => setTimeout(resolve, milliseconds)),
+  }: {
+    maxAttempts?: number;
+    sleep?: (milliseconds: number) => Promise<void>;
+  } = {},
+): Promise<T> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (!isRateLimitError(error) || attempt >= maxAttempts) throw error;
+      const delayMs = providerRetryDelayMs(error);
+      console.warn(
+        `Gemini rate-limited draft generation; retrying attempt ${attempt + 1}/${maxAttempts} in ${Math.ceil(delayMs / 1000)}s.`,
+      );
+      await sleep(delayMs);
+    }
+  }
+}
+
+function isRateLimitError(error: unknown) {
+  if (typeof error !== "object" || error === null) return false;
+  const status =
+    "statusCode" in error
+      ? error.statusCode
+      : "status" in error
+        ? error.status
+        : undefined;
+  return status === 429;
+}
+
+function providerRetryDelayMs(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  const seconds = Number(/retry in ([\d.]+)s/i.exec(message)?.[1] ?? 60);
+  return Math.min(75_000, Math.max(1_000, Math.ceil(seconds * 1000) + 1_000));
 }
 
 export function nextQuestionIds(
