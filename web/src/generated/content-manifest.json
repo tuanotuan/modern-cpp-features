@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "sourceRevision": "cfd9e837d53731df58cf0e07f5f71bcb717151e003fbbaca60daaf930baa0132",
+  "sourceRevision": "cb292db61eb2416496ef956b848c7457800000219c93f4ca5a27d56b0dd30bb4",
   "lessons": [
     {
       "id": "cpp98-object-variable-memory",
@@ -1815,6 +1815,138 @@
         "Are designated initializers the same as named parameters?"
       ],
       "code": "#include <iostream>\r\n\r\nstruct MarketOrder {\r\n    int order_id;\r\n    double price;\r\n    int quantity;\r\n    bool is_buy;\r\n};\r\n\r\nint main() {\r\n    MarketOrder order{\r\n        .order_id = 1001,\r\n        .price = 245.75,\r\n        .quantity = 50,\r\n        .is_buy = true\r\n    };\r\n\r\n    std::cout\r\n        << \"OrderID: \" << order.order_id\r\n        << \", Price: \" << order.price\r\n        << \", Qty: \" << order.quantity\r\n        << \", Side: \" << (order.is_buy ? \"BUY\" : \"SELL\")\r\n        << '\\n';\r\n}"
+    },
+    {
+      "id": "cpp11-override",
+      "sourcePath": "cpp11/16_override",
+      "standard": "cpp11",
+      "order": 17,
+      "tags": [
+        "override"
+      ],
+      "prerequisites": [],
+      "title": "Day 16 — override",
+      "knowledgePath": "cpp11/16_override/knowledge.md",
+      "codePath": "cpp11/16_override/main.cpp",
+      "sourceHash": "a28dfa796b924fc80685b2175d2126c1a7cad1f7f8b3e0836b2e9ed0dda4e9d5",
+      "sections": [
+        {
+          "id": "what-problem-does-it-solve",
+          "heading": "1. What Problem Does It Solve?",
+          "bodyMarkdown": "`override` helps the compiler check that a function in a child class really replaces a virtual function from the parent class.\n\nIt catches mistakes such as:\n\n- Wrong function name\n- Wrong parameter type\n- Missing `const`\n\n---",
+          "bodyText": "override helps the compiler check that a function in a child class really replaces a virtual function from the parent class.It catches mistakes such as:Wrong function nameWrong parameter typeMissing const"
+        },
+        {
+          "id": "minimal-syntax",
+          "heading": "2. Minimal Syntax",
+          "bodyMarkdown": "```cpp\nclass Animal {\npublic:\n    virtual void talk();\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() override;\n};\n```\n\nRemember:\n\n```text\nParent class: virtual\nChild class: override\n```\n\n---",
+          "bodyText": "class Animal {\npublic:\n    virtual void talk();\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() override;\n};Remember:Parent class: virtual\nChild class: override"
+        },
+        {
+          "id": "simple-example",
+          "heading": "3. Simple Example",
+          "bodyMarkdown": "```cpp\nclass Animal {\npublic:\n    virtual void talk() {\n        cout << \"Animal sound\";\n    }\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() override {\n        cout << \"Meow\";\n    }\n};\n```\n\nWhen an `Animal` pointer points to a `Cat` object:\n\n```cpp\nCat cat;\nAnimal* p = &cat;\n\np->talk();\n```\n\nResult:\n\n```text\nMeow\n```\n\n---",
+          "bodyText": "class Animal {\npublic:\n    virtual void talk() {\n        cout << \"Animal sound\";\n    }\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() override {\n        cout << \"Meow\";\n    }\n};When an Animal pointer points to a Cat object:Cat cat;\nAnimal* p = &cat;\n\np->talk();Result:Meow"
+        },
+        {
+          "id": "why-is-override-useful",
+          "heading": "4. Why Is override Useful?",
+          "bodyMarkdown": "Suppose the programmer writes the wrong function name:\n\n```cpp\nvoid taak();\n```\n\n`taak()` does not replace `talk()`.\n\nWith:\n\n```cpp\nvoid taak() override;\n```\n\nthe compiler reports an error immediately.\n\n---",
+          "bodyText": "Suppose the programmer writes the wrong function name:void taak();taak() does not replace talk().With:void taak() override;the compiler reports an error immediately."
+        },
+        {
+          "id": "common-mistake-missing-const",
+          "heading": "5. Common Mistake: Missing const",
+          "bodyMarkdown": "These two functions are different:\n\n```cpp\nvoid talk() const;\nvoid talk();\n```\n\nCorrect code:\n\n```cpp\nclass Animal {\npublic:\n    virtual void talk() const;\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() const override;\n};\n```\n\n---",
+          "bodyText": "These two functions are different:void talk() const;\nvoid talk();Correct code:class Animal {\npublic:\n    virtual void talk() const;\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() const override;\n};"
+        },
+        {
+          "id": "important-rules",
+          "heading": "6. Important Rules",
+          "bodyMarkdown": "- The parent function must be `virtual`.\n- Write `override` in the child class.\n- The function names must match.\n- The parameters must match.\n- `const` must also match.\n- Use `override` whenever a child class replaces a virtual function.\n\n---",
+          "bodyText": "The parent function must be virtual.Write override in the child class.The function names must match.The parameters must match.const must also match.Use override whenever a child class replaces a virtual function."
+        },
+        {
+          "id": "easy-mental-model",
+          "heading": "7. Easy Mental Model",
+          "bodyMarkdown": "```text\nvirtual  = allows replacing\noverride = checks replacing\n```\n\n`override` means:\n\n> Compiler, check that this child function really replaces a parent virtual function.",
+          "bodyText": "virtual  = allows replacing\noverride = checks replacingoverride means:Compiler, check that this child function really replaces a parent virtual function."
+        }
+      ],
+      "checklistItems": [],
+      "code": "#include <iostream>\nusing namespace std;\n\nclass Animal {\npublic:\n    virtual void talk() {\n        cout << \"Animal\\n\";\n    }\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() override {\n        cout << \"Meow\\n\";\n    }\n};\n\nint main() {\n    Cat cat;\n    Animal* p = &cat;\n\n    p->talk();\n}"
+    },
+    {
+      "id": "cpp11-final",
+      "sourcePath": "cpp11/17_final",
+      "standard": "cpp11",
+      "order": 18,
+      "tags": [
+        "final"
+      ],
+      "prerequisites": [],
+      "title": "Day 17 — final in C++11",
+      "knowledgePath": "cpp11/17_final/knowledge.md",
+      "codePath": null,
+      "sourceHash": "19f19b7364ebeadd68b8db56c085188582b10110fb7686e2e5fcbc838bac40ae",
+      "sections": [
+        {
+          "id": "core-idea",
+          "heading": "1. Core Idea",
+          "bodyMarkdown": "The `final` specifier prevents further inheritance or virtual-function overriding.\n\nIt can be applied to:\n\n- A virtual function\n- An entire class\n\n---",
+          "bodyText": "The final specifier prevents further inheritance or virtual-function overriding.It can be applied to:A virtual functionAn entire class"
+        },
+        {
+          "id": "function-level-final",
+          "heading": "2. Function-Level final",
+          "bodyMarkdown": "A virtual function marked `final` cannot be overridden by later derived classes.\n\n```cpp\nclass Base\n{\npublic:\n    virtual void run();\n};\n\nclass Derived : public Base\n{\npublic:\n    void run() override final;\n};\n```\n\n`Derived::run()` overrides `Base::run()`, but no class derived from `Derived` may override it again.",
+          "bodyText": "A virtual function marked final cannot be overridden by later derived classes.class Base\n{\npublic:\n    virtual void run();\n};\n\nclass Derived : public Base\n{\npublic:\n    void run() override final;\n};Derived::run() overrides Base::run(), but no class derived from Derived may override it again."
+        },
+        {
+          "id": "class-level-final",
+          "heading": "3. Class-Level final",
+          "bodyMarkdown": "A class marked `final` cannot be used as a base class.\n\n```cpp\nclass Connection final\n{\n};\n```\n\nAny attempt to inherit from `Connection` causes a compilation error.",
+          "bodyText": "A class marked final cannot be used as a base class.class Connection final\n{\n};Any attempt to inherit from Connection causes a compilation error."
+        },
+        {
+          "id": "relationship-with-virtual-and-override",
+          "heading": "4. Relationship with virtual and override",
+          "bodyMarkdown": "`virtual` means:\n\nDerived classes may replace this behavior.\n\n`override` means:\n\nVerify that this function correctly replaces a base virtual function.\n\n`final` means:\n\nDo not allow any further replacement.\n\nA common modern C++ declaration is:\n\n```cpp\nvoid run() override final;\n```",
+          "bodyText": "virtual means:Derived classes may replace this behavior.override means:Verify that this function correctly replaces a base virtual function.final means:Do not allow any further replacement.A common modern C++ declaration is:void run() override final;"
+        },
+        {
+          "id": "common-errors",
+          "heading": "5. Common Errors",
+          "bodyMarkdown": "### Overriding a Final Function\n\nA derived class cannot override a function already marked `final`.\n\n### Inheriting from a Final Class\n\nA class marked `final` cannot have derived classes.\n\n### Using `final` on a Non-Virtual Function\n\nFunction-level `final` is only valid for virtual functions.\n\n### Applying `final` Too Early\n\nExcessive use of `final` may prevent legitimate extension of a class hierarchy.",
+          "bodyText": "Overriding a Final FunctionA derived class cannot override a function already marked final.Inheriting from a Final ClassA class marked final cannot have derived classes.Using final on a Non-Virtual FunctionFunction-level final is only valid for virtual functions.Applying final Too EarlyExcessive use of final may prevent legitimate extension of a class hierarchy."
+        },
+        {
+          "id": "practical-uses",
+          "heading": "6. Practical Uses",
+          "bodyMarkdown": "`final` is useful when:\n\n- A validated algorithm must not be changed\n- A security or risk rule must remain fixed\n- A class is not designed for inheritance\n- Further overriding would violate an invariant\n- An implementation represents the final layer of a hierarchy",
+          "bodyText": "final is useful when:A validated algorithm must not be changedA security or risk rule must remain fixedA class is not designed for inheritanceFurther overriding would violate an invariantAn implementation represents the final layer of a hierarchy"
+        },
+        {
+          "id": "recommended-style",
+          "heading": "7. Recommended Style",
+          "bodyMarkdown": "Use:\n\n```cpp\nvoid function() override final;\n```\n\nwhen a derived function both overrides a base virtual function and must not be overridden again.\n\nUse:\n\n```cpp\nclass ClassName final;\n```\n\nwhen the class is intentionally not designed as a base class.\n\nDo not add `final` everywhere. Use it only when the design intentionally forbids further extension.",
+          "bodyText": "Use:void function() override final;when a derived function both overrides a base virtual function and must not be overridden again.Use:class ClassName final;when the class is intentionally not designed as a base class.Do not add final everywhere. Use it only when the design intentionally forbids further extension."
+        },
+        {
+          "id": "mental-model",
+          "heading": "8. Mental Model",
+          "bodyMarkdown": "```text\nvirtual  -> extension is allowed\noverride -> extension is checked\nfinal    -> extension stops here\n```",
+          "bodyText": "virtual  -> extension is allowed\noverride -> extension is checked\nfinal    -> extension stops here"
+        },
+        {
+          "id": "key-takeaway",
+          "heading": "9. Key Takeaway",
+          "bodyMarkdown": "`final` protects class hierarchies from unintended extension.\n\nIt converts an architectural restriction into a compile-time rule.",
+          "bodyText": "final protects class hierarchies from unintended extension.It converts an architectural restriction into a compile-time rule."
+        }
+      ],
+      "checklistItems": [],
+      "code": ""
     }
   ],
   "questions": [
@@ -1892,6 +2024,166 @@
         }
       ],
       "sourceHash": "c4f64c954dbcb3f643cce352b7d46c0ccec30159b70e772f38ffee06c0af2aa7",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp98-object-variable-memory-001",
+      "lessonId": "cpp98-object-variable-memory",
+      "type": "recall",
+      "difficulty": "beginner",
+      "estimatedMinutes": 5,
+      "prompt": "Trong C++, sự khác biệt cơ bản giữa 'biến' (variable) và 'đối tượng' (object) là gì? Hãy giải thích mối quan hệ giữa chúng.",
+      "hint": "Hãy nghĩ về cái tên bạn viết trong mã nguồn và thực thể thực sự nằm trong bộ nhớ RAM.",
+      "answer": {
+        "short": "Biến là tên gọi (định danh) trong mã nguồn, còn đối tượng là thực thể thực tế được lưu trữ trong bộ nhớ.",
+        "detailed": "Biến (variable) đóng vai trò là một cái tên để chương trình có thể truy cập vào dữ liệu. Đối tượng (object) là vùng lưu trữ có kiểu dữ liệu cụ thể trong bộ nhớ. Mối quan hệ giữa chúng là: tên biến tham chiếu đến (refers to) đối tượng trong bộ nhớ. Sự phân biệt này trở nên quan trọng khi học về con trỏ, tham chiếu và quản lý vòng đời đối tượng."
+      },
+      "rubric": {
+        "required": [
+          "Biến là tên/định danh",
+          "Đối tượng là thực thể/vùng lưu trữ trong bộ nhớ"
+        ],
+        "bonus": [
+          "Nhắc đến việc biến tham chiếu đến đối tượng",
+          "Giải thích tại sao sự phân biệt này quan trọng cho con trỏ/tham chiếu"
+        ],
+        "misconceptions": [
+          "Coi biến và đối tượng là một khái niệm hoàn toàn giống hệt nhau"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "what-problem-does-this-solve"
+        },
+        {
+          "sectionId": "object-vs-variable"
+        },
+        {
+          "sectionId": "conclusion"
+        }
+      ],
+      "sourceHash": "b959f00fa3b7fd7587e37fbbb0f1cac44d6285a9a6bd7afcbdaceea3626b6637",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp98-object-variable-memory-002",
+      "lessonId": "cpp98-object-variable-memory",
+      "type": "pitfall",
+      "difficulty": "intermediate",
+      "estimatedMinutes": 8,
+      "prompt": "Xét đoạn mã giả định trong một hệ thống giao dịch dưới đây. Hãy chỉ ra lỗi nghiêm trọng liên quan đến bộ nhớ và giải thích điều gì xảy ra nếu ta thực hiện lệnh gán `int copySpread = spread;`.",
+      "code": "int bidPrice = 100;\nint askPrice; // Không khởi tạo\nint spread = askPrice - bidPrice;",
+      "hint": "Hãy chú ý đến giá trị của askPrice khi chưa được gán và tính chất của việc sao chép giá trị giữa các biến cơ bản.",
+      "answer": {
+        "short": "Lỗi uninitialized variable khiến spread có giá trị rác; lệnh gán tạo ra một bản sao độc lập (copy), không phải chia sẻ (sharing).",
+        "detailed": "1. Lỗi chưa khởi tạo: Biến `askPrice` là biến cục bộ không được khởi tạo nên nó chứa giá trị không dự đoán được (giá trị rác). Điều này dẫn đến biến `spread` mang giá trị sai, có thể gây ra các quyết định giao dịch rủi ro hoặc sai lầm tài chính. \n2. Tính chất sao chép: Khi thực hiện `int copySpread = spread;`, giá trị của `spread` được sao chép sang một vùng bộ nhớ mới của `copySpread`. Đây là hai đối tượng độc lập; việc thay đổi `copySpread` sau đó sẽ không ảnh hưởng đến giá trị của `spread`."
+      },
+      "rubric": {
+        "required": [
+          "Nhận diện lỗi biến chưa khởi tạo (uninitialized variable)",
+          "Giải thích được giá trị rác/không dự đoán được",
+          "Khẳng định việc gán tạo ra bản sao độc lập (independent value)"
+        ],
+        "bonus": [
+          "Liên hệ đến hậu quả trong hệ thống trading (sai lệch tính toán/rủi ro tài chính)",
+          "Phân biệt rõ giữa copy và sharing"
+        ],
+        "misconceptions": [
+          "Nghĩ rằng thay đổi bản sao sẽ làm thay đổi biến gốc",
+          "Cho rằng biến chưa khởi tạo mặc định bằng 0"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "common-mistakes"
+        },
+        {
+          "sectionId": "notes-for-trading-code"
+        }
+      ],
+      "sourceHash": "b959f00fa3b7fd7587e37fbbb0f1cac44d6285a9a6bd7afcbdaceea3626b6637",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp98-reference-001",
+      "lessonId": "cpp98-reference",
+      "type": "recall",
+      "difficulty": "intermediate",
+      "estimatedMinutes": 5,
+      "prompt": "Trong C++98, sự khác biệt chính giữa một tham chiếu (reference) và một con trỏ (pointer) là gì? Tại sao trong các ứng dụng hiệu năng cao như xử lý dữ liệu thị trường (market data), tham chiếu lại được ưu tiên hơn việc truyền tham trị (pass-by-value)?",
+      "hint": "Hãy nghĩ về việc khởi tạo, khả năng thay đổi đối tượng đích (rebinding), và chi phí tài nguyên khi truyền dữ liệu vào hàm.",
+      "answer": {
+        "short": "Tham chiếu là bí danh (alias) của một đối tượng hiện có, phải được khởi tạo ngay, không thể null và không thể thay đổi đối tượng đích. Nó được ưu tiên vì giúp tránh chi phí sao chép (copy cost).",
+        "detailed": "Tham chiếu (reference) khác với con trỏ ở ba điểm chính: 1) Phải được liên kết (bind) ngay khi khởi tạo. 2) Không thể thay đổi để trỏ sang đối tượng khác (cannot be reseated). 3) Thông thường không thể null. Trong các hệ thống trading, tham chiếu được ưu tiên hơn truyền tham trị vì nó không tạo ra bản sao của đối tượng, giúp tiết kiệm tài nguyên và tăng tốc độ xử lý khi làm việc với các cấu trúc dữ liệu lớn như Order Book hoặc dữ liệu thị trường."
+      },
+      "rubric": {
+        "required": [
+          "Tham chiếu phải được khởi tạo khi khai báo",
+          "Tham chiếu không thể thay đổi đối tượng đích (cannot be reseated)",
+          "Tham chiếu giúp tránh chi phí sao chép (no copy cost)"
+        ],
+        "bonus": [
+          "Tham chiếu sử dụng cú pháp đối tượng thông thường, không cần giải tham chiếu (dereferencing)",
+          "Tham chiếu an toàn hơn con trỏ thô (raw pointers)"
+        ],
+        "misconceptions": [
+          "Lầm tưởng tham chiếu là một đối tượng mới chiếm bộ nhớ riêng biệt",
+          "Lầm tưởng có thể thay đổi tham chiếu để trỏ sang biến khác sau khi đã khởi tạo"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "reference-vs-pointer"
+        },
+        {
+          "sectionId": "notes-for-trading-code"
+        },
+        {
+          "sectionId": "what-problem-does-this-solve"
+        }
+      ],
+      "sourceHash": "e9060a1301c4e23e5338a9e3224d05afcd5cd1aab0074963e75ab012c467cb72",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp98-reference-002",
+      "lessonId": "cpp98-reference",
+      "type": "pitfall",
+      "difficulty": "advanced",
+      "estimatedMinutes": 7,
+      "prompt": "Phân tích lỗi tiềm ẩn trong đoạn mã sau đây và giải thích tại sao nó lại nguy hiểm trong lập trình C++.",
+      "code": "int& getIncrementedValue(int input) {\n    int result = input + 1;\n    return result;\n}",
+      "hint": "Hãy xem xét vòng đời (lifetime) của biến 'result' sau khi hàm kết thúc.",
+      "answer": {
+        "short": "Đoạn mã tạo ra một 'dangling reference' (tham chiếu lơ lửng) vì trả về tham chiếu đến một đối tượng cục bộ đã bị hủy.",
+        "detailed": "Biến 'result' là một đối tượng cục bộ (local object), nó sẽ bị hủy (die) ngay khi hàm 'getIncrementedValue' kết thúc và giải phóng ngăn xếp (stack). Việc trả về một tham chiếu đến biến này khiến tham chiếu đó trỏ vào một vùng nhớ không còn hợp lệ. Đây gọi là lỗi 'dangling reference', dẫn đến hành vi không xác định (undefined behavior) khi chương trình cố gắng sử dụng giá trị này sau đó."
+      },
+      "rubric": {
+        "required": [
+          "Nhận diện được lỗi trả về tham chiếu của biến cục bộ",
+          "Giải thích được biến cục bộ bị hủy khi hàm kết thúc",
+          "Sử dụng thuật ngữ 'dangling reference' hoặc 'tham chiếu lơ lửng'"
+        ],
+        "bonus": [
+          "Giải thích được hậu quả là hành vi không xác định (undefined behavior)"
+        ],
+        "misconceptions": [
+          "Nghĩ rằng tham chiếu sẽ giữ cho biến cục bộ tiếp tục tồn tại"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "common-mistakes"
+        },
+        {
+          "sectionId": "memory-model"
+        }
+      ],
+      "sourceHash": "e9060a1301c4e23e5338a9e3224d05afcd5cd1aab0074963e75ab012c467cb72",
       "status": "draft",
       "version": 1
     },
