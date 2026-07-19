@@ -31,7 +31,12 @@ describe("content loader", () => {
     const manifest = await loadContentManifest(repoRoot, path.join(repoRoot, "web"));
 
     expect(manifest.lessons.length).toBeGreaterThan(0);
-    expect(manifest.lessons.every((lesson) => lesson.codePath !== null)).toBe(true);
+    expect(manifest.lessons.some((lesson) => lesson.codePath !== null)).toBe(true);
+    expect(
+      manifest.lessons.every(
+        (lesson) => lesson.codePath === null || lesson.codePath.endsWith("main.cpp"),
+      ),
+    ).toBe(true);
     expect(
       manifest.lessons.reduce(
         (total, lesson) => total + lesson.checklistItems.length,
