@@ -96,7 +96,7 @@ export async function POST(request: Request) {
         user_id: authResult.data.user.id,
         question_id: question.id,
         question_version: question.version,
-        source_commit_sha: manifest.sourceCommitSha,
+        source_commit_sha: manifest.sourceRevision,
         candidate_answer: parsed.data.answer,
         score: feedback.score,
         verdict: feedback.verdict,

@@ -45,6 +45,7 @@ export const questionSchema = z.object({
       }),
     )
     .min(1),
+  sourceHash: z.string().regex(/^[a-f0-9]{64}$/),
   status: z.enum(["draft", "verified", "needs_review", "archived"]),
   version: z.number().int().positive(),
 });
@@ -73,7 +74,7 @@ export const generatedLessonSchema = lessonRegistryEntrySchema.extend({
 
 export const contentManifestSchema = z.object({
   schemaVersion: z.literal(1),
-  sourceCommitSha: z.string().min(1),
+  sourceRevision: z.string().regex(/^[a-f0-9]{64}$/),
   lessons: z.array(generatedLessonSchema),
   questions: z.array(questionSchema),
 });
@@ -81,3 +82,5 @@ export const contentManifestSchema = z.object({
 export type Question = z.infer<typeof questionSchema>;
 export type GeneratedLesson = z.infer<typeof generatedLessonSchema>;
 export type ContentManifest = z.infer<typeof contentManifestSchema>;
+export type LessonRegistry = z.infer<typeof lessonRegistrySchema>;
+export type LessonRegistryEntry = z.infer<typeof lessonRegistryEntrySchema>;

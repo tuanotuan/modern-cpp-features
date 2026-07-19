@@ -45,7 +45,7 @@ export default async function Home({
   return (
     <PracticeApp
       questions={questions}
-      sourceCommitSha={manifest.sourceCommitSha}
+      sourceRevision={manifest.sourceRevision}
       cloudEnabled={cloud.enabled}
       account={cloud.account}
       initialCloudProgress={cloud.progress}
