@@ -1396,18 +1396,105 @@ function Tag({ children }: { children: React.ReactNode }) {
   );
 }
 
-function InlineCode({ text }: { text: string }) {
+function InlineCode({ text, inverted = false }: { text: string; inverted?: boolean }) {
   return text.split(/(`[^`]+`)/g).map((part, index) =>
     part.startsWith("`") && part.endsWith("`") ? (
       <code
         key={`${part}-${index}`}
-        className="rounded-md bg-[#173f35]/8 px-1.5 py-0.5 font-mono text-[0.88em] text-[#245748]"
+        className={`rounded-md px-1.5 py-0.5 font-mono text-[0.88em] ${
+          inverted
+            ? "bg-white/14 text-[#e7ffc2]"
+            : "bg-[#173f35]/8 text-[#245748]"
+        }`}
       >
         {part.slice(1, -1)}
       </code>
     ) : (
       part
     ),
+  );
+}
+
+function RichText({ text, inverted = false }: { text: string; inverted?: boolean }) {
+  const fence = /```([^\r\n`]*)\r?\n([\s\S]*?)```/g;
+  const blocks: Array<
+    | { kind: "text"; content: string }
+    | { kind: "code"; content: string; language: string }
+  > = [];
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = fence.exec(text)) !== null) {
+    if (match.index > cursor) {
+      blocks.push({ kind: "text", content: text.slice(cursor, match.index) });
+    }
+    blocks.push({
+      kind: "code",
+      language: match[1].trim() || "code",
+      content: match[2].replace(/\r\n/g, "\n").replace(/\n$/, ""),
+    });
+    cursor = match.index + match[0].length;
+  }
+  if (cursor < text.length) blocks.push({ kind: "text", content: text.slice(cursor) });
+  if (!blocks.length) {
+    return (
+      <span className="whitespace-pre-wrap">
+        <InlineCode text={text} inverted={inverted} />
+      </span>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {blocks.map((block, index) =>
+        block.kind === "code" ? (
+          <CodeBlock
+            key={`code-${index}`}
+            code={block.content}
+            language={block.language}
+          />
+        ) : block.content.trim() ? (
+          <div key={`text-${index}`} className="whitespace-pre-wrap">
+            <InlineCode text={block.content.trim()} inverted={inverted} />
+          </div>
+        ) : null,
+      )}
+    </div>
+  );
+}
+
+function CodeBlock({ code, language }: { code: string; language: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copyCode() {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <div className="my-3 overflow-hidden rounded-2xl border border-white/10 bg-[#102f27] text-[#e8f7df] shadow-sm">
+      <div className="flex items-center justify-between border-b border-white/10 bg-black/10 px-4 py-2">
+        <span className="font-mono text-[10px] font-bold tracking-[0.12em] text-[#b9d7ca] uppercase">
+          {language}
+        </span>
+        <button
+          type="button"
+          onClick={copyCode}
+          className="rounded-md px-2 py-1 font-mono text-[10px] font-semibold text-[#d7ff91] transition hover:bg-white/10"
+          aria-label="Sao chép đoạn code"
+        >
+          {copied ? "Đã copy ✓" : "Copy"}
+        </button>
+      </div>
+      <pre className="max-w-full overflow-x-auto p-4 text-left font-mono text-[12px] leading-6 [tab-size:2] sm:text-[13px]">
+        <code>{code}</code>
+      </pre>
+    </div>
   );
 }
 
@@ -1577,9 +1664,9 @@ function CoachFeedbackPanel({
 
         <div>
           <p className="text-sm font-bold text-[#245748]">Giải thích cho chắc</p>
-          <p className="mt-2 leading-7 text-[#52645c]">
-            <InlineCode text={feedback.explanation} />
-          </p>
+          <div className="mt-2 leading-7 text-[#52645c]">
+            <RichText text={feedback.explanation} />
+          </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -1719,9 +1806,9 @@ function DeepDivePracticePanel({
               {feedbackSaved ? "★ Đã lưu" : "☆ Lưu nhận xét"}
             </button>
           </div>
-          <p className="mt-3 whitespace-pre-line text-sm leading-7 text-[#465c52]">
-            <InlineCode text={feedback.answer} />
-          </p>
+          <div className="mt-3 text-sm leading-7 text-[#465c52]">
+            <RichText text={feedback.answer} />
+          </div>
           {citedSections.length ? (
             <div className="mt-4 flex flex-wrap gap-2 border-t border-[#173f35]/10 pt-3">
               {citedSections.map((section) => (
@@ -1794,9 +1881,10 @@ function CoachFollowUpPanel({
                     : "max-w-[94%] rounded-2xl rounded-bl-md border border-[#356b58]/15 bg-[#f6faef] px-4 py-4 text-sm leading-6 text-[#465c52]"
                 }
               >
-                <p className="whitespace-pre-line">
-                  <InlineCode text={message.content} />
-                </p>
+                <RichText
+                  text={message.content}
+                  inverted={message.role === "user"}
+                />
                 {citedSections.length ? (
                   <div className="mt-3 flex flex-wrap gap-2 border-t border-[#173f35]/10 pt-3">
                     {citedSections.map((section) => (
@@ -1952,9 +2040,9 @@ function SavedLibrary({
                   <span className="group-open:hidden">Xem nội dung ↓</span>
                   <span className="hidden group-open:inline">Thu gọn ↑</span>
                 </summary>
-                <p className="mt-3 whitespace-pre-line text-sm leading-6 text-[#465c52]">
-                  <InlineCode text={item.content} />
-                </p>
+                <div className="mt-3 text-sm leading-6 text-[#465c52]">
+                  <RichText text={item.content} />
+                </div>
               </details>
               <div className="mt-4 flex flex-wrap justify-end gap-2">
                 <button
