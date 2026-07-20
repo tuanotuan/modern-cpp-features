@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-import { coachFeedbackSchema } from "../ai/contracts";
+import {
+  coachFeedbackSchema,
+  coachFollowUpResponseSchema,
+} from "../ai/contracts";
 
 const followUpChatMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -21,6 +24,9 @@ const questionStudySessionSchema = z.object({
   coachAnswer: z.string().max(6000).optional(),
   followUpInput: z.string().max(2000).optional(),
   followUpChat: z.array(followUpChatMessageSchema).max(8).optional(),
+  deepDiveOpen: z.boolean().optional(),
+  deepDiveAnswer: z.string().max(6000).optional(),
+  deepDiveFeedback: coachFollowUpResponseSchema.optional(),
 });
 
 const studySessionSchema = z.object({

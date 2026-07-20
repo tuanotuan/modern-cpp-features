@@ -10,6 +10,13 @@ import type {
 import type { Question } from "@/lib/content/schema";
 import type { PracticeAccount } from "@/lib/practice/cloud-server";
 import {
+  parseSavedItems,
+  removeSavedItem,
+  SAVED_ITEMS_KEY,
+  upsertSavedItem,
+  type SavedItem,
+} from "@/lib/practice/saved-items";
+import {
   parseStudySession,
   serializeStudySession,
   type QuestionStudySession,
@@ -138,6 +145,15 @@ export function PracticeApp({
   >({});
   const [followUpLoading, setFollowUpLoading] = useState<string | null>(null);
   const [followUpErrors, setFollowUpErrors] = useState<Record<string, string>>({});
+  const [deepDiveOpen, setDeepDiveOpen] = useState<Set<string>>(() => new Set());
+  const [deepDiveAnswers, setDeepDiveAnswers] = useState<Record<string, string>>({});
+  const [deepDiveFeedback, setDeepDiveFeedback] = useState<
+    Record<string, CoachFollowUpResponse>
+  >({});
+  const [deepDiveLoading, setDeepDiveLoading] = useState<string | null>(null);
+  const [deepDiveErrors, setDeepDiveErrors] = useState<Record<string, string>>({});
+  const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
+  const [savedLibraryOpen, setSavedLibraryOpen] = useState(false);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(
     null,
   );
@@ -174,6 +190,9 @@ export function PracticeApp({
     const restoredCoachAnswers: Record<string, string> = {};
     const restoredInputs: Record<string, string> = {};
     const restoredChats: Record<string, FollowUpChatMessage[]> = {};
+    const restoredDeepDiveAnswers: Record<string, string> = {};
+    const restoredDeepDiveFeedback: Record<string, CoachFollowUpResponse> = {};
+    const restoredDeepDiveOpen = new Set<string>();
     const restoredRevealed = new Set<string>();
     const restoredHints = new Set<string>();
     const restoredVisibleSources = new Set<string>();
@@ -188,6 +207,13 @@ export function PracticeApp({
       if (saved.coachAnswer) restoredCoachAnswers[questionId] = saved.coachAnswer;
       if (saved.followUpInput) restoredInputs[questionId] = saved.followUpInput;
       if (saved.followUpChat) restoredChats[questionId] = saved.followUpChat;
+      if (saved.deepDiveOpen) restoredDeepDiveOpen.add(questionId);
+      if (saved.deepDiveAnswer) {
+        restoredDeepDiveAnswers[questionId] = saved.deepDiveAnswer;
+      }
+      if (saved.deepDiveFeedback) {
+        restoredDeepDiveFeedback[questionId] = saved.deepDiveFeedback;
+      }
     });
 
     setAnswers(restoredAnswers);
@@ -199,9 +225,16 @@ export function PracticeApp({
     setCoachAnswers(restoredCoachAnswers);
     setFollowUpInputs(restoredInputs);
     setFollowUpChats(restoredChats);
+    setDeepDiveOpen(restoredDeepDiveOpen);
+    setDeepDiveAnswers(restoredDeepDiveAnswers);
+    setDeepDiveFeedback(restoredDeepDiveFeedback);
     setSelectedQuestionId(session.activeQuestionId ?? null);
     setSessionHydrated(true);
   }, [sessionQuestions]);
+
+  useEffect(() => {
+    setSavedItems(parseSavedItems(window.localStorage.getItem(SAVED_ITEMS_KEY)));
+  }, []);
 
   useEffect(() => {
     if (!sessionHydrated) return;
@@ -214,6 +247,9 @@ export function PracticeApp({
       const coachAnswer = coachAnswers[question.id];
       const followUpInput = followUpInputs[question.id];
       const followUpChat = followUpChats[question.id];
+      const deepDiveAnswer = deepDiveAnswers[question.id];
+      const savedDeepDiveFeedback = deepDiveFeedback[question.id];
+      const isDeepDiveOpen = deepDiveOpen.has(question.id);
       const isRevealed = revealed.has(question.id);
       const hasHint = hints.has(question.id);
       const sourceVisible = visibleSources.has(question.id);
@@ -222,6 +258,9 @@ export function PracticeApp({
           feedback ||
           followUpInput ||
           followUpChat?.length ||
+          deepDiveAnswer ||
+          savedDeepDiveFeedback ||
+          isDeepDiveOpen ||
           isRevealed ||
           hasHint ||
           sourceVisible,
@@ -240,6 +279,11 @@ export function PracticeApp({
         ...(coachAnswer ? { coachAnswer } : {}),
         ...(followUpInput ? { followUpInput } : {}),
         ...(followUpChat?.length ? { followUpChat } : {}),
+        ...(isDeepDiveOpen ? { deepDiveOpen: true } : {}),
+        ...(deepDiveAnswer ? { deepDiveAnswer } : {}),
+        ...(savedDeepDiveFeedback
+          ? { deepDiveFeedback: savedDeepDiveFeedback }
+          : {}),
       };
     });
 
@@ -259,6 +303,9 @@ export function PracticeApp({
     coachAnswers,
     coachFeedback,
     coachModels,
+    deepDiveAnswers,
+    deepDiveFeedback,
+    deepDiveOpen,
     followUpChats,
     followUpInputs,
     hints,
@@ -457,6 +504,9 @@ export function PracticeApp({
         [current.id]: answer,
       }));
       setFollowUpChats((chats) => ({ ...chats, [current.id]: [] }));
+      setDeepDiveOpen((open) => withoutSetValue(open, current.id));
+      setDeepDiveAnswers((answers) => omitRecordKey(answers, current.id));
+      setDeepDiveFeedback((feedback) => omitRecordKey(feedback, current.id));
     } catch (error) {
       setCoachErrors((errors) => ({
         ...errors,
@@ -529,6 +579,86 @@ export function PracticeApp({
     }
   }
 
+  async function submitDeepDiveAnswer() {
+    if (!current || !coachFeedback[current.id]) return;
+    const answer = deepDiveAnswers[current.id]?.trim() ?? "";
+    const followUpQuestion = coachFeedback[current.id].followUpQuestion;
+    if (answer.length < 10) return;
+
+    setDeepDiveLoading(current.id);
+    setDeepDiveErrors((errors) => ({ ...errors, [current.id]: "" }));
+    try {
+      const response = await fetch("/api/coach/follow-up", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          questionId: current.id,
+          candidateAnswer: coachAnswers[current.id],
+          feedback: coachFeedback[current.id],
+          messages: [
+            {
+              role: "user",
+              content: `Đây là câu hỏi phỏng vấn mở rộng: ${followUpQuestion}\n\nCâu trả lời tôi tự làm: ${answer}\n\nHãy nhận xét câu trả lời như interviewer: chỉ ra phần đúng, phần thiếu hoặc sai, rồi mới giải thích để tôi hiểu sâu hơn.`,
+            },
+          ],
+        }),
+      });
+      const payload = (await response.json()) as {
+        reply?: CoachFollowUpResponse;
+        error?: string;
+      };
+      if (!response.ok || !payload.reply) {
+        throw new Error(payload.error || "AI chưa chấm được câu mở rộng.");
+      }
+      setDeepDiveFeedback((feedback) => ({
+        ...feedback,
+        [current.id]: payload.reply!,
+      }));
+    } catch (error) {
+      setDeepDiveErrors((errors) => ({
+        ...errors,
+        [current.id]:
+          error instanceof Error ? error.message : "AI chưa chấm được câu mở rộng.",
+      }));
+    } finally {
+      setDeepDiveLoading(null);
+    }
+  }
+
+  function toggleSavedItem(item: Omit<SavedItem, "savedAt">) {
+    setSavedItems((items) => {
+      const exists = items.some((saved) => saved.id === item.id);
+      const next = exists
+        ? removeSavedItem(items, item.id)
+        : upsertSavedItem(items, {
+            ...item,
+            savedAt: new Date().toISOString(),
+          });
+      try {
+        window.localStorage.setItem(SAVED_ITEMS_KEY, JSON.stringify(next));
+      } catch {
+        // Saving remains optional when browser storage is unavailable.
+      }
+      return next;
+    });
+  }
+
+  function isSaved(itemId: string) {
+    return savedItems.some((item) => item.id === itemId);
+  }
+
+  function deleteSavedItem(itemId: string) {
+    setSavedItems((items) => {
+      const next = removeSavedItem(items, itemId);
+      try {
+        window.localStorage.setItem(SAVED_ITEMS_KEY, JSON.stringify(next));
+      } catch {
+        // Saved library remains usable in memory for this page view.
+      }
+      return next;
+    });
+  }
+
   function updateAnswer(questionId: string, value: string) {
     setAnswers((currentAnswers) => ({
       ...currentAnswers,
@@ -588,6 +718,13 @@ export function PracticeApp({
               value={`${completedToday}/${dailyTotal || 1}`}
               label="hôm nay"
             />
+            <button
+              type="button"
+              onClick={() => setSavedLibraryOpen(true)}
+              className="rounded-full border border-[#173f35]/15 bg-white/55 px-3 py-2 text-xs font-bold transition hover:bg-white"
+            >
+              ☆ Đã lưu {savedItems.length ? `(${savedItems.length})` : ""}
+            </button>
             <AccountControl
               account={account}
               cloudEnabled={cloudEnabled}
@@ -595,6 +732,21 @@ export function PracticeApp({
             />
           </div>
         </header>
+
+        {savedLibraryOpen ? (
+          <SavedLibrary
+            items={savedItems}
+            onClose={() => setSavedLibraryOpen(false)}
+            onRemove={deleteSavedItem}
+            onOpenQuestion={(questionId) => {
+              if (sessionQuestions.some((question) => question.id === questionId)) {
+                setSelectedQuestionId(questionId);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }
+              setSavedLibraryOpen(false);
+            }}
+          />
+        ) : null}
 
         {authNotice ? (
           <p
@@ -655,6 +807,22 @@ export function PracticeApp({
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      toggleSavedItem({
+                        id: `question:${current.id}`,
+                        kind: "question",
+                        questionId: current.id,
+                        title: current.lessonTitle,
+                        content: current.prompt,
+                        context: current.code || current.sourcePath,
+                      })
+                    }
+                    className="rounded-xl border border-[#173f35]/18 bg-white/65 px-3 py-2 text-xs font-bold text-[#356b58] transition hover:-translate-y-0.5 hover:bg-white focus:ring-4 focus:ring-[#d7ff91]/55 focus:outline-none"
+                  >
+                    {isSaved(`question:${current.id}`) ? "★ Đã lưu" : "☆ Lưu câu hỏi"}
+                  </button>
                   <button
                     type="button"
                     onClick={showRandomQuestion}
@@ -765,23 +933,80 @@ export function PracticeApp({
                         learningActionDisabled={
                           (followUpChats[current.id]?.length ?? 0) >= 8
                         }
+                        deepDiveOpen={deepDiveOpen.has(current.id)}
+                        feedbackSaved={isSaved(
+                          `ai-feedback:${current.id}:${current.version}:${current.sourceHash}`,
+                        )}
+                        onToggleSaveFeedback={() =>
+                          toggleSavedItem({
+                            id: `ai-feedback:${current.id}:${current.version}:${current.sourceHash}`,
+                            kind: "ai_answer",
+                            questionId: current.id,
+                            title: `AI feedback · ${current.lessonTitle}`,
+                            content: formatCoachFeedback(coachFeedback[current.id]),
+                            context: current.prompt,
+                          })
+                        }
                         onExpandNextStep={() =>
                           void askCoachFollowUp(
                             `Hãy biến bước tiếp theo này thành một bài học mini dễ hiểu, có ví dụ C++ ngắn và một bài tập nhỏ: ${coachFeedback[current.id].nextStep}`,
                           )
                         }
                         onExploreInterviewerQuestion={() =>
-                          void askCoachFollowUp(
-                            `Hãy đào sâu câu hỏi interviewer này. Trước tiên giải thích nó đang kiểm tra kiến thức gì, rồi dẫn dắt tôi tự tìm câu trả lời thay vì đưa đáp án ngay: ${coachFeedback[current.id].followUpQuestion}`,
-                          )
+                          toggleSet(setDeepDiveOpen, current.id)
                         }
                       />
+                      {deepDiveOpen.has(current.id) ? (
+                        <DeepDivePracticePanel
+                          question={current}
+                          prompt={coachFeedback[current.id].followUpQuestion}
+                          answer={deepDiveAnswers[current.id] ?? ""}
+                          feedback={deepDiveFeedback[current.id]}
+                          error={deepDiveErrors[current.id]}
+                          loading={deepDiveLoading === current.id}
+                          feedbackSaved={isSaved(
+                            `ai-deep-dive:${current.id}:${current.version}:${current.sourceHash}`,
+                          )}
+                          onAnswer={(value) =>
+                            setDeepDiveAnswers((answers) => ({
+                              ...answers,
+                              [current.id]: value,
+                            }))
+                          }
+                          onSubmit={() => void submitDeepDiveAnswer()}
+                          onToggleSaveFeedback={() => {
+                            const feedback = deepDiveFeedback[current.id];
+                            if (!feedback) return;
+                            toggleSavedItem({
+                              id: `ai-deep-dive:${current.id}:${current.version}:${current.sourceHash}`,
+                              kind: "ai_answer",
+                              questionId: current.id,
+                              title: `Đào sâu · ${current.lessonTitle}`,
+                              content: feedback.answer,
+                              context: coachFeedback[current.id].followUpQuestion,
+                            });
+                          }}
+                        />
+                      ) : null}
                       <CoachFollowUpPanel
                         question={current}
                         messages={followUpChats[current.id] ?? []}
                         input={followUpInputs[current.id] ?? ""}
                         error={followUpErrors[current.id]}
                         loading={followUpLoading === current.id}
+                        isMessageSaved={(index) =>
+                          isSaved(`ai-follow-up:${current.id}:${index}`)
+                        }
+                        onToggleSaveMessage={(index, message) =>
+                          toggleSavedItem({
+                            id: `ai-follow-up:${current.id}:${index}`,
+                            kind: "ai_answer",
+                            questionId: current.id,
+                            title: `AI giải thích · ${current.lessonTitle}`,
+                            content: message.content,
+                            context: current.prompt,
+                          })
+                        }
                         onInput={(value) =>
                           setFollowUpInputs((inputs) => ({
                             ...inputs,
@@ -1192,11 +1417,21 @@ const coverageLabels: Record<CoachFeedback["coverage"][number]["status"], string
   met: "Đạt",
 };
 
+function formatCoachFeedback(feedback: CoachFeedback) {
+  const corrections = feedback.corrections.length
+    ? `\n\nCần sửa:\n${feedback.corrections.map((item) => `- ${item}`).join("\n")}`
+    : "";
+  return `${feedback.score}/100 · ${verdictLabels[feedback.verdict]}\n\n${feedback.summary}\n\n${feedback.explanation}${corrections}`;
+}
+
 function CoachFeedbackPanel({
   feedback,
   model,
   learningActionLoading,
   learningActionDisabled,
+  deepDiveOpen,
+  feedbackSaved,
+  onToggleSaveFeedback,
   onExpandNextStep,
   onExploreInterviewerQuestion,
 }: {
@@ -1204,6 +1439,9 @@ function CoachFeedbackPanel({
   model?: string;
   learningActionLoading: boolean;
   learningActionDisabled: boolean;
+  deepDiveOpen: boolean;
+  feedbackSaved: boolean;
+  onToggleSaveFeedback: () => void;
   onExpandNextStep: () => void;
   onExploreInterviewerQuestion: () => void;
 }) {
@@ -1230,6 +1468,13 @@ function CoachFeedbackPanel({
             <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/60">
               {model || "Gemini"}
             </span>
+            <button
+              type="button"
+              onClick={onToggleSaveFeedback}
+              className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white/80 transition hover:bg-white/20"
+            >
+              {feedbackSaved ? "★ Đã lưu" : "☆ Lưu phản hồi"}
+            </button>
           </div>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight">
             {verdictLabels[feedback.verdict]}
@@ -1325,10 +1570,9 @@ function CoachFeedbackPanel({
             <button
               type="button"
               onClick={onExploreInterviewerQuestion}
-              disabled={learningActionLoading || learningActionDisabled}
               className="mt-4 w-fit rounded-xl bg-[#173f35] px-3.5 py-2 text-xs font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#245748] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 focus:ring-4 focus:ring-white/70 focus:outline-none"
             >
-              {learningActionLoading ? "AI đang mở rộng…" : "Đào sâu câu này →"}
+              {deepDiveOpen ? "Ẩn câu mở rộng ↑" : "Tự trả lời câu này →"}
             </button>
           </div>
         </div>
@@ -1342,12 +1586,126 @@ function CoachFeedbackPanel({
   );
 }
 
+function DeepDivePracticePanel({
+  question,
+  prompt,
+  answer,
+  feedback,
+  error,
+  loading,
+  feedbackSaved,
+  onAnswer,
+  onSubmit,
+  onToggleSaveFeedback,
+}: {
+  question: PracticeQuestion;
+  prompt: string;
+  answer: string;
+  feedback?: CoachFollowUpResponse;
+  error?: string;
+  loading: boolean;
+  feedbackSaved: boolean;
+  onAnswer: (value: string) => void;
+  onSubmit: () => void;
+  onToggleSaveFeedback: () => void;
+}) {
+  const sourceById = new Map(
+    question.sourceSections.map((section) => [section.id, section]),
+  );
+  const citedSections = (feedback?.sourceSectionIds ?? [])
+    .map((id) => sourceById.get(id))
+    .filter((section): section is NonNullable<typeof section> => Boolean(section));
+
+  return (
+    <section className="mt-5 rounded-3xl border border-[#7fb43d]/30 bg-[#f3ffdd] p-5 shadow-[0_12px_35px_rgba(23,63,53,0.05)] sm:p-6">
+      <p className="font-mono text-xs font-bold tracking-[0.14em] text-[#356b58] uppercase">
+        Câu phỏng vấn mở rộng
+      </p>
+      <h3 className="mt-3 text-xl leading-8 font-semibold text-[#203d32]">
+        <InlineCode text={prompt} />
+      </h3>
+      <p className="mt-2 text-sm leading-6 text-[#64736c]">
+        Tự trả lời trước như một câu phỏng vấn mới. AI chỉ được gọi sau khi mày gửi bài.
+      </p>
+
+      <form
+        className="mt-5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit();
+        }}
+      >
+        <label htmlFor={`deep-dive-${question.id}`} className="text-sm font-bold text-[#29493d]">
+          Câu trả lời của mày
+        </label>
+        <textarea
+          id={`deep-dive-${question.id}`}
+          value={answer}
+          onChange={(event) => onAnswer(event.target.value)}
+          maxLength={6000}
+          rows={5}
+          disabled={loading}
+          placeholder="Trả lời câu mở rộng trước khi xem nhận xét của AI…"
+          className="mt-2 w-full resize-y rounded-2xl border border-[#356b58]/20 bg-white/80 px-4 py-3 leading-7 outline-none transition focus:border-[#356b58] focus:ring-4 focus:ring-[#d7ff91]/55 disabled:bg-[#edf1ea]"
+        />
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <span className="font-mono text-[11px] text-[#718078]">
+            ● tự lưu · không có đáp án mẫu
+          </span>
+          <button
+            type="submit"
+            disabled={answer.trim().length < 10 || loading}
+            className="rounded-xl bg-[#173f35] px-5 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 focus:ring-4 focus:ring-[#d7ff91] focus:outline-none"
+          >
+            {loading ? "AI đang chấm…" : "Nhờ AI chấm câu mở rộng"}
+          </button>
+        </div>
+      </form>
+
+      {error ? (
+        <p className="mt-4 rounded-xl bg-[#f8e8df] px-3 py-2 text-sm text-[#8e3825]" role="alert">
+          {error}
+        </p>
+      ) : null}
+
+      {feedback ? (
+        <div className="mt-5 rounded-2xl border border-[#356b58]/15 bg-white/75 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-bold text-[#245748]">Nhận xét của interviewer AI</p>
+            <button
+              type="button"
+              onClick={onToggleSaveFeedback}
+              className="rounded-lg border border-[#356b58]/15 px-2.5 py-1.5 text-[11px] font-bold text-[#356b58]"
+            >
+              {feedbackSaved ? "★ Đã lưu" : "☆ Lưu nhận xét"}
+            </button>
+          </div>
+          <p className="mt-3 whitespace-pre-line text-sm leading-7 text-[#465c52]">
+            <InlineCode text={feedback.answer} />
+          </p>
+          {citedSections.length ? (
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-[#173f35]/10 pt-3">
+              {citedSections.map((section) => (
+                <span key={section.id} className="rounded-full bg-[#e8efe2] px-2.5 py-1 text-[11px] font-semibold text-[#356b58]">
+                  Nguồn: {section.heading}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function CoachFollowUpPanel({
   question,
   messages,
   input,
   error,
   loading,
+  isMessageSaved,
+  onToggleSaveMessage,
   onInput,
   onSubmit,
 }: {
@@ -1356,6 +1714,8 @@ function CoachFollowUpPanel({
   input: string;
   error?: string;
   loading: boolean;
+  isMessageSaved: (index: number) => boolean;
+  onToggleSaveMessage: (index: number, message: FollowUpChatMessage) => void;
   onInput: (value: string) => void;
   onSubmit: () => void;
 }) {
@@ -1415,6 +1775,15 @@ function CoachFollowUpPanel({
                   <p className="mt-3 rounded-xl bg-[#d7ff91]/45 px-3 py-2 text-xs font-semibold text-[#29493d]">
                     Tự kiểm tra: <InlineCode text={message.checkQuestion} />
                   </p>
+                ) : null}
+                {message.role === "assistant" ? (
+                  <button
+                    type="button"
+                    onClick={() => onToggleSaveMessage(index, message)}
+                    className="mt-3 rounded-lg border border-[#356b58]/15 bg-white/60 px-2.5 py-1.5 text-[11px] font-bold text-[#356b58] transition hover:bg-white"
+                  >
+                    {isMessageSaved(index) ? "★ Đã lưu" : "☆ Lưu câu trả lời AI"}
+                  </button>
                 ) : null}
               </div>
             );
@@ -1479,6 +1848,100 @@ function SourceNotes({ question }: { question: PracticeQuestion }) {
           </p>
         </div>
       ))}
+    </div>
+  );
+}
+
+function SavedLibrary({
+  items,
+  onClose,
+  onRemove,
+  onOpenQuestion,
+}: {
+  items: SavedItem[];
+  onClose: () => void;
+  onRemove: (itemId: string) => void;
+  onOpenQuestion: (questionId: string) => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-[#102d26]/35 p-3 backdrop-blur-sm sm:p-5" role="presentation">
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label="Nội dung đã lưu"
+        className="flex h-full w-full max-w-xl flex-col overflow-hidden rounded-[2rem] border border-white/35 bg-[#f7f5ed] shadow-2xl"
+      >
+        <header className="flex items-start justify-between gap-4 border-b border-[#173f35]/12 p-5 sm:p-7">
+          <div>
+            <p className="font-mono text-xs font-bold tracking-[0.15em] text-[#ba4b2f] uppercase">
+              Saved library
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold">Nội dung đáng xem lại</h2>
+            <p className="mt-2 text-sm text-[#64736c]">
+              {items.length} mục · lưu trên trình duyệt này
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Đóng danh sách đã lưu"
+            className="grid size-10 shrink-0 place-items-center rounded-full border border-[#173f35]/15 bg-white text-lg font-bold"
+          >
+            ×
+          </button>
+        </header>
+
+        <div className="flex-1 space-y-3 overflow-y-auto p-4 sm:p-6">
+          {items.map((item) => (
+            <article key={item.id} className="rounded-2xl border border-[#173f35]/12 bg-white/75 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className={`rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase ${item.kind === "question" ? "bg-[#d7ff91] text-[#356b58]" : "bg-[#e3ddff] text-[#55468c]"}`}>
+                  {item.kind === "question" ? "Câu hỏi" : "AI trả lời"}
+                </span>
+                <time className="font-mono text-[10px] text-[#78867f]">
+                  {new Date(item.savedAt).toLocaleDateString("vi-VN")}
+                </time>
+              </div>
+              <h3 className="mt-3 font-semibold">{item.title}</h3>
+              {item.context ? (
+                <p className="mt-2 line-clamp-3 text-xs leading-5 text-[#718078]">
+                  <InlineCode text={item.context} />
+                </p>
+              ) : null}
+              <details className="group mt-3 rounded-xl bg-[#f2f4ed] px-3 py-2.5">
+                <summary className="cursor-pointer list-none text-xs font-bold text-[#356b58]">
+                  <span className="group-open:hidden">Xem nội dung ↓</span>
+                  <span className="hidden group-open:inline">Thu gọn ↑</span>
+                </summary>
+                <p className="mt-3 whitespace-pre-line text-sm leading-6 text-[#465c52]">
+                  <InlineCode text={item.content} />
+                </p>
+              </details>
+              <div className="mt-4 flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => onOpenQuestion(item.questionId)}
+                  className="rounded-lg border border-[#356b58]/18 bg-white px-3 py-2 text-xs font-bold text-[#356b58]"
+                >
+                  Mở câu gốc
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRemove(item.id)}
+                  className="rounded-lg px-3 py-2 text-xs font-bold text-[#a0442d] hover:bg-[#f8e8df]"
+                >
+                  Bỏ lưu
+                </button>
+              </div>
+            </article>
+          ))}
+          {!items.length ? (
+            <div className="rounded-2xl border border-dashed border-[#173f35]/20 px-5 py-12 text-center text-sm leading-6 text-[#64736c]">
+              Chưa lưu gì. Dùng nút ☆ ở câu hỏi hoặc phản hồi AI mà mày thấy đáng xem lại.
+            </div>
+          ) : null}
+        </div>
+      </aside>
     </div>
   );
 }

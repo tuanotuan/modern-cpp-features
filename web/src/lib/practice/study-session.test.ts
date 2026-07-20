@@ -21,6 +21,8 @@ describe("study session persistence", () => {
           followUpChat: [
             { role: "user", content: "Why does declaration order matter?" },
           ],
+          deepDiveOpen: true,
+          deepDiveAnswer: "auto drops the top-level const during deduction.",
         },
       },
       identity.id,
@@ -32,6 +34,8 @@ describe("study session persistence", () => {
       answer: "Aggregate initialization follows declaration order.",
       revealed: true,
       sourceVisible: true,
+      deepDiveOpen: true,
+      deepDiveAnswer: "auto drops the top-level const during deduction.",
     });
   });
 
