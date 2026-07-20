@@ -40,6 +40,7 @@ declare
     (now() at time zone 'Asia/Ho_Chi_Minh')
   )::date;
   v_monthly_actual bigint;
+  v_monthly_reserved bigint;
   v_daily_actual bigint;
 begin
   if v_user_id is null then
@@ -59,8 +60,8 @@ begin
   values (v_user_id, v_usage_date)
   on conflict (user_id, usage_date) do nothing;
 
-  select actual_usd_micros
-  into v_monthly_actual
+  select actual_usd_micros, reserved_usd_micros
+  into v_monthly_actual, v_monthly_reserved
   from public.ai_usage_monthly
   where user_id = v_user_id and month_start = v_month_start
   for update;
@@ -71,7 +72,8 @@ begin
   where user_id = v_user_id and usage_date = v_usage_date
   for update;
 
-  if v_monthly_actual >= p_monthly_limit_usd_micros then
+  if v_monthly_actual + v_monthly_reserved + p_reservation_usd_micros
+    > p_monthly_limit_usd_micros then
     return jsonb_build_object(
       'status', 'monthly_exceeded',
       'usage_date', v_usage_date,
