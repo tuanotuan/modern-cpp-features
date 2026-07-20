@@ -48,8 +48,10 @@ jobs:
       - run: npm ci
       - run: npm run content:auto
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          AI_MODEL: gemini-3-flash-preview
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_LUNA_MODEL: gpt-5.6-luna
+          OPENAI_TERRA_MODEL: gpt-5.6-terra
+          OPENAI_MONTHLY_BUDGET_USD: "5"
       - run: npm run validate
       - name: Commit refreshed content
         working-directory: .

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "sourceRevision": "cb292db61eb2416496ef956b848c7457800000219c93f4ca5a27d56b0dd30bb4",
+  "sourceRevision": "cf562257557efe55d67ff8d3c7dcdf872ad7422f3467251759f82d82a74ca28c",
   "lessons": [
     {
       "id": "cpp98-object-variable-memory",
@@ -1828,53 +1828,53 @@
       "title": "Day 16 — override",
       "knowledgePath": "cpp11/16_override/knowledge.md",
       "codePath": "cpp11/16_override/main.cpp",
-      "sourceHash": "a28dfa796b924fc80685b2175d2126c1a7cad1f7f8b3e0836b2e9ed0dda4e9d5",
+      "sourceHash": "1b45ef38d22b76f3bc79ef7f055599e7342f40260916abd9ddec4c92ce217921",
       "sections": [
         {
           "id": "what-problem-does-it-solve",
           "heading": "1. What Problem Does It Solve?",
-          "bodyMarkdown": "`override` helps the compiler check that a function in a child class really replaces a virtual function from the parent class.\n\nIt catches mistakes such as:\n\n- Wrong function name\n- Wrong parameter type\n- Missing `const`\n\n---",
+          "bodyMarkdown": "`override` helps the compiler check that a function in a child class really replaces a virtual function from the parent class.\r\n\r\nIt catches mistakes such as:\r\n\r\n- Wrong function name\r\n- Wrong parameter type\r\n- Missing `const`\r\n\r\n---",
           "bodyText": "override helps the compiler check that a function in a child class really replaces a virtual function from the parent class.It catches mistakes such as:Wrong function nameWrong parameter typeMissing const"
         },
         {
           "id": "minimal-syntax",
           "heading": "2. Minimal Syntax",
-          "bodyMarkdown": "```cpp\nclass Animal {\npublic:\n    virtual void talk();\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() override;\n};\n```\n\nRemember:\n\n```text\nParent class: virtual\nChild class: override\n```\n\n---",
-          "bodyText": "class Animal {\npublic:\n    virtual void talk();\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() override;\n};Remember:Parent class: virtual\nChild class: override"
+          "bodyMarkdown": "```cpp\r\nclass Animal {\r\npublic:\r\n    virtual void talk();\r\n};\r\n\r\nclass Cat : public Animal {\r\npublic:\r\n    void talk() override;\r\n};\r\n```\r\n\r\nRemember:\r\n\r\n```text\r\nParent class: virtual\r\nChild class: override\r\n```\r\n\r\n---",
+          "bodyText": "class Animal {\r\npublic:\r\n    virtual void talk();\r\n};\r\n\r\nclass Cat : public Animal {\r\npublic:\r\n    void talk() override;\r\n};Remember:Parent class: virtual\r\nChild class: override"
         },
         {
           "id": "simple-example",
           "heading": "3. Simple Example",
-          "bodyMarkdown": "```cpp\nclass Animal {\npublic:\n    virtual void talk() {\n        cout << \"Animal sound\";\n    }\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() override {\n        cout << \"Meow\";\n    }\n};\n```\n\nWhen an `Animal` pointer points to a `Cat` object:\n\n```cpp\nCat cat;\nAnimal* p = &cat;\n\np->talk();\n```\n\nResult:\n\n```text\nMeow\n```\n\n---",
-          "bodyText": "class Animal {\npublic:\n    virtual void talk() {\n        cout << \"Animal sound\";\n    }\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() override {\n        cout << \"Meow\";\n    }\n};When an Animal pointer points to a Cat object:Cat cat;\nAnimal* p = &cat;\n\np->talk();Result:Meow"
+          "bodyMarkdown": "```cpp\r\nclass Animal {\r\npublic:\r\n    virtual void talk() {\r\n        cout << \"Animal sound\";\r\n    }\r\n};\r\n\r\nclass Cat : public Animal {\r\npublic:\r\n    void talk() override {\r\n        cout << \"Meow\";\r\n    }\r\n};\r\n```\r\n\r\nWhen an `Animal` pointer points to a `Cat` object:\r\n\r\n```cpp\r\nCat cat;\r\nAnimal* p = &cat;\r\n\r\np->talk();\r\n```\r\n\r\nResult:\r\n\r\n```text\r\nMeow\r\n```\r\n\r\n---",
+          "bodyText": "class Animal {\r\npublic:\r\n    virtual void talk() {\r\n        cout << \"Animal sound\";\r\n    }\r\n};\r\n\r\nclass Cat : public Animal {\r\npublic:\r\n    void talk() override {\r\n        cout << \"Meow\";\r\n    }\r\n};When an Animal pointer points to a Cat object:Cat cat;\r\nAnimal* p = &cat;\r\n\r\np->talk();Result:Meow"
         },
         {
           "id": "why-is-override-useful",
           "heading": "4. Why Is override Useful?",
-          "bodyMarkdown": "Suppose the programmer writes the wrong function name:\n\n```cpp\nvoid taak();\n```\n\n`taak()` does not replace `talk()`.\n\nWith:\n\n```cpp\nvoid taak() override;\n```\n\nthe compiler reports an error immediately.\n\n---",
+          "bodyMarkdown": "Suppose the programmer writes the wrong function name:\r\n\r\n```cpp\r\nvoid taak();\r\n```\r\n\r\n`taak()` does not replace `talk()`.\r\n\r\nWith:\r\n\r\n```cpp\r\nvoid taak() override;\r\n```\r\n\r\nthe compiler reports an error immediately.\r\n\r\n---",
           "bodyText": "Suppose the programmer writes the wrong function name:void taak();taak() does not replace talk().With:void taak() override;the compiler reports an error immediately."
         },
         {
           "id": "common-mistake-missing-const",
           "heading": "5. Common Mistake: Missing const",
-          "bodyMarkdown": "These two functions are different:\n\n```cpp\nvoid talk() const;\nvoid talk();\n```\n\nCorrect code:\n\n```cpp\nclass Animal {\npublic:\n    virtual void talk() const;\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() const override;\n};\n```\n\n---",
-          "bodyText": "These two functions are different:void talk() const;\nvoid talk();Correct code:class Animal {\npublic:\n    virtual void talk() const;\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() const override;\n};"
+          "bodyMarkdown": "These two functions are different:\r\n\r\n```cpp\r\nvoid talk() const;\r\nvoid talk();\r\n```\r\n\r\nCorrect code:\r\n\r\n```cpp\r\nclass Animal {\r\npublic:\r\n    virtual void talk() const;\r\n};\r\n\r\nclass Cat : public Animal {\r\npublic:\r\n    void talk() const override;\r\n};\r\n```\r\n\r\n---",
+          "bodyText": "These two functions are different:void talk() const;\r\nvoid talk();Correct code:class Animal {\r\npublic:\r\n    virtual void talk() const;\r\n};\r\n\r\nclass Cat : public Animal {\r\npublic:\r\n    void talk() const override;\r\n};"
         },
         {
           "id": "important-rules",
           "heading": "6. Important Rules",
-          "bodyMarkdown": "- The parent function must be `virtual`.\n- Write `override` in the child class.\n- The function names must match.\n- The parameters must match.\n- `const` must also match.\n- Use `override` whenever a child class replaces a virtual function.\n\n---",
+          "bodyMarkdown": "- The parent function must be `virtual`.\r\n- Write `override` in the child class.\r\n- The function names must match.\r\n- The parameters must match.\r\n- `const` must also match.\r\n- Use `override` whenever a child class replaces a virtual function.\r\n\r\n---",
           "bodyText": "The parent function must be virtual.Write override in the child class.The function names must match.The parameters must match.const must also match.Use override whenever a child class replaces a virtual function."
         },
         {
           "id": "easy-mental-model",
           "heading": "7. Easy Mental Model",
-          "bodyMarkdown": "```text\nvirtual  = allows replacing\noverride = checks replacing\n```\n\n`override` means:\n\n> Compiler, check that this child function really replaces a parent virtual function.",
-          "bodyText": "virtual  = allows replacing\noverride = checks replacingoverride means:Compiler, check that this child function really replaces a parent virtual function."
+          "bodyMarkdown": "```text\r\nvirtual  = allows replacing\r\noverride = checks replacing\r\n```\r\n\r\n`override` means:\r\n\r\n> Compiler, check that this child function really replaces a parent virtual function.",
+          "bodyText": "virtual  = allows replacing\r\noverride = checks replacingoverride means:Compiler, check that this child function really replaces a parent virtual function."
         }
       ],
       "checklistItems": [],
-      "code": "#include <iostream>\nusing namespace std;\n\nclass Animal {\npublic:\n    virtual void talk() {\n        cout << \"Animal\\n\";\n    }\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() override {\n        cout << \"Meow\\n\";\n    }\n};\n\nint main() {\n    Cat cat;\n    Animal* p = &cat;\n\n    p->talk();\n}"
+      "code": "#include <iostream>\r\nusing namespace std;\r\n\r\nclass Animal {\r\npublic:\r\n    virtual void talk() {\r\n        cout << \"Animal\\n\";\r\n    }\r\n};\r\n\r\nclass Cat : public Animal {\r\npublic:\r\n    void talk() override {\r\n        cout << \"Meow\\n\";\r\n    }\r\n};\r\n\r\nint main() {\r\n    Cat cat;\r\n    Animal* p = &cat;\r\n\r\n    p->talk();\r\n}"
     },
     {
       "id": "cpp11-final",

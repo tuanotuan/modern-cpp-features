@@ -23,7 +23,16 @@ export type CloudContext = {
   account: PracticeAccount | null;
   progress: PracticeProgress;
   approvals: QuestionApproval[];
+  aiUsage: AiUsageSummary | null;
   error: boolean;
+};
+
+export type AiUsageSummary = {
+  actualUsdMicros: number;
+  requestCount: number;
+  inputTokens: number;
+  outputTokens: number;
+  lastModel: string | null;
 };
 
 export async function loadCloudContext(): Promise<CloudContext> {
@@ -33,6 +42,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
       account: null,
       progress: EMPTY_PROGRESS,
       approvals: [],
+      aiUsage: null,
       error: false,
     };
   }
@@ -45,6 +55,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
       account: null,
       progress: EMPTY_PROGRESS,
       approvals: [],
+      aiUsage: null,
       error: false,
     };
   }
@@ -57,6 +68,11 @@ export async function loadCloudContext(): Promise<CloudContext> {
   const { data: approvalRows, error: approvalError } = await supabase
     .from("question_approvals")
     .select("question_id, question_version, source_hash");
+  const { data: usageRow } = await supabase
+    .from("ai_usage_monthly")
+    .select("actual_usd_micros, request_count, input_tokens, output_tokens, last_model")
+    .eq("month_start", new Date().toISOString().slice(0, 7) + "-01")
+    .maybeSingle();
 
   return {
     enabled: true,
@@ -67,6 +83,16 @@ export async function loadCloudContext(): Promise<CloudContext> {
     approvals: approvalError
       ? []
       : rowsToApprovals((approvalRows ?? []) as QuestionApprovalRow[]),
+    aiUsage: usageRow
+      ? {
+          actualUsdMicros: Number(usageRow.actual_usd_micros),
+          requestCount: Number(usageRow.request_count),
+          inputTokens: Number(usageRow.input_tokens),
+          outputTokens: Number(usageRow.output_tokens),
+          lastModel:
+            typeof usageRow.last_model === "string" ? usageRow.last_model : null,
+        }
+      : null,
     error: Boolean(error || approvalError),
   };
 }

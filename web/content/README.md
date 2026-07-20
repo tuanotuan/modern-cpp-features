@@ -45,11 +45,11 @@ added, edited, renamed, or deleted. It:
 - registers new lessons and preserves stable IDs across detectable renames;
 - archives questions whose lesson was deleted;
 - marks questions grounded in an older hash as `needs_review`;
-- asks Gemini for two new drafts when a changed lesson has no question grounded
+- asks OpenAI Luna for two new drafts when a changed lesson has no question grounded
   in its current hash;
 - validates and commits the refreshed registry/question bank/manifest.
 
-The repository needs a GitHub Actions secret named `GEMINI_API_KEY`. For a local
+The repository needs a GitHub Actions secret named `OPENAI_API_KEY`. For a local
 preview of the same deterministic reconciliation, run:
 
 ```bash
@@ -58,11 +58,11 @@ npm run content:status
 ```
 
 `content:refresh` performs discovery/archive/manifest refresh without calling
-Gemini. `content:auto` is the full CI command including safe draft generation.
+OpenAI. `content:auto` is the full CI command including safe draft generation.
 
 ## Drafting and approving questions
 
-Generate one to five grounded drafts for a lesson with Gemini:
+Generate one to five grounded drafts for a lesson with OpenAI Luna:
 
 ```bash
 npm run content:draft -- --lesson cpp11-range-based-for --count 2

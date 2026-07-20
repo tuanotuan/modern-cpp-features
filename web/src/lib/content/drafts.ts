@@ -1,9 +1,13 @@
-import { GoogleGenAI } from "@google/genai";
+import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 
+import {
+  openAIClient,
+  openAIModel,
+  safetyIdentifier,
+} from "../ai/openai";
 import type { GeneratedLesson } from "./schema";
 
-const DEFAULT_MODEL = "gemini-3-flash-preview";
 const MAX_PROVIDER_ATTEMPTS = 3;
 
 const aiQuestionDraftSchema = z.object({
@@ -31,118 +35,43 @@ const aiDraftResponseSchema = z.object({
 
 export type AiQuestionDraft = z.infer<typeof aiQuestionDraftSchema>;
 
-const aiDraftResponseJsonSchema = {
-  type: "object",
-  additionalProperties: false,
-  required: ["questions"],
-  properties: {
-    questions: {
-      type: "array",
-      minItems: 1,
-      maxItems: 5,
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: [
-          "type",
-          "difficulty",
-          "estimatedMinutes",
-          "prompt",
-          "code",
-          "hint",
-          "answer",
-          "rubric",
-          "sources",
-        ],
-        properties: {
-          type: {
-            type: "string",
-            enum: ["recall", "code_reasoning", "pitfall", "scenario"],
-          },
-          difficulty: {
-            type: "string",
-            enum: ["beginner", "intermediate", "advanced"],
-          },
-          estimatedMinutes: { type: "integer", minimum: 1, maximum: 15 },
-          prompt: { type: "string" },
-          code: { type: ["string", "null"] },
-          hint: { type: "string" },
-          answer: {
-            type: "object",
-            additionalProperties: false,
-            required: ["short", "detailed"],
-            properties: {
-              short: { type: "string" },
-              detailed: { type: "string" },
-            },
-          },
-          rubric: {
-            type: "object",
-            additionalProperties: false,
-            required: ["required", "bonus", "misconceptions"],
-            properties: {
-              required: { type: "array", items: { type: "string" } },
-              bonus: { type: "array", items: { type: "string" } },
-              misconceptions: { type: "array", items: { type: "string" } },
-            },
-          },
-          sources: {
-            type: "array",
-            items: {
-              type: "object",
-              additionalProperties: false,
-              required: ["sectionId"],
-              properties: { sectionId: { type: "string" } },
-            },
-          },
-        },
-      },
-    },
-  },
-};
-
-export async function generateQuestionDraftsWithGemini({
+export async function generateQuestionDraftsWithOpenAI({
   lesson,
   count,
 }: {
   lesson: GeneratedLesson;
   count: number;
 }): Promise<AiQuestionDraft[]> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY is missing");
   if (!Number.isInteger(count) || count < 1 || count > 5) {
     throw new Error("Draft count must be an integer from 1 to 5");
   }
 
-  const client = new GoogleGenAI({ apiKey });
+  const client = openAIClient();
+  const model = openAIModel("luna");
   const interaction = await retryProviderRateLimit(() =>
-    client.interactions.create(
-      {
-        model: process.env.AI_MODEL || DEFAULT_MODEL,
-        store: false,
-        system_instruction:
-          "You create grounded C++ interview questions from the supplied private study note. Return Vietnamese questions and answers. Never introduce facts not supported by the note.",
-        input: buildDraftPrompt(lesson, count),
-        generation_config: {
-          thinking_level: "high",
-          temperature: 0.35,
-          max_output_tokens: 6000,
-        },
-        response_format: {
-          type: "text",
-          mime_type: "application/json",
-          schema: aiDraftResponseJsonSchema,
-        },
+    client.responses.parse({
+      model,
+      store: false,
+      safety_identifier: safetyIdentifier("content-automation"),
+      instructions:
+        "You create grounded C++ interview questions from the supplied private study note. Return Vietnamese questions and answers. Never introduce facts not supported by the note.",
+      input: buildDraftPrompt(lesson, count),
+      reasoning: { effort: "low" },
+      max_output_tokens: 6000,
+      text: {
+        format: zodTextFormat(aiDraftResponseSchema, "question_drafts"),
+        verbosity: "medium",
       },
-      { timeout: 60_000, maxRetries: 1 },
-    ),
+    }),
   );
 
-  if (!interaction.output_text) throw new Error("Gemini returned an empty response");
-  const result = aiDraftResponseSchema.parse(JSON.parse(interaction.output_text));
+  if (!interaction.output_parsed) {
+    throw new Error("OpenAI returned an empty draft response");
+  }
+  const result = interaction.output_parsed;
   if (result.questions.length !== count) {
     throw new Error(
-      `Gemini returned ${result.questions.length} drafts; expected ${count}`,
+      `OpenAI returned ${result.questions.length} drafts; expected ${count}`,
     );
   }
 
@@ -151,7 +80,7 @@ export async function generateQuestionDraftsWithGemini({
     for (const source of question.sources) {
       if (!sectionIds.has(source.sectionId)) {
         throw new Error(
-          `Gemini cited unknown section ${source.sectionId} in ${lesson.id}`,
+          `OpenAI cited unknown section ${source.sectionId} in ${lesson.id}`,
         );
       }
     }
@@ -178,7 +107,7 @@ export async function retryProviderRateLimit<T>(
       if (!isProviderRateLimitError(error) || attempt >= maxAttempts) throw error;
       const delayMs = providerRetryDelayMs(error);
       console.warn(
-        `Gemini rate-limited draft generation; retrying attempt ${attempt + 1}/${maxAttempts} in ${Math.ceil(delayMs / 1000)}s.`,
+        `OpenAI rate-limited draft generation; retrying attempt ${attempt + 1}/${maxAttempts} in ${Math.ceil(delayMs / 1000)}s.`,
       );
       await sleep(delayMs);
     }

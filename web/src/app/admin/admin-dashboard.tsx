@@ -8,7 +8,10 @@ import type {
   AdminQuestion,
   AdminQuestionStatus,
 } from "@/lib/admin/dashboard";
-import type { PracticeAccount } from "@/lib/practice/cloud-server";
+import type {
+  AiUsageSummary,
+  PracticeAccount,
+} from "@/lib/practice/cloud-server";
 
 const statusLabels: Record<AdminQuestionStatus, string> = {
   active: "Đang dùng",
@@ -21,9 +24,11 @@ const standardLabels = { cpp98: "C++98", cpp11: "C++11", cpp20: "C++20" };
 
 export function AdminDashboard({
   account,
+  aiUsage,
   initialSnapshot,
 }: {
   account: PracticeAccount;
+  aiUsage: AiUsageSummary | null;
   initialSnapshot: AdminDashboardSnapshot;
 }) {
   const [questions, setQuestions] = useState(initialSnapshot.questions);
@@ -160,11 +165,17 @@ export function AdminDashboard({
           ) : null}
         </section>
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <MetricCard label="Nguồn tri thức" value={initialSnapshot.metrics.lessons} detail={`${uncovered.length} bài chưa có câu hiện tại`} tone="dark" />
           <MetricCard label="Ngân hàng câu hỏi" value={questions.filter((item) => item.status !== "archived").length} detail={`${activeCount} câu đang dùng`} />
           <MetricCard label="Review queue" value={reviewQueue.length} detail={`${staleCount} câu cần rà lại nguồn`} tone={reviewQueue.length ? "warning" : "default"} />
           <MetricCard label="Lượt ôn đã lưu" value={initialSnapshot.metrics.totalReviews} detail={`${initialSnapshot.metrics.practicedQuestions} câu đã từng luyện`} />
+          <MetricCard
+            label="AI web tháng này"
+            value={`$${((aiUsage?.actualUsdMicros ?? 0) / 1_000_000).toFixed(3)}`}
+            detail={`${aiUsage?.requestCount ?? 0} lượt · giới hạn $5`}
+            tone={(aiUsage?.actualUsdMicros ?? 0) >= 4_000_000 ? "warning" : "default"}
+          />
         </section>
 
         <details className="group mt-8 overflow-hidden rounded-[2rem] border border-[#ba4b2f]/20 bg-[#fff7e8]">
@@ -399,7 +410,7 @@ function CoveragePanel({ lessons }: { lessons: AdminDashboardSnapshot["lessons"]
   );
 }
 
-function MetricCard({ label, value, detail, tone = "default" }: { label: string; value: number; detail: string; tone?: "default" | "dark" | "warning" }) {
+function MetricCard({ label, value, detail, tone = "default" }: { label: string; value: React.ReactNode; detail: string; tone?: "default" | "dark" | "warning" }) {
   const classes = tone === "dark" ? "bg-[#173f35] text-white" : tone === "warning" ? "bg-[#fff0d2] border border-[#ba4b2f]/20" : "bg-white/65 border border-[#173f35]/15";
   return <div className={`rounded-[1.6rem] p-5 ${classes}`}><p className={`text-xs font-bold uppercase tracking-[0.12em] ${tone === 'dark' ? 'text-[#d7ff91]' : 'text-[#64736c]'}`}>{label}</p><p className="mt-3 text-4xl font-semibold">{value}</p><p className={`mt-2 text-xs ${tone === 'dark' ? 'text-white/65' : 'text-[#64736c]'}`}>{detail}</p></div>;
 }

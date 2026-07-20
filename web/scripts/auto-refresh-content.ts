@@ -12,7 +12,7 @@ import {
   writeLessonRegistry,
 } from "../src/lib/content/automation";
 import {
-  generateQuestionDraftsWithGemini,
+  generateQuestionDraftsWithOpenAI,
   isProviderRateLimitError,
   nextQuestionIds,
 } from "../src/lib/content/drafts";
@@ -82,7 +82,7 @@ async function main() {
     console.log(`Generating safe drafts for lesson ${lesson.id}...`);
     let aiDrafts;
     try {
-      aiDrafts = await generateQuestionDraftsWithGemini({
+      aiDrafts = await generateQuestionDraftsWithOpenAI({
         lesson,
         count: DRAFTS_PER_CHANGED_LESSON,
       });
@@ -92,7 +92,7 @@ async function main() {
         ...lessonsNeedingDrafts.slice(lessonIndex).map((item) => item.id),
       );
       console.warn(
-        `Gemini free quota is exhausted; deferred draft generation for: ${deferredLessonIds.join(", ")}.`,
+        `OpenAI is rate-limited or the project budget is exhausted; deferred draft generation for: ${deferredLessonIds.join(", ")}.`,
       );
       break;
     }
