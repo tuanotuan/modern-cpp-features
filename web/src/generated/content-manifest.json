@@ -3198,6 +3198,190 @@
       "version": 1
     },
     {
+      "id": "cpp11-override-003",
+      "lessonId": "cpp11-override",
+      "type": "code_reasoning",
+      "difficulty": "intermediate",
+      "estimatedMinutes": 5,
+      "prompt": "Đoạn mã sau có vấn đề gì? `override` giúp phát hiện vấn đề đó như thế nào, và cần sửa ra sao để hàm ở `Cat` thực sự ghi đè hàm của `Animal`?\n\n```cpp\nclass Animal {\npublic:\n    virtual void talk() const;\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() override;\n};\n```",
+      "code": "class Animal {\npublic:\n    virtual void talk() const;\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() override;\n};",
+      "hint": "So sánh đầy đủ tên hàm, tham số và `const` giữa lớp cha và lớp con.",
+      "answer": {
+        "short": "`Cat::talk()` thiếu `const`, nên không khớp với hàm ảo của `Animal`. Sửa thành `void talk() const override;`.",
+        "detailed": "Trong lớp cha, hàm được khai báo là `virtual void talk() const;`, còn trong lớp con lại là `void talk() override;`. Hai hàm khác nhau vì một hàm có `const` và một hàm không có. Khi dùng `override`, trình biên dịch sẽ báo lỗi vì hàm trong `Cat` không thực sự thay thế hàm ảo trong `Animal`. Cách sửa là:\n\n```cpp\nclass Cat : public Animal {\npublic:\n    void talk() const override;\n};\n```\n\n`const` cũng phải khớp khi một hàm ở lớp con ghi đè hàm ảo của lớp cha."
+      },
+      "rubric": {
+        "required": [
+          "Nhận ra sự khác biệt là thiếu `const`.",
+          "Nêu được `override` khiến trình biên dịch kiểm tra và báo lỗi.",
+          "Đưa ra bản sửa có `const override`."
+        ],
+        "bonus": [
+          "Giải thích rằng tên hàm, tham số và `const` đều phải khớp."
+        ],
+        "misconceptions": [
+          "Cho rằng chỉ cần cùng tên hàm là đủ để ghi đè.",
+          "Cho rằng `const` không ảnh hưởng đến việc khớp hàm."
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "common-mistake-missing-const"
+        },
+        {
+          "sectionId": "important-rules"
+        },
+        {
+          "sectionId": "what-problem-does-it-solve"
+        }
+      ],
+      "sourceHash": "1b45ef38d22b76f3bc79ef7f055599e7342f40260916abd9ddec4c92ce217921",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp11-override-004",
+      "lessonId": "cpp11-override",
+      "type": "scenario",
+      "difficulty": "beginner",
+      "estimatedMinutes": 4,
+      "prompt": "Một lập trình viên muốn `Cat` thay thế hành vi `talk()` của `Animal` khi gọi qua con trỏ `Animal*`, nhưng đã viết nhầm tên hàm trong lớp con:\n\n```cpp\nclass Animal {\npublic:\n    virtual void talk();\n};\n\nclass Cat : public Animal {\npublic:\n    void taak();\n};\n```\n\nHãy giải thích vì sao `taak()` không thay thế `talk()`, và cho biết nên viết thế nào để trình biên dịch kiểm tra ý định này.",
+      "code": "class Animal {\npublic:\n    virtual void talk();\n};\n\nclass Cat : public Animal {\npublic:\n    void taak();\n};",
+      "hint": "`override` dùng để yêu cầu trình biên dịch xác nhận hàm lớp con thực sự thay thế một hàm ảo của lớp cha.",
+      "answer": {
+        "short": "`taak()` sai tên nên không thay thế `talk()`. Viết `void talk() override;` để trình biên dịch kiểm tra và báo lỗi nếu không khớp.",
+        "detailed": "`Animal` có hàm ảo tên `talk()`, nhưng `Cat` khai báo `taak()`. Vì tên hàm không khớp, `taak()` không ghi đè `talk()`. Nếu viết:\n\n```cpp\nclass Cat : public Animal {\npublic:\n    void taak() override;\n};\n```\n\ntrình biên dịch sẽ báo lỗi ngay vì `taak()` không thay thế hàm ảo nào của lớp cha. Cách đúng là:\n\n```cpp\nclass Cat : public Animal {\npublic:\n    void talk() override;\n};\n```\n\nỞ đây, `virtual` trong lớp cha cho phép thay thế, còn `override` trong lớp con giúp kiểm tra việc thay thế đó."
+      },
+      "rubric": {
+        "required": [
+          "Nhận ra `taak` và `talk` là hai tên khác nhau.",
+          "Giải thích rằng hàm sai tên không ghi đè hàm của lớp cha.",
+          "Đưa ra cách sửa `void talk() override;`."
+        ],
+        "bonus": [
+          "Phân biệt được vai trò của `virtual` và `override`."
+        ],
+        "misconceptions": [
+          "Cho rằng trình biên dịch tự hiểu `taak()` là lỗi chính tả của `talk()`.",
+          "Cho rằng chỉ cần khai báo một hàm trong lớp con là nó tự động ghi đè."
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "why-is-override-useful"
+        },
+        {
+          "sectionId": "minimal-syntax"
+        },
+        {
+          "sectionId": "easy-mental-model"
+        },
+        {
+          "sectionId": "important-rules"
+        }
+      ],
+      "sourceHash": "1b45ef38d22b76f3bc79ef7f055599e7342f40260916abd9ddec4c92ce217921",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp11-final-003",
+      "lessonId": "cpp11-final",
+      "type": "code_reasoning",
+      "difficulty": "intermediate",
+      "estimatedMinutes": 5,
+      "prompt": "Đoạn mã sau có lỗi gì? Hãy xác định chính xác khai báo nào vi phạm quy tắc của `final` và giải thích cách sửa phù hợp nếu mục tiêu là cho phép `Derived::run()` ghi đè `Base::run()` nhưng không cho lớp con tiếp tục ghi đè hàm này.\n\n```cpp\nclass Base {\npublic:\n    virtual void run();\n};\n\nclass Derived : public Base {\npublic:\n    void run() override final;\n};\n\nclass MoreDerived : public Derived {\npublic:\n    void run() override;\n};\n```",
+      "code": "class Base {\npublic:\n    virtual void run();\n};\n\nclass Derived : public Base {\npublic:\n    void run() override final;\n};\n\nclass MoreDerived : public Derived {\npublic:\n    void run() override;\n};",
+      "hint": "Phân biệt vai trò của `override` và `final`: một từ xác nhận việc ghi đè, còn một từ chặn việc ghi đè tiếp theo.",
+      "answer": {
+        "short": "`MoreDerived::run()` vi phạm vì `Derived::run()` đã được đánh dấu `final`. Giữ `override final` ở `Derived::run()` và loại bỏ `MoreDerived::run()` hoặc không cho lớp sau ghi đè hàm này.",
+        "detailed": "`Derived::run()` hợp lệ: nó ghi đè hàm virtual của `Base`, nên `override` xác nhận quan hệ đó; đồng thời `final` quy định rằng không lớp dẫn xuất nào sau `Derived` được ghi đè `run()` nữa. Vì vậy, khai báo `MoreDerived::run() override` gây lỗi biên dịch. Nếu thiết kế yêu cầu `Derived` là lớp cuối cùng được thay đổi hành vi của `run`, hãy giữ `void run() override final;` và không khai báo một bản ghi đè khác trong lớp dẫn xuất sau đó. Nếu muốn tiếp tục cho phép ghi đè, không được đánh dấu hàm ở `Derived` là `final`. Đây là quy tắc ở mức hàm, khác với việc đánh dấu toàn bộ lớp là `final`."
+      },
+      "rubric": {
+        "required": [
+          "Nhận diện đúng lỗi biên dịch tại `MoreDerived::run()`.",
+          "Giải thích đúng rằng `final` chặn mọi ghi đè tiếp theo.",
+          "Phân biệt được `override` với `final`."
+        ],
+        "bonus": [
+          "Phân biệt `final` ở mức hàm với `final` ở mức lớp."
+        ],
+        "misconceptions": [
+          "Cho rằng `override final` cấm chính `Derived::run()` ghi đè `Base::run()`.",
+          "Cho rằng `override` tự động ngăn các lớp sau ghi đè.",
+          "Cho rằng chỉ cần đánh dấu `MoreDerived::run()` bằng `override` là có thể vượt qua `final`."
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "function-level-final"
+        },
+        {
+          "sectionId": "relationship-with-virtual-and-override"
+        },
+        {
+          "sectionId": "common-errors"
+        },
+        {
+          "sectionId": "mental-model"
+        }
+      ],
+      "sourceHash": "fc7ac9f621f7efded324f5c2a7518355a7517add3b7426ead4c4e40466c85475",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp11-final-004",
+      "lessonId": "cpp11-final",
+      "type": "scenario",
+      "difficulty": "intermediate",
+      "estimatedMinutes": 4,
+      "prompt": "Một nhóm thiết kế một lớp `Connection` đã hoàn thiện và không muốn bất kỳ lớp nào kế thừa từ nó. Trong khi đó, họ có một lớp phân cấp khác chứa thuật toán đã được kiểm chứng: lớp `Derived` cần ghi đè `run()` từ lớp cơ sở, nhưng các lớp cháu không được thay đổi thuật toán này nữa.\n\nBạn sẽ dùng `final` ở đâu trong hai trường hợp trên? Nêu cú pháp tương ứng và giải thích vì sao không nên mặc định thêm `final` vào mọi lớp hoặc mọi hàm.",
+      "hint": "Trường hợp thứ nhất cấm kế thừa toàn bộ lớp; trường hợp thứ hai chỉ cấm ghi đè một hàm virtual sau một điểm cụ thể trong phân cấp.",
+      "answer": {
+        "short": "Dùng `class Connection final` để cấm kế thừa; dùng `void run() override final;` trong `Derived` để cho phép `Derived` ghi đè nhưng cấm các lớp sau ghi đè tiếp. Không nên dùng `final` tràn lan vì nó có thể chặn các mở rộng hợp lệ.",
+        "detailed": "Với `Connection` không được thiết kế làm lớp cơ sở, khai báo `class Connection final { };` biến việc kế thừa từ lớp này thành lỗi biên dịch. Với thuật toán đã được kiểm chứng, nếu `Derived::run()` ghi đè một hàm virtual của lớp cơ sở nhưng phải là điểm cuối của việc thay thế hành vi, dùng `void run() override final;`. `override` xác nhận rằng hàm thực sự ghi đè hàm virtual của lớp cơ sở, còn `final` ngăn mọi lớp dẫn xuất sau `Derived` ghi đè lại hàm đó. Không nên thêm `final` ở mọi nơi: việc này có thể ngăn những phần mở rộng hợp lệ của hệ thống phân cấp. `final` nên thể hiện một chủ đích thiết kế cụ thể, chẳng hạn lớp không dành cho kế thừa hoặc một bất biến/thuật toán không được phép thay đổi."
+      },
+      "rubric": {
+        "required": [
+          "Chọn đúng `final` ở mức lớp cho `Connection`.",
+          "Chọn đúng `override final` ở mức hàm cho thuật toán.",
+          "Giải thích được tác hại của việc sử dụng `final` quá sớm hoặc quá rộng."
+        ],
+        "bonus": [
+          "Liên hệ việc dùng `final` với thuật toán đã được kiểm chứng, quy tắc bảo mật/rủi ro hoặc bất biến."
+        ],
+        "misconceptions": [
+          "Dùng `final` ở hàm để cấm kế thừa toàn bộ lớp.",
+          "Dùng `final` ở lớp nhưng vẫn cho rằng lớp khác có thể kế thừa.",
+          "Cho rằng `final` luôn tốt hơn khả năng mở rộng."
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "class-level-final"
+        },
+        {
+          "sectionId": "function-level-final"
+        },
+        {
+          "sectionId": "practical-uses"
+        },
+        {
+          "sectionId": "recommended-style"
+        },
+        {
+          "sectionId": "common-errors"
+        },
+        {
+          "sectionId": "key-takeaway"
+        }
+      ],
+      "sourceHash": "fc7ac9f621f7efded324f5c2a7518355a7517add3b7426ead4c4e40466c85475",
+      "status": "draft",
+      "version": 1
+    },
+    {
       "id": "cpp11-auto-001",
       "lessonId": "cpp11-auto",
       "type": "recall",
