@@ -2498,6 +2498,312 @@
       "version": 1
     },
     {
+      "id": "cpp11-initializer-list-001",
+      "lessonId": "cpp11-initializer-list",
+      "type": "pitfall",
+      "difficulty": "intermediate",
+      "estimatedMinutes": 5,
+      "prompt": "Tại sao việc sử dụng brace initialization (khởi tạo bằng dấu ngoặc nhọn) lại được coi là an toàn hơn so với các kiểu khởi tạo truyền thống (như dấu `=` hoặc ngoặc đơn `()`)? Hãy giải thích thông qua khái niệm 'narrowing conversion'.",
+      "code": "int x = 3.14;  // Cách cũ\nint y{3.14};  // C++11 brace initialization",
+      "hint": "Hãy nghĩ về điều gì xảy ra với phần thập phân khi gán một số thực vào một biến kiểu số nguyên.",
+      "answer": {
+        "short": "Brace initialization ngăn chặn 'narrowing conversion' bằng cách tạo ra lỗi biên dịch nếu dữ liệu bị mất mát trong quá trình chuyển đổi.",
+        "detailed": "Trong các kiểu khởi tạo cũ, trình biên dịch thường cho phép chuyển đổi kiểu dữ liệu từ lớn sang nhỏ (như từ double sang int) một cách âm thầm, dẫn đến mất mát dữ liệu (ví dụ: 3.14 bị cắt thành 3). Với brace initialization (`{}`), C++11 thực hiện kiểm tra nghiêm ngặt hơn. Nếu một giá trị không thể được biểu diễn chính xác trong kiểu đích, trình biên dịch sẽ báo lỗi 'narrowing conversion', giúp lập trình viên tránh được các lỗi logic khó tìm."
+      },
+      "rubric": {
+        "required": [
+          "Giải thích được narrowing conversion là việc chuyển đổi làm mất mát thông tin",
+          "Nêu được rằng brace initialization sẽ gây lỗi biên dịch (compiler error) thay vì âm thầm thực hiện"
+        ],
+        "bonus": [
+          "Đề cập đến việc tính nhất quán (uniform initialization) trong cú pháp"
+        ],
+        "misconceptions": [
+          "Nhầm lẫn rằng cả hai cách đều gây lỗi biên dịch"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "why-brace-initialization-is-useful"
+        },
+        {
+          "sectionId": "common-mistakes"
+        }
+      ],
+      "sourceHash": "6684d49feac6ccaa58b1651f290e6a61f4e4da3b13dc628118b7b3533b732524",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp11-initializer-list-002",
+      "lessonId": "cpp11-initializer-list",
+      "type": "code_reasoning",
+      "difficulty": "intermediate",
+      "estimatedMinutes": 4,
+      "prompt": "Giả sử bạn đang làm việc với một hệ thống giao dịch chứng khoán. Hãy phân biệt kết quả của hai dòng mã sau và giải thích tại sao sự khác biệt này lại quan trọng khi khởi tạo container:",
+      "code": "std::vector<int> a(5);\nstd::vector<int> b{5};",
+      "hint": "Dấu ngoặc đơn và dấu ngoặc nhọn gọi các constructor khác nhau của std::vector.",
+      "answer": {
+        "short": "`a(5)` tạo ra một vector gồm 5 phần tử có giá trị mặc định (0), trong khi `b{5}` tạo ra một vector chỉ có 1 phần tử mang giá trị là 5.",
+        "detailed": "Sự khác biệt nằm ở constructor được gọi: \n1. `std::vector<int> a(5)` sử dụng constructor nhận tham số là kích thước (size), tạo ra 5 số không.\n2. `std::vector<int> b{5}` ưu tiên sử dụng 'initializer-list constructor', coi giá trị trong ngoặc nhọn là các phần tử thực tế của vector. \nĐiều này rất quan trọng vì nếu nhầm lẫn, bạn có thể tạo ra một danh sách dữ liệu (như danh sách mã lệnh hoặc giá) sai lệch hoàn toàn so với dự định ban đầu."
+      },
+      "rubric": {
+        "required": [
+          "Xác định đúng số lượng phần tử của mỗi vector",
+          "Xác định đúng giá trị bên trong của mỗi vector",
+          "Giải thích được sự ưu tiên của initializer-list constructor khi dùng dấu ngoặc nhọn"
+        ],
+        "bonus": [
+          "Liên hệ được với việc khởi tạo dữ liệu mẫu (test data) trong trading"
+        ],
+        "misconceptions": [
+          "Cho rằng cả hai đều tạo ra vector có 5 phần tử"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "common-mistakes"
+        },
+        {
+          "sectionId": "end-of-day-checklist"
+        }
+      ],
+      "sourceHash": "6684d49feac6ccaa58b1651f290e6a61f4e4da3b13dc628118b7b3533b732524",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp11-lambda-basic-001",
+      "lessonId": "cpp11-lambda-basic",
+      "type": "scenario",
+      "difficulty": "intermediate",
+      "estimatedMinutes": 5,
+      "prompt": "Trong phát triển phần mềm C++, đặc biệt là trong các hệ thống giao dịch (trading), khi nào bạn nên ưu tiên sử dụng lambda thay vì một hàm có tên (named function) và ngược lại?",
+      "hint": "Hãy nghĩ về phạm vi sử dụng (scope), độ dài của logic và khả năng tái sử dụng.",
+      "answer": {
+        "short": "Sử dụng lambda cho logic ngắn, cục bộ và dùng một lần (như trong thuật toán STL). Sử dụng hàm có tên khi logic phức tạp, cần tái sử dụng ở nhiều nơi hoặc khi tên hàm giúp mã nguồn rõ nghĩa hơn.",
+        "detailed": "Theo tài liệu, lambda là các hàm không tên được viết trực tiếp tại nơi cần thiết. Bạn nên sử dụng lambda khi: 1. Logic ngắn gọn và chỉ sử dụng cục bộ. 2. Cần định nghĩa quy tắc tùy chỉnh cho các thuật toán STL (như sắp xếp hoặc lọc lệnh). 3. Trong trading, lambda giúp viết nhanh các quy tắc như kiểm tra khối lượng lệnh (quantity threshold) mà không làm loãng mã nguồn bằng quá nhiều hàm nhỏ. Ngược lại, nên tránh lambda và dùng hàm có tên khi: 1. Logic quá dài và phức tạp. 2. Logic cần được tái sử dụng ở nhiều vị trí khác nhau. 3. Một hàm có tên cụ thể sẽ giúp mã nguồn dễ đọc và bảo trì hơn."
+      },
+      "rubric": {
+        "required": [
+          "Nêu được lambda dùng cho logic ngắn/cục bộ",
+          "Nêu được lambda dùng với thuật toán STL",
+          "Nêu được khi nào nên dùng hàm có tên (tái sử dụng, logic phức tạp)"
+        ],
+        "bonus": [
+          "Liên hệ được ví dụ trong hệ thống trading (lọc lệnh, sắp xếp giá)"
+        ],
+        "misconceptions": [
+          "Cho rằng lambda có thể thay thế hoàn toàn hàm có tên trong mọi trường hợp"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "what-problem-does-lambda-solve"
+        },
+        {
+          "sectionId": "when-should-you-use-lambda"
+        },
+        {
+          "sectionId": "notes-for-trading-performance-sensitive-code"
+        }
+      ],
+      "sourceHash": "b536281a684c420b3787a07c92cc2693a783ef56882533c4e5bf1a2123ca6b41",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp11-lambda-basic-002",
+      "lessonId": "cpp11-lambda-basic",
+      "type": "pitfall",
+      "difficulty": "beginner",
+      "estimatedMinutes": 4,
+      "prompt": "Đoạn mã dưới đây có một lỗi logic phổ biến khi sử dụng lambda. Hãy chỉ ra lỗi đó và cách khắc phục để chương trình in ra đúng kết quả mong muốn.",
+      "code": "auto isLargeOrder = [](int quantity) {\n    return quantity > 1000;\n};\n\nint myQuantity = 1500;\n// Kiểm tra xem đơn hàng có lớn không\nif (isLargeOrder) {\n    std::cout << \"Order is large\";\n}",
+      "hint": "Việc khai báo một lambda và việc thực thi nó là hai bước khác nhau.",
+      "answer": {
+        "short": "Lỗi là quên gọi lambda (Forgetting to call the lambda). Cần sửa thành `isLargeOrder(myQuantity)`.",
+        "detailed": "Trong đoạn mã trên, `isLargeOrder` chỉ là tên biến lưu trữ đối tượng lambda. Khi đặt vào câu lệnh `if (isLargeOrder)`, chương trình không thực thi logic bên trong lambda mà chỉ kiểm tra sự tồn tại của đối tượng đó (thường luôn trả về true hoặc gây cảnh báo). Để thực thi logic kiểm tra khối lượng, bạn phải gọi lambda kèm theo tham số bằng cú pháp: `isLargeOrder(myQuantity)`."
+      },
+      "rubric": {
+        "required": [
+          "Nhận diện được lỗi quên gọi hàm (missing function call)",
+          "Cung cấp đúng cú pháp sửa lỗi: isLargeOrder(myQuantity)"
+        ],
+        "bonus": [
+          "Giải thích được rằng isLargeOrder chỉ là đối tượng lưu trữ logic"
+        ],
+        "misconceptions": [
+          "Nhầm lẫn rằng lambda tự động thực thi khi được đặt trong câu lệnh điều kiện"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "common-mistakes"
+        },
+        {
+          "sectionId": "minimum-syntax"
+        }
+      ],
+      "sourceHash": "b536281a684c420b3787a07c92cc2693a783ef56882533c4e5bf1a2123ca6b41",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp11-lambda-capture-value-001",
+      "lessonId": "cpp11-lambda-capture-value",
+      "type": "code_reasoning",
+      "difficulty": "intermediate",
+      "estimatedMinutes": 5,
+      "prompt": "Xem xét đoạn mã sau đây và cho biết giá trị in ra màn hình là gì? Giải thích tại sao việc thay đổi biến `threshold` sau khi định nghĩa lambda không ảnh hưởng đến kết quả của hàm `isLarge`.",
+      "code": "int threshold = 100;\n\nauto isLarge = [threshold](int quantity) {\n    return quantity > threshold;\n};\n\nthreshold = 200;\n\nif (isLarge(150)) {\n    std::cout << \"True\";\n} else {\n    std::cout << \"False\";\n}",
+      "hint": "Hãy chú ý vào thời điểm biến được copy vào lambda và cơ chế hoạt động của capture by value.",
+      "answer": {
+        "short": "Kết quả in ra là \"True\".",
+        "detailed": "Khi sử dụng capture by value `[threshold]`, lambda sẽ tạo ra một bản sao (copy) của biến tại đúng thời điểm lambda được định nghĩa. Tại thời điểm đó, `threshold` có giá trị là 100. Mọi thay đổi sau đó đối với biến `threshold` gốc (như gán bằng 200) sẽ không cập nhật vào bản sao bên trong lambda. Vì vậy, khi gọi `isLarge(150)`, lambda vẫn thực hiện so sánh `150 > 100`, kết quả là đúng (True)."
+      },
+      "rubric": {
+        "required": [
+          "Giải thích được cơ chế copy tại thời điểm định nghĩa (moment of creation).",
+          "Xác định đúng kết quả in ra là True."
+        ],
+        "bonus": [
+          "Đề cập đến khái niệm 'snapshot' (ảnh chụp nhanh) của biến."
+        ],
+        "misconceptions": [
+          "Nghĩ rằng lambda sẽ tự động cập nhật giá trị mới nhất của biến bên ngoài khi được gọi."
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "important-behavior"
+        },
+        {
+          "sectionId": "common-mistakes"
+        }
+      ],
+      "sourceHash": "6b5987e7109ffa1c075d293934727412220f98def9b4ed10db67737341686905",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp11-lambda-capture-value-002",
+      "lessonId": "cpp11-lambda-capture-value",
+      "type": "pitfall",
+      "difficulty": "intermediate",
+      "estimatedMinutes": 7,
+      "prompt": "Trong các hệ thống giao dịch (trading) yêu cầu hiệu năng cao, tại sao việc sử dụng capture by value cho các đối tượng như `std::vector` hoặc các container lớn lại được coi là một sai lầm phổ biến? Bạn nên sử dụng capture by value trong trường hợp nào để đảm bảo an toàn và hiệu quả?",
+      "hint": "Hãy nghĩ về chi phí tài nguyên khi sao chép dữ liệu và mục đích của việc giữ một giá trị ổn định.",
+      "answer": {
+        "short": "Capture đối tượng lớn gây tốn bộ nhớ và thời gian copy; nên dùng capture by value cho các biến nhỏ hoặc khi cần một snapshot ổn định.",
+        "detailed": "Việc capture các đối tượng lớn theo giá trị (ví dụ: `[orders]`) sẽ khiến toàn bộ dữ liệu của đối tượng đó bị sao chép vào lambda, gây tốn kém về bộ nhớ và thời gian xử lý (latency), điều này rất nhạy cảm trong trading. Capture by value chỉ nên được sử dụng khi: 1. Các biến có kích thước nhỏ (như `int`, `double`). 2. Bạn cần lambda giữ một 'snapshot' ổn định, không bị thay đổi bởi các logic bên ngoài sau khi lambda được tạo (ví dụ: giữ nguyên một ngưỡng chặn risk limit cố định)."
+      },
+      "rubric": {
+        "required": [
+          "Nêu được vấn đề về chi phí copy (memory/time) đối với object lớn.",
+          "Chỉ ra được lợi ích của việc tạo 'stable snapshot' cho các quy tắc (rules)."
+        ],
+        "bonus": [
+          "Liên hệ được với các ví dụ thực tế trong trading như threshold hoặc risk limit."
+        ],
+        "misconceptions": [
+          "Cho rằng capture by value luôn luôn không tốt (thực tế nó rất an toàn cho các biến nhỏ)."
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "common-mistakes"
+        },
+        {
+          "sectionId": "when-should-you-use-capture-by-value"
+        },
+        {
+          "sectionId": "notes-for-trading-performance-sensitive-code"
+        }
+      ],
+      "sourceHash": "6b5987e7109ffa1c075d293934727412220f98def9b4ed10db67737341686905",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp11-mutable-lambda-001",
+      "lessonId": "cpp11-mutable-lambda",
+      "type": "code_reasoning",
+      "difficulty": "beginner",
+      "estimatedMinutes": 5,
+      "prompt": "Xem xét đoạn mã sau đây. Giá trị của biến `count` được in ra ở dòng cuối cùng là bao nhiêu? Giải thích tại sao từ khóa `mutable` lại cần thiết trong trường hợp này.",
+      "code": "int count = 10;\nauto lambda = [count]() mutable {\n    count++;\n};\nlambda();\nstd::cout << count;",
+      "hint": "Hãy nhớ lại sự khác biệt giữa bản sao bên trong lambda và biến gốc bên ngoài khi sử dụng capture by value.",
+      "answer": {
+        "short": "Giá trị in ra là 10. Từ khóa `mutable` cho phép sửa đổi bản sao của `count` bên trong lambda.",
+        "detailed": "Giá trị in ra vẫn là 10 vì lambda capture `count` theo giá trị (by value), tạo ra một bản sao nội bộ. Theo mặc định, các biến capture by value là hằng số (read-only) bên trong lambda. Từ khóa `mutable` cho phép lambda sửa đổi bản sao nội bộ này, nhưng mọi thay đổi chỉ giới hạn trong phạm vi lambda và không ảnh hưởng đến biến `count` gốc ở bên ngoài."
+      },
+      "rubric": {
+        "required": [
+          "Xác định đúng giá trị in ra là 10",
+          "Giải thích được mutable cho phép sửa đổi bản sao (copy)",
+          "Khẳng định biến gốc không bị thay đổi"
+        ],
+        "bonus": [
+          "Giải thích được mặc định capture by value là không thể sửa đổi (read-only)"
+        ],
+        "misconceptions": [
+          "Nhầm lẫn rằng mutable sẽ thay đổi biến gốc giống như capture by reference"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "what-problem-does-it-solve"
+        },
+        {
+          "sectionId": "minimum-syntax"
+        },
+        {
+          "sectionId": "common-mistakes"
+        }
+      ],
+      "sourceHash": "031472acac3954460c5c511914ec594fb59a4c5b07326b7e2df7cdab37257beb",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp11-mutable-lambda-002",
+      "lessonId": "cpp11-mutable-lambda",
+      "type": "scenario",
+      "difficulty": "intermediate",
+      "estimatedMinutes": 7,
+      "prompt": "Trong một hệ thống giao dịch (trading system), bạn cần viết một lambda để đếm số lượng lệnh (Order) có khối lượng lớn đi qua một bộ lọc, nhưng bạn KHÔNG muốn làm thay đổi biến đếm gốc ở bên ngoài phạm vi lambda để tránh các tác dụng phụ (side effects) không mong muốn. Bạn sẽ thiết kế lambda này như thế nào và tại sao?",
+      "hint": "Cân nhắc giữa việc sử dụng `[x] mutable` và `[&x]` dựa trên yêu cầu không làm thay đổi biến gốc.",
+      "answer": {
+        "short": "Sử dụng capture by value kết hợp với từ khóa `mutable` ([count] mutable).",
+        "detailed": "Bạn nên sử dụng capture by value kèm theo từ khóa `mutable`. Cách tiếp cận này cho phép lambda tạo ra và duy trì một trạng thái riêng tư (private state) bên trong nó. Khi lambda thực thi và tăng biến đếm, nó chỉ cập nhật bản sao nội bộ của chính nó. Điều này đảm bảo tính đóng gói, cho phép lambda theo dõi trạng thái cục bộ mà không gây ra tác dụng phụ lên biến gốc bên ngoài, phù hợp với yêu cầu bảo vệ dữ liệu gốc trong hệ thống."
+      },
+      "rubric": {
+        "required": [
+          "Đề xuất sử dụng capture by value với từ khóa mutable",
+          "Giải thích được mục đích là giữ trạng thái riêng tư (private state)",
+          "Giải thích được tại sao không dùng capture by reference trong ngữ cảnh này (tránh side effect)"
+        ],
+        "bonus": [
+          "Chỉ ra rằng lambda này nên ngắn gọn và mang tính cục bộ"
+        ],
+        "misconceptions": [
+          "Sử dụng capture by reference sẽ vi phạm yêu cầu không thay đổi biến gốc"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "when-should-you-use-mutable-lambda"
+        },
+        {
+          "sectionId": "notes-for-trading-performance-sensitive-code"
+        }
+      ],
+      "sourceHash": "031472acac3954460c5c511914ec594fb59a4c5b07326b7e2df7cdab37257beb",
+      "status": "draft",
+      "version": 1
+    },
+    {
       "id": "cpp11-auto-001",
       "lessonId": "cpp11-auto",
       "type": "recall",
