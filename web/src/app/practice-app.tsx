@@ -422,7 +422,7 @@ export function PracticeApp({
     const updated = recordReview(progress, current.id, rating, today);
     saveProgress(JSON.stringify(updated));
     setSelectedQuestionId(null);
-    clearQuestionStudySession(current.id);
+    clearStudySessionState();
     if (account) {
       const newReview = updated.reviews.find(
         (review) =>
@@ -435,22 +435,27 @@ export function PracticeApp({
   function showRandomQuestion() {
     if (!randomCandidates.length) return;
     const next = randomCandidates[Math.floor(Math.random() * randomCandidates.length)];
+    clearStudySessionState();
     setSelectedQuestionId(next.id);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function clearQuestionStudySession(questionId: string) {
-    setAnswers((values) => omitRecordKey(values, questionId));
-    setCoachFeedback((values) => omitRecordKey(values, questionId));
-    setCoachModels((values) => omitRecordKey(values, questionId));
-    setCoachAnswers((values) => omitRecordKey(values, questionId));
-    setCoachErrors((values) => omitRecordKey(values, questionId));
-    setFollowUpInputs((values) => omitRecordKey(values, questionId));
-    setFollowUpChats((values) => omitRecordKey(values, questionId));
-    setFollowUpErrors((values) => omitRecordKey(values, questionId));
-    setRevealed((values) => withoutSetValue(values, questionId));
-    setHints((values) => withoutSetValue(values, questionId));
-    setVisibleSources((values) => withoutSetValue(values, questionId));
+  function clearStudySessionState() {
+    setAnswers({});
+    setCoachFeedback({});
+    setCoachModels({});
+    setCoachAnswers({});
+    setCoachErrors({});
+    setFollowUpInputs({});
+    setFollowUpChats({});
+    setFollowUpErrors({});
+    setDeepDiveAnswers({});
+    setDeepDiveFeedback({});
+    setDeepDiveErrors({});
+    setDeepDiveOpen(new Set());
+    setRevealed(new Set());
+    setHints(new Set());
+    setVisibleSources(new Set());
   }
 
   async function syncReviews(reviews: Review[]) {
@@ -753,6 +758,7 @@ export function PracticeApp({
             onRemove={deleteSavedItem}
             onOpenQuestion={(questionId) => {
               if (sessionQuestions.some((question) => question.id === questionId)) {
+                clearStudySessionState();
                 setSelectedQuestionId(questionId);
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }
