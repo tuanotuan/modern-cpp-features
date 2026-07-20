@@ -1,15 +1,31 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { AiTokenUsage } from "./usage";
-import { monthlyBudgetUsdMicros, usageCostUsdMicros } from "./usage";
+import {
+  dailyBudgetRemainingPercent,
+  dailyBudgetUsdMicros,
+  monthlyBudgetUsdMicros,
+  usageCostUsdMicros,
+  vietnamUsageDate,
+} from "./usage";
 
 export type AiBudgetReservation = {
   client: SupabaseClient | null;
   reservedUsdMicros: number;
+  usageDate: string | null;
+  monthStart: string | null;
 };
 
 export class AiMonthlyBudgetExceededError extends Error {}
+export class AiDailyBudgetExceededError extends Error {}
 export class AiBudgetConfigurationError extends Error {}
+
+export type AiDailyBudgetSnapshot = {
+  actualUsdMicros: number;
+  limitUsdMicros: number;
+  remainingPercent: number;
+  usageDate: string;
+};
 
 export async function withAiBudget<T extends { model: string; usage: AiTokenUsage }>(
   client: SupabaseClient | null,
@@ -19,8 +35,8 @@ export async function withAiBudget<T extends { model: string; usage: AiTokenUsag
   const reservation = await reserveAiBudget(client, reservedUsdMicros);
   try {
     const result = await operation();
-    await finalizeAiBudget(reservation, result.model, result.usage);
-    return result;
+    const dailyBudget = await finalizeAiBudget(reservation, result.model, result.usage);
+    return { result, dailyBudget };
   } catch (error) {
     await releaseAiBudget(reservation);
     throw error;
@@ -31,20 +47,32 @@ export async function reserveAiBudget(
   client: SupabaseClient | null,
   reservedUsdMicros: number,
 ): Promise<AiBudgetReservation> {
-  if (!client) return { client, reservedUsdMicros: 0 };
+  if (!client) {
+    return { client, reservedUsdMicros: 0, usageDate: null, monthStart: null };
+  }
 
   const { data, error } = await client.rpc("reserve_ai_budget", {
-    p_limit_usd_micros: monthlyBudgetUsdMicros(),
+    p_daily_limit_usd_micros: dailyBudgetUsdMicros(),
+    p_monthly_limit_usd_micros: monthlyBudgetUsdMicros(),
     p_reservation_usd_micros: reservedUsdMicros,
   });
   if (error) {
     console.error("AI budget reservation failed", { code: error.code });
     throw new AiBudgetConfigurationError("AI budget migration is missing");
   }
-  if (data !== true) {
+  const decision = parseBudgetDecision(data);
+  if (decision.status === "daily_exceeded") {
+    throw new AiDailyBudgetExceededError("Daily AI budget reached");
+  }
+  if (decision.status !== "allowed") {
     throw new AiMonthlyBudgetExceededError("Monthly AI budget reached");
   }
-  return { client, reservedUsdMicros };
+  return {
+    client,
+    reservedUsdMicros,
+    usageDate: decision.usageDate,
+    monthStart: decision.monthStart,
+  };
 }
 
 export async function finalizeAiBudget(
@@ -52,7 +80,7 @@ export async function finalizeAiBudget(
   model: string,
   usage: AiTokenUsage,
 ) {
-  if (!reservation.client || reservation.reservedUsdMicros === 0) return;
+  if (!reservation.client || reservation.reservedUsdMicros === 0) return null;
   const actualUsdMicros = usageCostUsdMicros(model, usage);
   const { error } = await reservation.client.rpc("finalize_ai_budget", {
     p_actual_usd_micros: actualUsdMicros,
@@ -62,16 +90,52 @@ export async function finalizeAiBudget(
     p_model: model,
     p_output_tokens: usage.outputTokens,
     p_reservation_usd_micros: reservation.reservedUsdMicros,
+    p_usage_date: reservation.usageDate,
+    p_month_start: reservation.monthStart,
   });
   if (error) {
     console.error("AI budget finalization failed", { code: error.code });
+    return null;
   }
+  const usageDate = reservation.usageDate ?? vietnamUsageDate();
+  const { data: dailyRow, error: readError } = await reservation.client
+    .from("ai_usage_daily")
+    .select("actual_usd_micros")
+    .eq("usage_date", usageDate)
+    .maybeSingle();
+  if (readError) {
+    console.error("Daily AI budget read failed", { code: readError.code });
+    return null;
+  }
+  const used = Number(dailyRow?.actual_usd_micros ?? actualUsdMicros);
+  return {
+    actualUsdMicros: used,
+    limitUsdMicros: dailyBudgetUsdMicros(),
+    remainingPercent: dailyBudgetRemainingPercent(used),
+    usageDate,
+  } satisfies AiDailyBudgetSnapshot;
 }
 
 export async function releaseAiBudget(reservation: AiBudgetReservation) {
   if (!reservation.client || reservation.reservedUsdMicros === 0) return;
   const { error } = await reservation.client.rpc("release_ai_budget", {
+    p_month_start: reservation.monthStart,
     p_reservation_usd_micros: reservation.reservedUsdMicros,
+    p_usage_date: reservation.usageDate,
   });
   if (error) console.error("AI budget release failed", { code: error.code });
+}
+
+function parseBudgetDecision(data: unknown) {
+  if (typeof data !== "object" || data === null) {
+    throw new AiBudgetConfigurationError("Unexpected AI budget response");
+  }
+  const value = data as Record<string, unknown>;
+  const status = typeof value.status === "string" ? value.status : "invalid";
+  const usageDate = typeof value.usage_date === "string" ? value.usage_date : null;
+  const monthStart = typeof value.month_start === "string" ? value.month_start : null;
+  if (status === "allowed" && (!usageDate || !monthStart)) {
+    throw new AiBudgetConfigurationError("AI budget period is missing");
+  }
+  return { status, usageDate, monthStart };
 }

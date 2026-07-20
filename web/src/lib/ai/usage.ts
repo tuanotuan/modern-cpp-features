@@ -32,6 +32,9 @@ export const COACH_RESERVATION_USD_MICROS = {
   terra: 150_000,
 } as const;
 
+export const DAILY_BUDGET_DAYS = 30;
+export const AI_BUDGET_TIME_ZONE = "Asia/Ho_Chi_Minh";
+
 export function usageCostUsdMicros(model: string, usage: AiTokenUsage) {
   const rates = MODEL_RATES_USD_PER_MILLION[model];
   if (!rates) {
@@ -55,4 +58,22 @@ export function monthlyBudgetUsdMicros() {
     throw new Error("OPENAI_MONTHLY_BUDGET_USD must be between 0 and 100");
   }
   return Math.floor(dollars * 1_000_000);
+}
+
+export function dailyBudgetUsdMicros() {
+  return Math.floor(monthlyBudgetUsdMicros() / DAILY_BUDGET_DAYS);
+}
+
+export function dailyBudgetRemainingPercent(actualUsdMicros: number) {
+  const limit = dailyBudgetUsdMicros();
+  return Math.max(0, Math.min(100, Math.floor(((limit - actualUsdMicros) / limit) * 100)));
+}
+
+export function vietnamUsageDate(now = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: AI_BUDGET_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
 }

@@ -1,6 +1,7 @@
 import manifestJson from "@/generated/content-manifest.json";
 import {
   AiBudgetConfigurationError,
+  AiDailyBudgetExceededError,
   AiMonthlyBudgetExceededError,
   withAiBudget,
 } from "@/lib/ai/budget";
@@ -132,8 +133,9 @@ export async function POST(request: Request) {
         }),
     );
     return Response.json({
-      reply: result.data,
-      model: result.model,
+      reply: result.result.data,
+      model: result.result.model,
+      aiDailyBudget: result.dailyBudget,
     });
   } catch (error) {
     if (error instanceof CoachConfigurationError) {
@@ -148,6 +150,16 @@ export async function POST(request: Request) {
         {
           error: "Đã chạm ngân sách AI tháng này. Website sẽ không gọi thêm để giữ giới hạn chi tiêu.",
           code: "monthly_budget_exceeded",
+        },
+        { status: 429 },
+      );
+    }
+
+    if (error instanceof AiDailyBudgetExceededError) {
+      return Response.json(
+        {
+          error: "Đã dùng hết quota AI hôm nay. Quota sẽ tự reset lúc 00:00 giờ Việt Nam.",
+          code: "daily_budget_exceeded",
         },
         { status: 429 },
       );
