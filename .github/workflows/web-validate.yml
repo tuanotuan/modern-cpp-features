@@ -22,6 +22,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: web-validate-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   refresh-content:
     if: >-
