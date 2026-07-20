@@ -1,10 +1,17 @@
 import manifestJson from "@/generated/content-manifest.json";
+import {
+  AiBudgetConfigurationError,
+  AiMonthlyBudgetExceededError,
+  withAiBudget,
+} from "@/lib/ai/budget";
 import { coachFollowUpRequestSchema } from "@/lib/ai/contracts";
 import {
-  answerCoachFollowUpWithGemini,
+  answerCoachFollowUpWithOpenAI,
   CoachConfigurationError,
-} from "@/lib/ai/gemini";
+  safetyIdentifier,
+} from "@/lib/ai/openai";
 import { consumeCoachRequest } from "@/lib/ai/rate-limit";
+import { COACH_RESERVATION_USD_MICROS } from "@/lib/ai/usage";
 import { contentManifestSchema } from "@/lib/content/schema";
 import {
   isQuestionApproved,
@@ -109,16 +116,24 @@ export async function POST(request: Request) {
   }
 
   try {
-    const reply = await answerCoachFollowUpWithGemini({
-      question,
-      lesson,
-      candidateAnswer: parsed.data.candidateAnswer,
-      feedback: parsed.data.feedback,
-      messages: parsed.data.messages,
-    });
+    const result = await withAiBudget(
+      supabase,
+      COACH_RESERVATION_USD_MICROS.terra,
+      () =>
+        answerCoachFollowUpWithOpenAI({
+          question,
+          lesson,
+          candidateAnswer: parsed.data.candidateAnswer,
+          feedback: parsed.data.feedback,
+          messages: parsed.data.messages,
+          safetyIdentifier: safetyIdentifier(
+            authResult?.data.user?.id || clientKey,
+          ),
+        }),
+    );
     return Response.json({
-      reply,
-      model: process.env.AI_MODEL || "gemini-3-flash-preview",
+      reply: result.data,
+      model: result.model,
     });
   } catch (error) {
     if (error instanceof CoachConfigurationError) {
@@ -128,14 +143,42 @@ export async function POST(request: Request) {
       );
     }
 
+    if (error instanceof AiMonthlyBudgetExceededError) {
+      return Response.json(
+        {
+          error: "Đã chạm ngân sách AI tháng này. Website sẽ không gọi thêm để giữ giới hạn chi tiêu.",
+          code: "monthly_budget_exceeded",
+        },
+        { status: 429 },
+      );
+    }
+
+    if (error instanceof AiBudgetConfigurationError) {
+      return Response.json(
+        {
+          error: "Bộ giới hạn chi phí AI chưa được cài trong Supabase.",
+          code: "budget_not_configured",
+        },
+        { status: 503 },
+      );
+    }
+
     const status = getProviderStatus(error);
+    const providerCode = getProviderCode(error);
     console.error("AI coach follow-up failed", {
       name: error instanceof Error ? error.name : "UnknownError",
       status,
     });
+    if (providerCode === "insufficient_quota") {
+      return Response.json(
+        { error: "OpenAI project chưa có credit hoặc đã dùng hết ngân sách tháng.", code: "provider_quota_exceeded" },
+        { status: 429 },
+      );
+    }
+
     if (status === 429) {
       return Response.json(
-        { error: "Free quota Gemini đang bận. Thử lại sau.", code: "provider_rate_limited" },
+        { error: "OpenAI đang giới hạn tạm thời hoặc project đã chạm ngân sách. Thử lại sau.", code: "provider_rate_limited" },
         { status: 429 },
       );
     }
@@ -151,4 +194,11 @@ function getProviderStatus(error: unknown): number | undefined {
     return undefined;
   }
   return typeof error.status === "number" ? error.status : undefined;
+}
+
+function getProviderCode(error: unknown): string | undefined {
+  if (typeof error !== "object" || error === null || !("code" in error)) {
+    return undefined;
+  }
+  return typeof error.code === "string" ? error.code : undefined;
 }

@@ -1,6 +1,7 @@
 # Supabase setup
 
-Supabase stores private cross-device progress, AI history, and question approvals.
+Supabase stores private cross-device progress, AI history, question approvals,
+and the atomic monthly AI spend guard.
 
 1. Create a free project at <https://database.new>.
 2. Copy the Project URL and publishable key into `web/.env.local`.
@@ -20,9 +21,15 @@ Supabase stores private cross-device progress, AI history, and question approval
    `/auth/callback` URL later.
 
 `ALLOWED_GITHUB_LOGIN` defaults to `tuanotuan`. Authentication, progress, and AI
-routes reject every other GitHub identity so the free AI quota remains personal.
+routes reject every other GitHub identity so the paid AI quota remains personal.
 
 The migrations enable RLS. Authenticated users can only read and mutate rows
 whose `user_id` matches their JWT identity. Question approvals are bound to an
 exact question version and source hash, so a source edit automatically sends the
 question back to the Review Queue.
+
+`20260720170000_create_ai_usage_budget.sql` reserves a conservative amount before
+each web AI call and records the actual token cost afterward. This keeps
+concurrent requests from crossing `OPENAI_MONTHLY_BUDGET_USD`. Automated draft
+generation in GitHub Actions is protected by the OpenAI project budget, so set
+that project budget to the same USD value.

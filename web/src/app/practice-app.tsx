@@ -497,7 +497,7 @@ export function PracticeApp({
       }));
       setCoachModels((models) => ({
         ...models,
-        [current.id]: payload.model || "Gemini",
+        [current.id]: payload.model || "OpenAI",
       }));
       setCoachAnswers((evaluatedAnswers) => ({
         ...evaluatedAnswers,
@@ -1182,7 +1182,7 @@ export function PracticeApp({
                   Chấm theo đúng rubric và note nguồn, sau đó gợi ý một câu follow-up.
                 </p>
                 <span className="mt-4 inline-block rounded-full bg-[#d7ff91] px-3 py-1 font-mono text-[11px] font-semibold text-[#356b58]">
-                  Gemini 3 Flash · free
+                  OpenAI · Luna chấm bài / Terra đào sâu
                 </span>
               </div>
             </aside>
@@ -1466,7 +1466,7 @@ function CoachFeedbackPanel({
               AI interview feedback
             </p>
             <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/60">
-              {model || "Gemini"}
+              {model || "OpenAI"}
             </span>
             <button
               type="button"

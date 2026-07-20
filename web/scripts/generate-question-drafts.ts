@@ -6,7 +6,7 @@ import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
 import { writeContentManifest } from "../src/lib/content/automation";
 import {
-  generateQuestionDraftsWithGemini,
+  generateQuestionDraftsWithOpenAI,
   nextQuestionIds,
 } from "../src/lib/content/drafts";
 import { findRepoRoot, loadContentManifest } from "../src/lib/content/loader";
@@ -34,8 +34,8 @@ async function main() {
   const lesson = manifest.lessons.find((item) => item.id === lessonId);
   if (!lesson) throw new Error(`Unknown lesson: ${lessonId}`);
 
-  console.log(`Generating ${count} draft(s) for ${lesson.id} with Gemini...`);
-  const generated = await generateQuestionDraftsWithGemini({ lesson, count });
+  console.log(`Generating ${count} draft(s) for ${lesson.id} with OpenAI Luna...`);
+  const generated = await generateQuestionDraftsWithOpenAI({ lesson, count });
   const ids = nextQuestionIds(
     lesson.id,
     manifest.questions.map((question) => question.id),

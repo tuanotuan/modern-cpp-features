@@ -14,12 +14,14 @@ Phase 0–5 provides:
 - a schema-validated pilot bank of 10 verified interview questions;
 - a deterministic daily question and spaced-review queue;
 - browser-local progress, self-rating, and streak tracking;
-- grounded Gemini feedback against the exact rubric and source-note sections.
+- grounded OpenAI feedback against the exact rubric and source-note sections;
 - optional GitHub OAuth and private cross-device progress/AI history in Supabase;
 - offline-first local progress that merges into cloud state after sign-in.
 - deterministic discovery for newly added `knowledge.md` lessons;
 - question-level source snapshots that automatically quarantine stale questions;
-- Gemini-generated question drafts with a human review gate.
+- OpenAI Luna-generated question drafts with a human review gate;
+- Luna for routine grading and Terra for deeper follow-up explanations;
+- an atomic monthly AI budget guard stored in Supabase.
 - a private web Review Queue with exact-version/hash bulk approval;
 - GitHub Actions reconciliation for note additions, edits, renames, and deletes.
 
@@ -31,9 +33,10 @@ npm run content:refresh
 npm run dev
 ```
 
-Copy `.env.example` to `.env.local` and add a Gemini API key before using the
+Copy `.env.example` to `.env.local` and add an OpenAI API key before using the
 AI coach. The key is read only by the server route and is never exposed to the
-browser.
+browser. `OPENAI_MONTHLY_BUDGET_USD` defaults to `5`; also set the same project
+budget in the OpenAI dashboard as the provider-level backstop.
 
 Cloud sync is optional. Add the Supabase project URL and publishable key, then
 follow [`supabase/README.md`](supabase/README.md) to apply the RLS migration and

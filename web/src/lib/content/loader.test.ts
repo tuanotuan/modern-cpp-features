@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  normalizeSourceText,
   findRepoRoot,
   loadContentManifest,
   resolveQuestionStatus,
@@ -10,6 +11,12 @@ import {
 } from "./loader";
 
 describe("content loader", () => {
+  it("normalizes source newlines so hashes are stable across operating systems", () => {
+    expect(normalizeSourceText("one\r\ntwo\rthree\n")).toBe(
+      "one\r\ntwo\r\nthree\r\n",
+    );
+  });
+
   it("normalizes numbered Markdown headings", () => {
     expect(sectionIdFromHeading("4. `const` vs `constexpr`")).toBe(
       "const-vs-constexpr",

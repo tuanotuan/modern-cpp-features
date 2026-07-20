@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "sourceRevision": "cb292db61eb2416496ef956b848c7457800000219c93f4ca5a27d56b0dd30bb4",
+  "sourceRevision": "fff3dbcfd8c2ad1ebe002d495b7edc5125c491646ad2d45d5931aaaff662af62",
   "lessons": [
     {
       "id": "cpp98-object-variable-memory",
@@ -1828,53 +1828,53 @@
       "title": "Day 16 — override",
       "knowledgePath": "cpp11/16_override/knowledge.md",
       "codePath": "cpp11/16_override/main.cpp",
-      "sourceHash": "a28dfa796b924fc80685b2175d2126c1a7cad1f7f8b3e0836b2e9ed0dda4e9d5",
+      "sourceHash": "1b45ef38d22b76f3bc79ef7f055599e7342f40260916abd9ddec4c92ce217921",
       "sections": [
         {
           "id": "what-problem-does-it-solve",
           "heading": "1. What Problem Does It Solve?",
-          "bodyMarkdown": "`override` helps the compiler check that a function in a child class really replaces a virtual function from the parent class.\n\nIt catches mistakes such as:\n\n- Wrong function name\n- Wrong parameter type\n- Missing `const`\n\n---",
+          "bodyMarkdown": "`override` helps the compiler check that a function in a child class really replaces a virtual function from the parent class.\r\n\r\nIt catches mistakes such as:\r\n\r\n- Wrong function name\r\n- Wrong parameter type\r\n- Missing `const`\r\n\r\n---",
           "bodyText": "override helps the compiler check that a function in a child class really replaces a virtual function from the parent class.It catches mistakes such as:Wrong function nameWrong parameter typeMissing const"
         },
         {
           "id": "minimal-syntax",
           "heading": "2. Minimal Syntax",
-          "bodyMarkdown": "```cpp\nclass Animal {\npublic:\n    virtual void talk();\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() override;\n};\n```\n\nRemember:\n\n```text\nParent class: virtual\nChild class: override\n```\n\n---",
-          "bodyText": "class Animal {\npublic:\n    virtual void talk();\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() override;\n};Remember:Parent class: virtual\nChild class: override"
+          "bodyMarkdown": "```cpp\r\nclass Animal {\r\npublic:\r\n    virtual void talk();\r\n};\r\n\r\nclass Cat : public Animal {\r\npublic:\r\n    void talk() override;\r\n};\r\n```\r\n\r\nRemember:\r\n\r\n```text\r\nParent class: virtual\r\nChild class: override\r\n```\r\n\r\n---",
+          "bodyText": "class Animal {\r\npublic:\r\n    virtual void talk();\r\n};\r\n\r\nclass Cat : public Animal {\r\npublic:\r\n    void talk() override;\r\n};Remember:Parent class: virtual\r\nChild class: override"
         },
         {
           "id": "simple-example",
           "heading": "3. Simple Example",
-          "bodyMarkdown": "```cpp\nclass Animal {\npublic:\n    virtual void talk() {\n        cout << \"Animal sound\";\n    }\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() override {\n        cout << \"Meow\";\n    }\n};\n```\n\nWhen an `Animal` pointer points to a `Cat` object:\n\n```cpp\nCat cat;\nAnimal* p = &cat;\n\np->talk();\n```\n\nResult:\n\n```text\nMeow\n```\n\n---",
-          "bodyText": "class Animal {\npublic:\n    virtual void talk() {\n        cout << \"Animal sound\";\n    }\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() override {\n        cout << \"Meow\";\n    }\n};When an Animal pointer points to a Cat object:Cat cat;\nAnimal* p = &cat;\n\np->talk();Result:Meow"
+          "bodyMarkdown": "```cpp\r\nclass Animal {\r\npublic:\r\n    virtual void talk() {\r\n        cout << \"Animal sound\";\r\n    }\r\n};\r\n\r\nclass Cat : public Animal {\r\npublic:\r\n    void talk() override {\r\n        cout << \"Meow\";\r\n    }\r\n};\r\n```\r\n\r\nWhen an `Animal` pointer points to a `Cat` object:\r\n\r\n```cpp\r\nCat cat;\r\nAnimal* p = &cat;\r\n\r\np->talk();\r\n```\r\n\r\nResult:\r\n\r\n```text\r\nMeow\r\n```\r\n\r\n---",
+          "bodyText": "class Animal {\r\npublic:\r\n    virtual void talk() {\r\n        cout << \"Animal sound\";\r\n    }\r\n};\r\n\r\nclass Cat : public Animal {\r\npublic:\r\n    void talk() override {\r\n        cout << \"Meow\";\r\n    }\r\n};When an Animal pointer points to a Cat object:Cat cat;\r\nAnimal* p = &cat;\r\n\r\np->talk();Result:Meow"
         },
         {
           "id": "why-is-override-useful",
           "heading": "4. Why Is override Useful?",
-          "bodyMarkdown": "Suppose the programmer writes the wrong function name:\n\n```cpp\nvoid taak();\n```\n\n`taak()` does not replace `talk()`.\n\nWith:\n\n```cpp\nvoid taak() override;\n```\n\nthe compiler reports an error immediately.\n\n---",
+          "bodyMarkdown": "Suppose the programmer writes the wrong function name:\r\n\r\n```cpp\r\nvoid taak();\r\n```\r\n\r\n`taak()` does not replace `talk()`.\r\n\r\nWith:\r\n\r\n```cpp\r\nvoid taak() override;\r\n```\r\n\r\nthe compiler reports an error immediately.\r\n\r\n---",
           "bodyText": "Suppose the programmer writes the wrong function name:void taak();taak() does not replace talk().With:void taak() override;the compiler reports an error immediately."
         },
         {
           "id": "common-mistake-missing-const",
           "heading": "5. Common Mistake: Missing const",
-          "bodyMarkdown": "These two functions are different:\n\n```cpp\nvoid talk() const;\nvoid talk();\n```\n\nCorrect code:\n\n```cpp\nclass Animal {\npublic:\n    virtual void talk() const;\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() const override;\n};\n```\n\n---",
-          "bodyText": "These two functions are different:void talk() const;\nvoid talk();Correct code:class Animal {\npublic:\n    virtual void talk() const;\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() const override;\n};"
+          "bodyMarkdown": "These two functions are different:\r\n\r\n```cpp\r\nvoid talk() const;\r\nvoid talk();\r\n```\r\n\r\nCorrect code:\r\n\r\n```cpp\r\nclass Animal {\r\npublic:\r\n    virtual void talk() const;\r\n};\r\n\r\nclass Cat : public Animal {\r\npublic:\r\n    void talk() const override;\r\n};\r\n```\r\n\r\n---",
+          "bodyText": "These two functions are different:void talk() const;\r\nvoid talk();Correct code:class Animal {\r\npublic:\r\n    virtual void talk() const;\r\n};\r\n\r\nclass Cat : public Animal {\r\npublic:\r\n    void talk() const override;\r\n};"
         },
         {
           "id": "important-rules",
           "heading": "6. Important Rules",
-          "bodyMarkdown": "- The parent function must be `virtual`.\n- Write `override` in the child class.\n- The function names must match.\n- The parameters must match.\n- `const` must also match.\n- Use `override` whenever a child class replaces a virtual function.\n\n---",
+          "bodyMarkdown": "- The parent function must be `virtual`.\r\n- Write `override` in the child class.\r\n- The function names must match.\r\n- The parameters must match.\r\n- `const` must also match.\r\n- Use `override` whenever a child class replaces a virtual function.\r\n\r\n---",
           "bodyText": "The parent function must be virtual.Write override in the child class.The function names must match.The parameters must match.const must also match.Use override whenever a child class replaces a virtual function."
         },
         {
           "id": "easy-mental-model",
           "heading": "7. Easy Mental Model",
-          "bodyMarkdown": "```text\nvirtual  = allows replacing\noverride = checks replacing\n```\n\n`override` means:\n\n> Compiler, check that this child function really replaces a parent virtual function.",
-          "bodyText": "virtual  = allows replacing\noverride = checks replacingoverride means:Compiler, check that this child function really replaces a parent virtual function."
+          "bodyMarkdown": "```text\r\nvirtual  = allows replacing\r\noverride = checks replacing\r\n```\r\n\r\n`override` means:\r\n\r\n> Compiler, check that this child function really replaces a parent virtual function.",
+          "bodyText": "virtual  = allows replacing\r\noverride = checks replacingoverride means:Compiler, check that this child function really replaces a parent virtual function."
         }
       ],
       "checklistItems": [],
-      "code": "#include <iostream>\nusing namespace std;\n\nclass Animal {\npublic:\n    virtual void talk() {\n        cout << \"Animal\\n\";\n    }\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() override {\n        cout << \"Meow\\n\";\n    }\n};\n\nint main() {\n    Cat cat;\n    Animal* p = &cat;\n\n    p->talk();\n}"
+      "code": "#include <iostream>\r\nusing namespace std;\r\n\r\nclass Animal {\r\npublic:\r\n    virtual void talk() {\r\n        cout << \"Animal\\n\";\r\n    }\r\n};\r\n\r\nclass Cat : public Animal {\r\npublic:\r\n    void talk() override {\r\n        cout << \"Meow\\n\";\r\n    }\r\n};\r\n\r\nint main() {\r\n    Cat cat;\r\n    Animal* p = &cat;\r\n\r\n    p->talk();\r\n}"
     },
     {
       "id": "cpp11-final",
@@ -1888,60 +1888,60 @@
       "title": "Day 17 — final in C++11",
       "knowledgePath": "cpp11/17_final/knowledge.md",
       "codePath": null,
-      "sourceHash": "19f19b7364ebeadd68b8db56c085188582b10110fb7686e2e5fcbc838bac40ae",
+      "sourceHash": "fc7ac9f621f7efded324f5c2a7518355a7517add3b7426ead4c4e40466c85475",
       "sections": [
         {
           "id": "core-idea",
           "heading": "1. Core Idea",
-          "bodyMarkdown": "The `final` specifier prevents further inheritance or virtual-function overriding.\n\nIt can be applied to:\n\n- A virtual function\n- An entire class\n\n---",
+          "bodyMarkdown": "The `final` specifier prevents further inheritance or virtual-function overriding.\r\n\r\nIt can be applied to:\r\n\r\n- A virtual function\r\n- An entire class\r\n\r\n---",
           "bodyText": "The final specifier prevents further inheritance or virtual-function overriding.It can be applied to:A virtual functionAn entire class"
         },
         {
           "id": "function-level-final",
           "heading": "2. Function-Level final",
-          "bodyMarkdown": "A virtual function marked `final` cannot be overridden by later derived classes.\n\n```cpp\nclass Base\n{\npublic:\n    virtual void run();\n};\n\nclass Derived : public Base\n{\npublic:\n    void run() override final;\n};\n```\n\n`Derived::run()` overrides `Base::run()`, but no class derived from `Derived` may override it again.",
-          "bodyText": "A virtual function marked final cannot be overridden by later derived classes.class Base\n{\npublic:\n    virtual void run();\n};\n\nclass Derived : public Base\n{\npublic:\n    void run() override final;\n};Derived::run() overrides Base::run(), but no class derived from Derived may override it again."
+          "bodyMarkdown": "A virtual function marked `final` cannot be overridden by later derived classes.\r\n\r\n```cpp\r\nclass Base\r\n{\r\npublic:\r\n    virtual void run();\r\n};\r\n\r\nclass Derived : public Base\r\n{\r\npublic:\r\n    void run() override final;\r\n};\r\n```\r\n\r\n`Derived::run()` overrides `Base::run()`, but no class derived from `Derived` may override it again.",
+          "bodyText": "A virtual function marked final cannot be overridden by later derived classes.class Base\r\n{\r\npublic:\r\n    virtual void run();\r\n};\r\n\r\nclass Derived : public Base\r\n{\r\npublic:\r\n    void run() override final;\r\n};Derived::run() overrides Base::run(), but no class derived from Derived may override it again."
         },
         {
           "id": "class-level-final",
           "heading": "3. Class-Level final",
-          "bodyMarkdown": "A class marked `final` cannot be used as a base class.\n\n```cpp\nclass Connection final\n{\n};\n```\n\nAny attempt to inherit from `Connection` causes a compilation error.",
-          "bodyText": "A class marked final cannot be used as a base class.class Connection final\n{\n};Any attempt to inherit from Connection causes a compilation error."
+          "bodyMarkdown": "A class marked `final` cannot be used as a base class.\r\n\r\n```cpp\r\nclass Connection final\r\n{\r\n};\r\n```\r\n\r\nAny attempt to inherit from `Connection` causes a compilation error.",
+          "bodyText": "A class marked final cannot be used as a base class.class Connection final\r\n{\r\n};Any attempt to inherit from Connection causes a compilation error."
         },
         {
           "id": "relationship-with-virtual-and-override",
           "heading": "4. Relationship with virtual and override",
-          "bodyMarkdown": "`virtual` means:\n\nDerived classes may replace this behavior.\n\n`override` means:\n\nVerify that this function correctly replaces a base virtual function.\n\n`final` means:\n\nDo not allow any further replacement.\n\nA common modern C++ declaration is:\n\n```cpp\nvoid run() override final;\n```",
+          "bodyMarkdown": "`virtual` means:\r\n\r\nDerived classes may replace this behavior.\r\n\r\n`override` means:\r\n\r\nVerify that this function correctly replaces a base virtual function.\r\n\r\n`final` means:\r\n\r\nDo not allow any further replacement.\r\n\r\nA common modern C++ declaration is:\r\n\r\n```cpp\r\nvoid run() override final;\r\n```",
           "bodyText": "virtual means:Derived classes may replace this behavior.override means:Verify that this function correctly replaces a base virtual function.final means:Do not allow any further replacement.A common modern C++ declaration is:void run() override final;"
         },
         {
           "id": "common-errors",
           "heading": "5. Common Errors",
-          "bodyMarkdown": "### Overriding a Final Function\n\nA derived class cannot override a function already marked `final`.\n\n### Inheriting from a Final Class\n\nA class marked `final` cannot have derived classes.\n\n### Using `final` on a Non-Virtual Function\n\nFunction-level `final` is only valid for virtual functions.\n\n### Applying `final` Too Early\n\nExcessive use of `final` may prevent legitimate extension of a class hierarchy.",
+          "bodyMarkdown": "### Overriding a Final Function\r\n\r\nA derived class cannot override a function already marked `final`.\r\n\r\n### Inheriting from a Final Class\r\n\r\nA class marked `final` cannot have derived classes.\r\n\r\n### Using `final` on a Non-Virtual Function\r\n\r\nFunction-level `final` is only valid for virtual functions.\r\n\r\n### Applying `final` Too Early\r\n\r\nExcessive use of `final` may prevent legitimate extension of a class hierarchy.",
           "bodyText": "Overriding a Final FunctionA derived class cannot override a function already marked final.Inheriting from a Final ClassA class marked final cannot have derived classes.Using final on a Non-Virtual FunctionFunction-level final is only valid for virtual functions.Applying final Too EarlyExcessive use of final may prevent legitimate extension of a class hierarchy."
         },
         {
           "id": "practical-uses",
           "heading": "6. Practical Uses",
-          "bodyMarkdown": "`final` is useful when:\n\n- A validated algorithm must not be changed\n- A security or risk rule must remain fixed\n- A class is not designed for inheritance\n- Further overriding would violate an invariant\n- An implementation represents the final layer of a hierarchy",
+          "bodyMarkdown": "`final` is useful when:\r\n\r\n- A validated algorithm must not be changed\r\n- A security or risk rule must remain fixed\r\n- A class is not designed for inheritance\r\n- Further overriding would violate an invariant\r\n- An implementation represents the final layer of a hierarchy",
           "bodyText": "final is useful when:A validated algorithm must not be changedA security or risk rule must remain fixedA class is not designed for inheritanceFurther overriding would violate an invariantAn implementation represents the final layer of a hierarchy"
         },
         {
           "id": "recommended-style",
           "heading": "7. Recommended Style",
-          "bodyMarkdown": "Use:\n\n```cpp\nvoid function() override final;\n```\n\nwhen a derived function both overrides a base virtual function and must not be overridden again.\n\nUse:\n\n```cpp\nclass ClassName final;\n```\n\nwhen the class is intentionally not designed as a base class.\n\nDo not add `final` everywhere. Use it only when the design intentionally forbids further extension.",
+          "bodyMarkdown": "Use:\r\n\r\n```cpp\r\nvoid function() override final;\r\n```\r\n\r\nwhen a derived function both overrides a base virtual function and must not be overridden again.\r\n\r\nUse:\r\n\r\n```cpp\r\nclass ClassName final;\r\n```\r\n\r\nwhen the class is intentionally not designed as a base class.\r\n\r\nDo not add `final` everywhere. Use it only when the design intentionally forbids further extension.",
           "bodyText": "Use:void function() override final;when a derived function both overrides a base virtual function and must not be overridden again.Use:class ClassName final;when the class is intentionally not designed as a base class.Do not add final everywhere. Use it only when the design intentionally forbids further extension."
         },
         {
           "id": "mental-model",
           "heading": "8. Mental Model",
-          "bodyMarkdown": "```text\nvirtual  -> extension is allowed\noverride -> extension is checked\nfinal    -> extension stops here\n```",
-          "bodyText": "virtual  -> extension is allowed\noverride -> extension is checked\nfinal    -> extension stops here"
+          "bodyMarkdown": "```text\r\nvirtual  -> extension is allowed\r\noverride -> extension is checked\r\nfinal    -> extension stops here\r\n```",
+          "bodyText": "virtual  -> extension is allowed\r\noverride -> extension is checked\r\nfinal    -> extension stops here"
         },
         {
           "id": "key-takeaway",
           "heading": "9. Key Takeaway",
-          "bodyMarkdown": "`final` protects class hierarchies from unintended extension.\n\nIt converts an architectural restriction into a compile-time rule.",
+          "bodyMarkdown": "`final` protects class hierarchies from unintended extension.\r\n\r\nIt converts an architectural restriction into a compile-time rule.",
           "bodyText": "final protects class hierarchies from unintended extension.It converts an architectural restriction into a compile-time rule."
         }
       ],

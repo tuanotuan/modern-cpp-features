@@ -33,7 +33,13 @@ export default async function AdminPage() {
     vietnamDateKey(),
   );
 
-  return <AdminDashboard account={cloud.account} initialSnapshot={snapshot} />;
+  return (
+    <AdminDashboard
+      account={cloud.account}
+      aiUsage={cloud.aiUsage}
+      initialSnapshot={snapshot}
+    />
+  );
 }
 
 function AdminGate({ mode }: { mode: "login" | "not-configured" }) {
