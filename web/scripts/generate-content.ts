@@ -23,7 +23,7 @@ async function main() {
       // The actionable error below also covers a missing manifest.
     }
 
-    if (current !== serialized) {
+    if (normalizeNewlines(current) !== normalizeNewlines(serialized)) {
       console.error("Content manifest is stale. Run: npm run content:generate");
       process.exitCode = 1;
     } else {
@@ -34,6 +34,10 @@ async function main() {
     await writeFile(outputPath, serialized, "utf8");
     console.log(`Generated ${path.relative(repoRoot, outputPath)}`);
   }
+}
+
+function normalizeNewlines(value: string) {
+  return value.replace(/\r\n?/g, "\n");
 }
 
 void main().catch((error: unknown) => {

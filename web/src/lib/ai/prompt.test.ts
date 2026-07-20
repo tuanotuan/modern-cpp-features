@@ -7,6 +7,7 @@ import {
   coachFeedbackSchema,
   coachFollowUpRequestSchema,
   coachRequestSchema,
+  normalizeCoachFeedback,
   type CoachFeedback,
 } from "./contracts";
 import { buildCoachFollowUpPrompt, buildCoachPrompt } from "./prompt";
@@ -36,6 +37,36 @@ describe("AI coach contract", () => {
     expect(
       coachFeedbackSchema.safeParse({ score: 120, verdict: "perfect" }).success,
     ).toBe(false);
+  });
+
+  it("converts an accidental 8/10 score when verdict and rubric mean solid", () => {
+    const normalized = normalizeCoachFeedback({
+      ...sampleFeedback(),
+      score: 8,
+      verdict: "solid",
+      coverage: [
+        { criterion: "Kết luận", status: "met", feedback: "Đúng." },
+        { criterion: "Giải thích", status: "met", feedback: "Đúng." },
+        { criterion: "Cách sửa", status: "met", feedback: "Đúng." },
+      ],
+    });
+
+    expect(normalized.score).toBe(80);
+    expect(normalized.verdict).toBe("solid");
+  });
+
+  it("keeps a genuine 8/100 needs-work score", () => {
+    const normalized = normalizeCoachFeedback({
+      ...sampleFeedback(),
+      score: 8,
+      verdict: "needs_work",
+      coverage: [
+        { criterion: "Kết luận", status: "missed", feedback: "Sai." },
+      ],
+    });
+
+    expect(normalized.score).toBe(8);
+    expect(normalized.verdict).toBe("needs_work");
   });
 
   it("requires an alternating follow-up conversation ending with the user", () => {

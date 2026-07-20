@@ -27,6 +27,7 @@ export function buildCoachPrompt({
   return `Đánh giá câu trả lời phỏng vấn C++ dưới đây bằng tiếng Việt, giữ nguyên các thuật ngữ C++ bằng tiếng Anh khi tự nhiên.
 
 NGUYÊN TẮC CHẤM:
+- score bắt buộc là số nguyên theo thang 0-100, tuyệt đối không dùng thang 0-10. Mốc nhất quán: needs_work 0-39, partial 40-64, solid 65-84, strong 85-100.
 - Chấm dựa trên required rubric, canonical answer và source notes được cung cấp; không bổ sung khẳng định trái với nguồn.
 - Mỗi required criterion phải xuất hiện đúng một lần trong coverage, giữ nguyên nội dung criterion.
 - Phân biệt thiếu ý với sai kiến thức. Chỉ nêu correction khi có lỗi hoặc diễn đạt gây hiểu nhầm.
