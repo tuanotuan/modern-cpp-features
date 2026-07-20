@@ -1289,10 +1289,13 @@ function StatPill({ icon, value, label }: { icon: string; value: string; label: 
 
 function AiBudgetPill({ budget }: { budget: AiDailyBudgetSnapshot }) {
   const low = budget.remainingPercent <= 20;
+  const billingLabel = budget.billingSyncedAt
+    ? `Billing OpenAI: $${((budget.billingUsdMicros ?? 0) / 1_000_000).toFixed(4)} · cộng phần realtime chưa quyết toán`
+    : "Ước tính realtime từ token usage";
   return (
     <div
       className="min-w-32 rounded-full border border-[#173f35]/15 bg-white/55 px-3 py-2"
-      title={`Quota ngày $${(budget.limitUsdMicros / 1_000_000).toFixed(3)} · reset 00:00 giờ Việt Nam`}
+      title={`${billingLabel} · quota ngày $${(budget.limitUsdMicros / 1_000_000).toFixed(3)} · reset 00:00 giờ Việt Nam`}
     >
       <div className="flex items-center justify-between gap-2 font-mono text-[10px] font-bold uppercase">
         <span>AI hôm nay</span>

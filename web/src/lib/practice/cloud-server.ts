@@ -1,6 +1,7 @@
 import type { User } from "@supabase/supabase-js";
 
 import type { AiDailyBudgetSnapshot } from "@/lib/ai/budget";
+import { syncOpenAiBilling } from "@/lib/ai/billing";
 import {
   dailyBudgetRemainingPercent,
   dailyBudgetUsdMicros,
@@ -69,6 +70,8 @@ export async function loadCloudContext(): Promise<CloudContext> {
     };
   }
 
+  await syncOpenAiBilling(supabase);
+
   const { data: rows, error } = await supabase
     .from("practice_reviews")
     .select("question_id, reviewed_on, rating, next_due_on")
@@ -80,15 +83,21 @@ export async function loadCloudContext(): Promise<CloudContext> {
   const usageDate = vietnamUsageDate();
   const { data: usageRow } = await supabase
     .from("ai_usage_monthly")
-    .select("actual_usd_micros, request_count, input_tokens, output_tokens, last_model")
+    .select("actual_usd_micros, provider_usd_micros, request_count, input_tokens, output_tokens, last_model")
     .eq("month_start", `${usageDate.slice(0, 7)}-01`)
     .maybeSingle();
   const { data: dailyUsageRow, error: dailyUsageError } = await supabase
     .from("ai_usage_daily")
-    .select("actual_usd_micros")
+    .select("actual_usd_micros, provider_usd_micros, provider_synced_at")
     .eq("usage_date", usageDate)
     .maybeSingle();
-  const dailyActualUsdMicros = Number(dailyUsageRow?.actual_usd_micros ?? 0);
+  const dailyBillingUsdMicros = dailyUsageRow?.provider_synced_at
+    ? Number(dailyUsageRow.provider_usd_micros ?? 0)
+    : null;
+  const dailyActualUsdMicros = Math.max(
+    Number(dailyUsageRow?.actual_usd_micros ?? 0),
+    dailyBillingUsdMicros ?? 0,
+  );
 
   return {
     enabled: true,
@@ -101,7 +110,10 @@ export async function loadCloudContext(): Promise<CloudContext> {
       : rowsToApprovals((approvalRows ?? []) as QuestionApprovalRow[]),
     aiUsage: usageRow
       ? {
-          actualUsdMicros: Number(usageRow.actual_usd_micros),
+          actualUsdMicros: Math.max(
+            Number(usageRow.actual_usd_micros),
+            Number(usageRow.provider_usd_micros ?? 0),
+          ),
           requestCount: Number(usageRow.request_count),
           inputTokens: Number(usageRow.input_tokens),
           outputTokens: Number(usageRow.output_tokens),
@@ -111,6 +123,11 @@ export async function loadCloudContext(): Promise<CloudContext> {
       : null,
     aiDailyBudget: {
       actualUsdMicros: dailyActualUsdMicros,
+      billingUsdMicros: dailyBillingUsdMicros,
+      billingSyncedAt:
+        typeof dailyUsageRow?.provider_synced_at === "string"
+          ? dailyUsageRow.provider_synced_at
+          : null,
       limitUsdMicros: dailyBudgetUsdMicros(),
       remainingPercent: dailyBudgetRemainingPercent(dailyActualUsdMicros),
       usageDate,
