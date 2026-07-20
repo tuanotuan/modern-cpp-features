@@ -167,47 +167,61 @@ export function AdminDashboard({
           <MetricCard label="Lượt ôn đã lưu" value={initialSnapshot.metrics.totalReviews} detail={`${initialSnapshot.metrics.practicedQuestions} câu đã từng luyện`} />
         </section>
 
-        <section className="mt-8 rounded-[2rem] border border-[#ba4b2f]/20 bg-[#fff7e8] p-5 sm:p-7">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="font-mono text-xs font-bold tracking-[0.16em] text-[#ba4b2f] uppercase">
-                Review queue
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold">
-                Danh sách chờ duyệt
-              </h2>
-              <p className="mt-2 text-sm text-[#64736c]">
+        <details className="group mt-8 overflow-hidden rounded-[2rem] border border-[#ba4b2f]/20 bg-[#fff7e8]">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 sm:px-7 sm:py-6">
+            <div className="flex min-w-0 items-center gap-4">
+              <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#ffe0a8] font-mono text-sm font-bold text-[#8e3825]">
+                {reviewQueue.length}
+              </span>
+              <div className="min-w-0">
+                <p className="font-mono text-[10px] font-bold tracking-[0.16em] text-[#ba4b2f] uppercase">
+                  Review queue
+                </p>
+                <h2 className="mt-1 truncate text-xl font-semibold">
+                  Danh sách chờ duyệt
+                </h2>
+              </div>
+            </div>
+            <span className="shrink-0 text-xs font-bold text-[#356b58]">
+              <span className="group-open:hidden">Xem danh sách ↓</span>
+              <span className="hidden group-open:inline">Thu gọn ↑</span>
+            </span>
+          </summary>
+
+          <div className="border-t border-[#ba4b2f]/15 px-5 py-6 sm:px-7">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <p className="max-w-2xl text-sm text-[#64736c]">
                 Mở từng câu để đối chiếu đáp án, rubric và nguồn trước khi đưa vào lịch luyện.
               </p>
+              {reviewQueue.length ? (
+                <button
+                  type="button"
+                  onClick={() => void approve(reviewQueue.map((question) => question.id))}
+                  disabled={savingIds.size > 0}
+                  className="rounded-xl border border-[#ba4b2f]/35 bg-white/70 px-4 py-2.5 text-xs font-bold text-[#8e3825] transition hover:bg-white disabled:cursor-wait disabled:opacity-60"
+                >
+                  {savingIds.size ? "Đang duyệt…" : `Duyệt tất cả (${reviewQueue.length})`}
+                </button>
+              ) : null}
             </div>
-            {reviewQueue.length ? (
-              <button
-                type="button"
-                onClick={() => void approve(reviewQueue.map((question) => question.id))}
-                disabled={savingIds.size > 0}
-                className="rounded-xl border border-[#ba4b2f]/35 bg-white/70 px-4 py-2.5 text-xs font-bold text-[#8e3825] transition hover:bg-white disabled:cursor-wait disabled:opacity-60"
-              >
-                {savingIds.size ? "Đang duyệt…" : `Duyệt tất cả (${reviewQueue.length})`}
-              </button>
-            ) : null}
-          </div>
 
-          <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            {reviewQueue.map((question) => (
-              <QueueReviewCard
-                key={question.id}
-                question={question}
-                saving={savingIds.has(question.id)}
-                onApprove={() => void approve([question.id])}
-              />
-            ))}
-            {!reviewQueue.length ? (
-              <div className="rounded-2xl border border-dashed border-[#356b58]/25 bg-white/45 px-5 py-10 text-center text-sm text-[#52645c] lg:col-span-2">
-                Queue đã sạch — không có câu nào cần duyệt.
-              </div>
-            ) : null}
+            <div className="mt-6 grid gap-4 lg:grid-cols-2">
+              {reviewQueue.map((question) => (
+                <QueueReviewCard
+                  key={question.id}
+                  question={question}
+                  saving={savingIds.has(question.id)}
+                  onApprove={() => void approve([question.id])}
+                />
+              ))}
+              {!reviewQueue.length ? (
+                <div className="rounded-2xl border border-dashed border-[#356b58]/25 bg-white/45 px-5 py-10 text-center text-sm text-[#52645c] lg:col-span-2">
+                  Queue đã sạch — không có câu nào cần duyệt.
+                </div>
+              ) : null}
+            </div>
           </div>
-        </section>
+        </details>
 
         <section className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
           <div className="rounded-[2rem] border border-[#173f35]/15 bg-white/65 p-5 sm:p-7">
