@@ -1,7 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 
 import type { AiDailyBudgetSnapshot } from "@/lib/ai/budget";
-import { syncOpenAiBilling } from "@/lib/ai/billing";
 import {
   dailyBudgetRemainingPercent,
   dailyBudgetUsdMicros,
@@ -70,27 +69,32 @@ export async function loadCloudContext(): Promise<CloudContext> {
     };
   }
 
-  await syncOpenAiBilling(supabase);
-
-  const { data: rows, error } = await supabase
-    .from("practice_reviews")
-    .select("question_id, reviewed_on, rating, next_due_on")
-    .order("reviewed_on", { ascending: false })
-    .limit(1000);
-  const { data: approvalRows, error: approvalError } = await supabase
-    .from("question_approvals")
-    .select("question_id, question_version, source_hash");
   const usageDate = vietnamUsageDate();
-  const { data: usageRow } = await supabase
-    .from("ai_usage_monthly")
-    .select("actual_usd_micros, provider_usd_micros, request_count, input_tokens, output_tokens, last_model")
-    .eq("month_start", `${usageDate.slice(0, 7)}-01`)
-    .maybeSingle();
-  const { data: dailyUsageRow, error: dailyUsageError } = await supabase
-    .from("ai_usage_daily")
-    .select("actual_usd_micros, provider_usd_micros, provider_synced_at")
-    .eq("usage_date", usageDate)
-    .maybeSingle();
+  const [reviewsResult, approvalsResult, monthlyUsageResult, dailyUsageResult] =
+    await Promise.all([
+      supabase
+        .from("practice_reviews")
+        .select("question_id, reviewed_on, rating, next_due_on")
+        .order("reviewed_on", { ascending: false })
+        .limit(1000),
+      supabase
+        .from("question_approvals")
+        .select("question_id, question_version, source_hash"),
+      supabase
+        .from("ai_usage_monthly")
+        .select("actual_usd_micros, provider_usd_micros, request_count, input_tokens, output_tokens, last_model")
+        .eq("month_start", `${usageDate.slice(0, 7)}-01`)
+        .maybeSingle(),
+      supabase
+        .from("ai_usage_daily")
+        .select("actual_usd_micros, provider_usd_micros, provider_synced_at")
+        .eq("usage_date", usageDate)
+        .maybeSingle(),
+    ]);
+  const { data: rows, error } = reviewsResult;
+  const { data: approvalRows, error: approvalError } = approvalsResult;
+  const { data: usageRow, error: usageError } = monthlyUsageResult;
+  const { data: dailyUsageRow, error: dailyUsageError } = dailyUsageResult;
   const dailyBillingUsdMicros = dailyUsageRow?.provider_synced_at
     ? Number(dailyUsageRow.provider_usd_micros ?? 0)
     : null;
@@ -132,7 +136,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
       remainingPercent: dailyBudgetRemainingPercent(dailyActualUsdMicros),
       usageDate,
     },
-    error: Boolean(error || approvalError || dailyUsageError),
+    error: Boolean(error || approvalError || usageError || dailyUsageError),
   };
 }
 
