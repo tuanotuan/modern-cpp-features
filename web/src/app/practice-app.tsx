@@ -7,6 +7,7 @@ import type {
   CoachFeedback,
   CoachFollowUpResponse,
 } from "@/lib/ai/contracts";
+import type { AiDailyBudgetSnapshot } from "@/lib/ai/budget";
 import type { Question } from "@/lib/content/schema";
 import type { PracticeAccount } from "@/lib/practice/cloud-server";
 import {
@@ -106,6 +107,7 @@ export function PracticeApp({
   account,
   initialCloudProgress,
   cloudSetupError,
+  initialAiDailyBudget,
   authNotice,
 }: {
   questions: PracticeQuestion[];
@@ -115,6 +117,7 @@ export function PracticeApp({
   account: PracticeAccount | null;
   initialCloudProgress: PracticeProgress;
   cloudSetupError: boolean;
+  initialAiDailyBudget: AiDailyBudgetSnapshot | null;
   authNotice: string | null;
 }) {
   const snapshot = useSyncExternalStore(
@@ -154,6 +157,7 @@ export function PracticeApp({
   const [deepDiveErrors, setDeepDiveErrors] = useState<Record<string, string>>({});
   const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
   const [savedLibraryOpen, setSavedLibraryOpen] = useState(false);
+  const [aiDailyBudget, setAiDailyBudget] = useState(initialAiDailyBudget);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(
     null,
   );
@@ -484,6 +488,7 @@ export function PracticeApp({
       const payload = (await response.json()) as {
         feedback?: CoachFeedback;
         model?: string;
+        aiDailyBudget?: AiDailyBudgetSnapshot | null;
         error?: string;
       };
 
@@ -503,6 +508,7 @@ export function PracticeApp({
         ...evaluatedAnswers,
         [current.id]: answer,
       }));
+      if (payload.aiDailyBudget) setAiDailyBudget(payload.aiDailyBudget);
       setFollowUpChats((chats) => ({ ...chats, [current.id]: [] }));
       setDeepDiveOpen((open) => withoutSetValue(open, current.id));
       setDeepDiveAnswers((answers) => omitRecordKey(answers, current.id));
@@ -548,6 +554,7 @@ export function PracticeApp({
       });
       const payload = (await response.json()) as {
         reply?: CoachFollowUpResponse;
+        aiDailyBudget?: AiDailyBudgetSnapshot | null;
         error?: string;
       };
       if (!response.ok || !payload.reply) {
@@ -568,6 +575,7 @@ export function PracticeApp({
         ],
       }));
       setFollowUpInputs((inputs) => ({ ...inputs, [current.id]: "" }));
+      if (payload.aiDailyBudget) setAiDailyBudget(payload.aiDailyBudget);
     } catch (error) {
       setFollowUpErrors((errors) => ({
         ...errors,
@@ -605,6 +613,7 @@ export function PracticeApp({
       });
       const payload = (await response.json()) as {
         reply?: CoachFollowUpResponse;
+        aiDailyBudget?: AiDailyBudgetSnapshot | null;
         error?: string;
       };
       if (!response.ok || !payload.reply) {
@@ -614,6 +623,7 @@ export function PracticeApp({
         ...feedback,
         [current.id]: payload.reply!,
       }));
+      if (payload.aiDailyBudget) setAiDailyBudget(payload.aiDailyBudget);
     } catch (error) {
       setDeepDiveErrors((errors) => ({
         ...errors,
@@ -718,6 +728,9 @@ export function PracticeApp({
               value={`${completedToday}/${dailyTotal || 1}`}
               label="hôm nay"
             />
+            {account && aiDailyBudget ? (
+              <AiBudgetPill budget={aiDailyBudget} />
+            ) : null}
             <button
               type="button"
               onClick={() => setSavedLibraryOpen(true)}
@@ -1270,6 +1283,29 @@ function StatPill({ icon, value, label }: { icon: string; value: string; label: 
       <span className="text-[#ba4b2f]">{icon}</span>
       <span className="font-mono text-xs font-bold">{value}</span>
       <span className="hidden text-xs text-[#6c7b73] sm:inline">{label}</span>
+    </div>
+  );
+}
+
+function AiBudgetPill({ budget }: { budget: AiDailyBudgetSnapshot }) {
+  const low = budget.remainingPercent <= 20;
+  return (
+    <div
+      className="min-w-32 rounded-full border border-[#173f35]/15 bg-white/55 px-3 py-2"
+      title={`Quota ngày $${(budget.limitUsdMicros / 1_000_000).toFixed(3)} · reset 00:00 giờ Việt Nam`}
+    >
+      <div className="flex items-center justify-between gap-2 font-mono text-[10px] font-bold uppercase">
+        <span>AI hôm nay</span>
+        <span className={low ? "text-[#ba4b2f]" : "text-[#245748]"}>
+          {budget.remainingPercent}% còn lại
+        </span>
+      </div>
+      <div className="mt-1 h-1 overflow-hidden rounded-full bg-[#173f35]/15">
+        <div
+          className={`h-full rounded-full transition-[width] ${low ? "bg-[#ba4b2f]" : "bg-[#79b82a]"}`}
+          style={{ width: `${budget.remainingPercent}%` }}
+        />
+      </div>
     </div>
   );
 }

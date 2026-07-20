@@ -64,6 +64,7 @@ export default async function Home({
       account={cloud.account}
       initialCloudProgress={cloud.progress}
       cloudSetupError={cloud.error}
+      initialAiDailyBudget={cloud.aiDailyBudget}
       authNotice={authNotice(authCode)}
     />
   );

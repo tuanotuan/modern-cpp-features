@@ -1,5 +1,11 @@
 import type { User } from "@supabase/supabase-js";
 
+import type { AiDailyBudgetSnapshot } from "@/lib/ai/budget";
+import {
+  dailyBudgetRemainingPercent,
+  dailyBudgetUsdMicros,
+  vietnamUsageDate,
+} from "@/lib/ai/usage";
 import { isAllowedPracticeUser } from "@/lib/supabase/authorization";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -24,6 +30,7 @@ export type CloudContext = {
   progress: PracticeProgress;
   approvals: QuestionApproval[];
   aiUsage: AiUsageSummary | null;
+  aiDailyBudget: AiDailyBudgetSnapshot | null;
   error: boolean;
 };
 
@@ -43,6 +50,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
       progress: EMPTY_PROGRESS,
       approvals: [],
       aiUsage: null,
+      aiDailyBudget: null,
       error: false,
     };
   }
@@ -56,6 +64,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
       progress: EMPTY_PROGRESS,
       approvals: [],
       aiUsage: null,
+      aiDailyBudget: null,
       error: false,
     };
   }
@@ -68,11 +77,18 @@ export async function loadCloudContext(): Promise<CloudContext> {
   const { data: approvalRows, error: approvalError } = await supabase
     .from("question_approvals")
     .select("question_id, question_version, source_hash");
+  const usageDate = vietnamUsageDate();
   const { data: usageRow } = await supabase
     .from("ai_usage_monthly")
     .select("actual_usd_micros, request_count, input_tokens, output_tokens, last_model")
-    .eq("month_start", new Date().toISOString().slice(0, 7) + "-01")
+    .eq("month_start", `${usageDate.slice(0, 7)}-01`)
     .maybeSingle();
+  const { data: dailyUsageRow, error: dailyUsageError } = await supabase
+    .from("ai_usage_daily")
+    .select("actual_usd_micros")
+    .eq("usage_date", usageDate)
+    .maybeSingle();
+  const dailyActualUsdMicros = Number(dailyUsageRow?.actual_usd_micros ?? 0);
 
   return {
     enabled: true,
@@ -93,7 +109,13 @@ export async function loadCloudContext(): Promise<CloudContext> {
             typeof usageRow.last_model === "string" ? usageRow.last_model : null,
         }
       : null,
-    error: Boolean(error || approvalError),
+    aiDailyBudget: {
+      actualUsdMicros: dailyActualUsdMicros,
+      limitUsdMicros: dailyBudgetUsdMicros(),
+      remainingPercent: dailyBudgetRemainingPercent(dailyActualUsdMicros),
+      usageDate,
+    },
+    error: Boolean(error || approvalError || dailyUsageError),
   };
 }
 

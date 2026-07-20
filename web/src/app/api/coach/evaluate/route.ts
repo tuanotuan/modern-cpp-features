@@ -1,6 +1,7 @@
 import manifestJson from "@/generated/content-manifest.json";
 import {
   AiBudgetConfigurationError,
+  AiDailyBudgetExceededError,
   AiMonthlyBudgetExceededError,
   withAiBudget,
 } from "@/lib/ai/budget";
@@ -128,7 +129,7 @@ export async function POST(request: Request) {
           ),
         }),
     );
-    const { data: feedback, model } = result;
+    const { data: feedback, model } = result.result;
 
     if (supabase && authResult?.data.user) {
       const { error: saveError } = await supabase.from("coach_attempts").insert({
@@ -148,7 +149,7 @@ export async function POST(request: Request) {
       }
     }
 
-    return Response.json({ feedback, model });
+    return Response.json({ feedback, model, aiDailyBudget: result.dailyBudget });
   } catch (error) {
     if (error instanceof CoachConfigurationError) {
       return Response.json(
@@ -162,6 +163,16 @@ export async function POST(request: Request) {
         {
           error: "Đã chạm ngân sách AI tháng này. Website sẽ không gọi thêm để giữ giới hạn chi tiêu.",
           code: "monthly_budget_exceeded",
+        },
+        { status: 429 },
+      );
+    }
+
+    if (error instanceof AiDailyBudgetExceededError) {
+      return Response.json(
+        {
+          error: "Đã dùng hết quota AI hôm nay. Quota sẽ tự reset lúc 00:00 giờ Việt Nam.",
+          code: "daily_budget_exceeded",
         },
         { status: 429 },
       );
