@@ -8,6 +8,7 @@ import type { GeneratedLesson, Question } from "@/lib/content/schema";
 import {
   coachFeedbackSchema,
   coachFollowUpResponseSchema,
+  normalizeCoachFeedback,
   type CoachFeedback,
   type CoachFollowUpMessage,
   type CoachFollowUpResponse,
@@ -51,7 +52,12 @@ export async function evaluateWithOpenAI({
     },
   });
 
-  return parsedResult(response, model, "OpenAI returned empty coach feedback");
+  const result = parsedResult(
+    response,
+    model,
+    "OpenAI returned empty coach feedback",
+  );
+  return { ...result, data: normalizeCoachFeedback(result.data) };
 }
 
 export async function answerCoachFollowUpWithOpenAI({

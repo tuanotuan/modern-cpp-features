@@ -34,6 +34,54 @@ export const coachFeedbackSchema = z.object({
 export type CoachFeedback = z.infer<typeof coachFeedbackSchema>;
 export type CoachRequest = z.infer<typeof coachRequestSchema>;
 
+const verdictScoreBands: Record<
+  CoachFeedback["verdict"],
+  { minimum: number; maximum: number }
+> = {
+  needs_work: { minimum: 0, maximum: 39 },
+  partial: { minimum: 40, maximum: 64 },
+  solid: { minimum: 65, maximum: 84 },
+  strong: { minimum: 85, maximum: 100 },
+};
+
+export function normalizeCoachFeedback(
+  rawFeedback: CoachFeedback,
+): CoachFeedback {
+  const parsed = coachFeedbackSchema.parse(rawFeedback);
+  const band = verdictScoreBands[parsed.verdict];
+  const coverageRatio =
+    parsed.coverage.reduce(
+      (sum, item) =>
+        sum + (item.status === "met" ? 1 : item.status === "partial" ? 0.5 : 0),
+      0,
+    ) / parsed.coverage.length;
+
+  let score = parsed.score;
+  const tenPointScore = score * 10;
+  if (
+    score <= 10 &&
+    tenPointScore >= band.minimum &&
+    tenPointScore <= band.maximum
+  ) {
+    score = tenPointScore;
+  }
+
+  const coverageFloor =
+    coverageRatio === 1 ? 75 : coverageRatio >= 0.75 ? 65 : coverageRatio >= 0.5 ? 40 : 0;
+  score = Math.max(score, coverageFloor);
+
+  const verdict: CoachFeedback["verdict"] =
+    score >= 85
+      ? "strong"
+      : score >= 65
+        ? "solid"
+        : score >= 40
+          ? "partial"
+          : "needs_work";
+
+  return { ...parsed, score, verdict };
+}
+
 export const coachFollowUpMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
   content: z.string().trim().min(1).max(2000),
