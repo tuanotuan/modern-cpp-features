@@ -2804,6 +2804,400 @@
       "version": 1
     },
     {
+      "id": "cpp11-lambda-algorithms-001",
+      "lessonId": "cpp11-lambda-algorithms",
+      "type": "pitfall",
+      "difficulty": "intermediate",
+      "estimatedMinutes": 5,
+      "prompt": "Khi viết lambda làm comparator cho hàm `std::sort`, tại sao việc sử dụng toán tử `<=` (ví dụ: `return a.price <= b.price;`) lại bị coi là một sai lầm phổ biến? Bạn nên sử dụng toán tử nào thay thế?",
+      "hint": "Hãy nghĩ về quy tắc so sánh nghiêm ngặt (strict comparison) mà thuật toán sắp xếp yêu cầu.",
+      "answer": {
+        "short": "Sử dụng `<=` vi phạm nguyên tắc so sánh của `std::sort`; bạn nên sử dụng toán tử `<`.",
+        "detailed": "Trong C++, `std::sort` yêu cầu một bộ so sánh tuân thủ quy tắc 'strict weak ordering'. Nếu bạn sử dụng `<=`, khi hai phần tử bằng nhau (a == b), bộ so sánh sẽ trả về true cho cả (a, b) và (b, a), điều này gây mâu thuẫn logic cho thuật toán. Quy tắc đúng là chỉ trả về true nếu phần tử thứ nhất thực sự nên đứng trước phần tử thứ hai. Vì vậy, sử dụng `<` là cách tiếp cận chuẩn xác để đảm bảo tính ổn định và tránh hành vi không xác định."
+      },
+      "rubric": {
+        "required": [
+          "Chỉ ra việc sử dụng <= là sai",
+          "Nêu được toán tử đúng là <",
+          "Giải thích được lý do liên quan đến logic so sánh/strict comparison"
+        ],
+        "bonus": [
+          "Nhắc đến việc tránh mâu thuẫn khi hai phần tử bằng nhau"
+        ],
+        "misconceptions": [
+          "Cho rằng <= giúp sắp xếp nhanh hơn hoặc bao quát hơn"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "common-mistakes"
+        },
+        {
+          "sectionId": "sort-with-lambda"
+        }
+      ],
+      "sourceHash": "02bcc9b9c9874a0d29690cb0b5c981939bd7911849ffa97ca013ee72a17e2647",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp11-lambda-algorithms-002",
+      "lessonId": "cpp11-lambda-algorithms",
+      "type": "scenario",
+      "difficulty": "intermediate",
+      "estimatedMinutes": 7,
+      "prompt": "Giả sử bạn đang làm việc với một hệ thống giao dịch (trading) có hiệu năng cao, xử lý danh sách các đối tượng `Order` rất lớn. Khi sử dụng `std::for_each` để duyệt qua danh sách này và chỉ để đọc dữ liệu, bạn nên khai báo kiểu tham số cho lambda như thế nào? Tại sao?",
+      "code": "struct Order {\n    int id;\n    std::string symbol;\n    double price;\n    int quantity;\n    // ... nhiều trường dữ liệu khác\n};\n\nstd::vector<Order> orders;\n// ... nạp dữ liệu vào orders\n\nstd::for_each(orders.begin(), orders.end(), []( /* Tham số khai báo thế nào? */ ) {\n    // Chỉ đọc dữ liệu để xử lý\n});",
+      "hint": "Cân nhắc giữa việc sao chép đối tượng (copy) và sử dụng tham chiếu (reference) để tối ưu tốc độ.",
+      "answer": {
+        "short": "Nên sử dụng `const Order& order`.",
+        "detailed": "Trong các hệ thống nhạy cảm về hiệu năng như trading, việc tránh sao chép các đối tượng lớn là cực kỳ quan trọng. Sử dụng tham chiếu hằng (`const Order&`) giúp: 1. Tránh chi phí copy đối tượng (unnecessary copies), giúp code chạy nhanh hơn. 2. Đảm bảo an toàn dữ liệu bằng cách ngăn chặn việc vô tình sửa đổi đối tượng bên trong lambda khi mục đích chỉ là đọc. Bạn chỉ nên dùng `Order&` (không có const) khi thực sự có ý định thay đổi dữ liệu của phần tử đó."
+      },
+      "rubric": {
+        "required": [
+          "Đề xuất sử dụng const Order&",
+          "Giải thích được lý do tránh copy đối tượng lớn",
+          "Giải thích được ý nghĩa của const trong việc bảo vệ dữ liệu"
+        ],
+        "bonus": [
+          "Liên hệ được với ngữ cảnh hiệu năng cao/trading"
+        ],
+        "misconceptions": [
+          "Sử dụng tham trị (Order order) vì nghĩ rằng nó an toàn hơn"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "for-each-with-lambda"
+        },
+        {
+          "sectionId": "common-mistakes"
+        },
+        {
+          "sectionId": "notes-for-trading-performance-sensitive-code"
+        }
+      ],
+      "sourceHash": "02bcc9b9c9874a0d29690cb0b5c981939bd7911849ffa97ca013ee72a17e2647",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp11-static-assert-001",
+      "lessonId": "cpp11-static-assert",
+      "type": "pitfall",
+      "difficulty": "beginner",
+      "estimatedMinutes": 3,
+      "prompt": "Một lập trình viên cố gắng thực hiện kiểm tra dữ liệu đầu vào từ người dùng bằng đoạn mã sau. Tại sao đoạn mã này không thể biên dịch thành công?",
+      "code": "#include <iostream>\n\nint main() {\n    int n;\n    std::cout << \"Nhập một số dương: \";\n    std::cin >> n;\n\n    static_assert(n > 0, \"n phải là số dương\");\n\n    return 0;\n}",
+      "hint": "Hãy xem xét thời điểm mà static_assert thực hiện việc kiểm tra so với thời điểm người dùng nhập dữ liệu.",
+      "answer": {
+        "short": "static_assert yêu cầu điều kiện phải được đánh giá tại thời điểm biên dịch (compile-time), trong khi giá trị của 'n' chỉ được biết tại thời điểm chạy (runtime).",
+        "detailed": "static_assert được thiết kế để kiểm tra các điều kiện tại thời điểm biên dịch. Trong đoạn mã trên, biến 'n' được nhập từ bàn phím thông qua std::cin, nghĩa là giá trị của nó chỉ tồn tại khi chương trình đang chạy (runtime). Trình biên dịch không thể biết trước người dùng sẽ nhập gì để đánh giá điều kiện 'n > 0', dẫn đến lỗi biên dịch. Để static_assert hoạt động, điều kiện bên trong phải là một hằng số hoặc biểu thức constexpr."
+      },
+      "rubric": {
+        "required": [
+          "Giải thích được static_assert hoạt động tại compile-time",
+          "Chỉ ra được 'n' là giá trị runtime/user input",
+          "Khẳng định trình biên dịch không thể biết giá trị của 'n'"
+        ],
+        "bonus": [
+          "Đề cập đến việc static_assert cần constexpr hoặc hằng số"
+        ],
+        "misconceptions": [
+          "Nhầm lẫn rằng static_assert có thể thay thế lệnh if để kiểm tra dữ liệu người dùng"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "common-mistakes"
+        },
+        {
+          "sectionId": "working-with-constexpr"
+        }
+      ],
+      "sourceHash": "9173c6bfb3e4b733a510dfa5d7922416b68b41a5d6417afce5f4fc9cacf5879e",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp11-static-assert-002",
+      "lessonId": "cpp11-static-assert",
+      "type": "scenario",
+      "difficulty": "intermediate",
+      "estimatedMinutes": 5,
+      "prompt": "Giả sử bạn đang xây dựng một hệ thống giao dịch với hằng số cấu hình `constexpr int MaxOrders = 1000;`. Bạn được yêu cầu phải đảm bảo rằng cấu hình này không bao giờ vượt quá 5000 để tránh treo hệ thống. Tại sao việc sử dụng `static_assert` lại ưu việt hơn việc sử dụng câu lệnh `if` thông thường trong hàm `main` để kiểm tra điều kiện này?",
+      "hint": "Điều gì xảy ra nếu cấu hình sai được đưa vào môi trường thực tế (production)?",
+      "answer": {
+        "short": "static_assert ngăn chặn việc tạo ra một chương trình lỗi ngay từ khâu biên dịch, thay vì đợi đến khi chạy mới phát hiện lỗi.",
+        "detailed": "Sử dụng static_assert giúp thực thi quy tắc cấu hình ngay tại thời điểm biên dịch. Nếu `MaxOrders` vi phạm điều kiện (ví dụ đặt là 10000), trình biên dịch sẽ báo lỗi và không tạo ra file thực thi (binary). Điều này giúp loại bỏ hoàn toàn rủi ro triển khai một phần mềm có cấu hình sai lên hệ thống. Ngược lại, nếu dùng lệnh `if` trong runtime, chương trình vẫn được biên dịch thành công và chỉ phát hiện lỗi khi đã bắt đầu chạy, điều này có thể gây ra rủi ro muộn hơn trong quy trình vận hành."
+      },
+      "rubric": {
+        "required": [
+          "Nêu được lợi ích của việc phát hiện lỗi sớm tại thời điểm biên dịch",
+          "Giải thích rằng static_assert ngăn chặn việc tạo ra file thực thi lỗi",
+          "So sánh được với rủi ro của việc kiểm tra tại runtime (if statement)"
+        ],
+        "bonus": [
+          "Đề cập đến việc static_assert giúp tài liệu hóa các giả định quan trọng của mã nguồn"
+        ],
+        "misconceptions": [
+          "Cho rằng static_assert và if có hiệu năng giống nhau (thực tế static_assert không tốn chi phí runtime)"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "what-problem-does-it-solve"
+        },
+        {
+          "sectionId": "when-should-you-use-static-assert"
+        },
+        {
+          "sectionId": "conclusion"
+        }
+      ],
+      "sourceHash": "9173c6bfb3e4b733a510dfa5d7922416b68b41a5d6417afce5f4fc9cacf5879e",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp11-defaulted-functions-001",
+      "lessonId": "cpp11-defaulted-functions",
+      "type": "code_reasoning",
+      "difficulty": "beginner",
+      "estimatedMinutes": 5,
+      "prompt": "Giả sử bạn có đoạn code sau đây. Tại sao dòng khai báo `Order order1;` trong hàm `main` lại gây lỗi biên dịch, và bạn nên thêm dòng code nào vào class `Order` để sửa lỗi này bằng cách sử dụng tính năng của C++11?",
+      "code": "class Order {\npublic:\n    Order(int id) : id(id) {}\nprivate:\n    int id;\n};\n\nint main() {\n    Order order1; // Lỗi biên dịch tại đây\n    return 0;\n}",
+      "hint": "Hãy nhớ rằng khi bạn tự định nghĩa một constructor có tham số, trình biên dịch sẽ không còn tự động cung cấp constructor mặc định nữa.",
+      "answer": {
+        "short": "Lỗi xảy ra vì trình biên dịch ngừng cung cấp constructor mặc định khi đã có constructor tùy chỉnh. Để sửa, thêm `Order() = default;` vào phần public của class.",
+        "detailed": "Trong C++, nếu một class không có constructor nào, trình biên dịch sẽ tự động tạo một default constructor (không tham số). Tuy nhiên, ngay khi bạn khai báo một constructor tùy chỉnh (như `Order(int id)`), trình biên dịch sẽ không tự động tạo default constructor nữa. Để khôi phục lại constructor mặc định mà không cần viết thân hàm thủ công, C++11 cung cấp cú pháp `= default`. Việc thêm `Order() = default;` yêu cầu trình biên dịch tạo ra triển khai mặc định chuẩn cho constructor không tham số."
+      },
+      "rubric": {
+        "required": [
+          "Giải thích được việc trình biên dịch ngừng tạo default constructor khi có constructor tùy chỉnh",
+          "Sử dụng đúng cú pháp `Order() = default;`"
+        ],
+        "bonus": [
+          "Nêu được đây là tính năng của C++11",
+          "Đề cập đến việc giúp code tường minh hơn về ý định của lập trình viên"
+        ],
+        "misconceptions": [
+          "Nhầm lẫn rằng trình biên dịch luôn luôn tạo default constructor trong mọi trường hợp"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "what-problem-does-it-solve"
+        },
+        {
+          "sectionId": "minimum-syntax"
+        }
+      ],
+      "sourceHash": "858ea00b54d09ef8a71c834ad89beb8edeb71d18aff23342cc6cf7f256fbc0ef",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp11-defaulted-functions-002",
+      "lessonId": "cpp11-defaulted-functions",
+      "type": "pitfall",
+      "difficulty": "intermediate",
+      "estimatedMinutes": 7,
+      "prompt": "Một lập trình viên cho rằng việc viết `Order() = default;` hoàn toàn giống hệt với việc viết `Order() {}`. Ý kiến này có đúng không? Ngoài ra, nếu sử dụng `Order() = default;`, các biến thành viên kiểu `int` trong class có mặc định được khởi tạo về giá trị 0 không?",
+      "code": "class Order {\npublic:\n    Order() = default;\nprivate:\n    int id;\n};",
+      "hint": "Hãy xem xét sự khác biệt giữa việc yêu cầu trình biên dịch tạo hàm và việc tự viết thân hàm, cũng như cách các kiểu dữ liệu cơ bản được khởi tạo.",
+      "answer": {
+        "short": "Không giống hệt nhau: `= default` yêu cầu trình biên dịch tạo triển khai chuẩn, còn `{}` là hàm do người dùng định nghĩa. `= default` không tự khởi tạo `int` về 0 trừ khi có default member initializer.",
+        "detailed": "Thứ nhất, `= default` và `{}` không hoàn toàn giống nhau. `= default` yêu cầu trình biên dịch tạo ra triển khai mặc định 'nguyên bản', điều này có thể giúp class giữ được các đặc tính tối ưu (như triviality) mà một thân hàm trống do người dùng định nghĩa có thể làm mất đi. Thứ hai, một sai lầm phổ biến là kỳ vọng `= default` sẽ tự động gán giá trị hữu ích cho các biến thành viên. Thực tế, nó không tự khởi tạo các kiểu dữ liệu cơ bản như `int`. Để `id` có giá trị 0, bạn cần sử dụng 'default member initializer' trong khai báo biến (ví dụ: `int id{};`)."
+      },
+      "rubric": {
+        "required": [
+          "Phân biệt được `= default` là compiler-generated còn `{}` là user-defined",
+          "Khẳng định `= default` không tự khởi tạo giá trị cho các kiểu dữ liệu cơ bản như int"
+        ],
+        "bonus": [
+          "Đề cập đến giải pháp sử dụng default member initializer (ví dụ `int id{};`) để có giá trị mặc định"
+        ],
+        "misconceptions": [
+          "Tin rằng `= default` sẽ tự động xóa sạch bộ nhớ hoặc gán 0 cho mọi biến thành viên"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "default-vs-an-empty-body"
+        },
+        {
+          "sectionId": "common-mistakes"
+        }
+      ],
+      "sourceHash": "858ea00b54d09ef8a71c834ad89beb8edeb71d18aff23342cc6cf7f256fbc0ef",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp11-override-001",
+      "lessonId": "cpp11-override",
+      "type": "pitfall",
+      "difficulty": "intermediate",
+      "estimatedMinutes": 5,
+      "prompt": "Trong đoạn mã sau, tại sao trình biên dịch sẽ báo lỗi? Nếu chúng ta loại bỏ từ khóa `override`, chương trình có biên dịch được không và hệ quả là gì?",
+      "code": "class Animal {\npublic:\n    virtual void talk() const {\n        std::cout << \"Animal sound\";\n    }\n};\n\nclass Cat : public Animal {\npublic:\n    void talk() override {\n        std::cout << \"Meow\";\n    }\n};",
+      "hint": "Hãy chú ý kỹ đến từ khóa `const` ở hàm của lớp cha và lớp con.",
+      "answer": {
+        "short": "Trình biên dịch báo lỗi vì thiếu từ khóa `const` ở lớp con khiến chữ ký hàm không khớp; nếu bỏ `override`, mã sẽ biên dịch được nhưng hàm sẽ không thực hiện ghi đè (override) như mong đợi.",
+        "detailed": "Trình biên dịch báo lỗi vì hàm `talk()` trong lớp `Cat` thiếu từ khóa `const`, dẫn đến chữ ký hàm không khớp hoàn toàn với hàm ảo trong lớp `Animal`. Từ khóa `override` yêu cầu trình biên dịch kiểm tra sự trùng khớp này. Nếu loại bỏ `override`, chương trình sẽ biên dịch được nhưng `Cat::talk()` sẽ được coi là một hàm mới hoàn toàn thay vì ghi đè hàm của lớp cha. Khi đó, nếu gọi hàm thông qua con trỏ `Animal*`, hàm của lớp cha vẫn sẽ được thực thi thay vì hàm của lớp con."
+      },
+      "rubric": {
+        "required": [
+          "Giải thích được sự khác biệt về chữ ký hàm do thiếu `const`",
+          "Nêu được vai trò của `override` trong việc bắt lỗi biên dịch",
+          "Xác định được hệ quả khi bỏ `override` (trở thành hàm mới, không ghi đè)"
+        ],
+        "bonus": [
+          "Đề cập đến việc gọi hàm qua con trỏ lớp cha sẽ không ra kết quả mong muốn nếu không ghi đè thành công"
+        ],
+        "misconceptions": [
+          "Cho rằng chỉ cần trùng tên hàm là đủ để override"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "common-mistake-missing-const"
+        },
+        {
+          "sectionId": "what-problem-does-it-solve"
+        },
+        {
+          "sectionId": "important-rules"
+        }
+      ],
+      "sourceHash": "a28dfa796b924fc80685b2175d2126c1a7cad1f7f8b3e0836b2e9ed0dda4e9d5",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp11-override-002",
+      "lessonId": "cpp11-override",
+      "type": "recall",
+      "difficulty": "beginner",
+      "estimatedMinutes": 3,
+      "prompt": "Dựa trên mô hình tư duy (Mental Model) được cung cấp, hãy giải thích sự khác biệt về vai trò giữa từ khóa `virtual` và `override`. Bạn nên sử dụng `override` khi nào?",
+      "hint": "Một từ khóa cho phép hành động, một từ khóa kiểm tra hành động đó.",
+      "answer": {
+        "short": "`virtual` cho phép một hàm có thể được thay thế, trong khi `override` yêu cầu trình biên dịch kiểm tra xem hàm đó có thực sự thay thế một hàm ảo từ lớp cha hay không. Nên dùng `override` bất cứ khi nào lớp con thay thế một hàm ảo.",
+        "detailed": "Theo mô hình tư duy: `virtual` = cho phép thay thế (allows replacing), còn `override` = kiểm tra việc thay thế (checks replacing). Từ khóa `override` đóng vai trò như một lời chỉ thị cho trình biên dịch để xác nhận rằng hàm ở lớp con thực sự ghi đè một hàm ảo từ lớp cha. Bạn nên sử dụng `override` trong mọi trường hợp khi một lớp con định nghĩa lại một hàm ảo của lớp cha để tránh các lỗi sai tên, sai tham số hoặc thiếu `const`."
+      },
+      "rubric": {
+        "required": [
+          "Phân biệt được `virtual` dùng ở lớp cha và `override` dùng ở lớp con",
+          "Nêu được ý nghĩa của `override` là yêu cầu trình biên dịch kiểm tra",
+          "Khẳng định nên dùng `override` bất cứ khi nào ghi đè hàm ảo"
+        ],
+        "bonus": [
+          "Trích dẫn đúng mô hình: virtual = allows replacing, override = checks replacing"
+        ],
+        "misconceptions": [
+          "Nghĩ rằng `override` là bắt buộc để hàm có thể hoạt động đa hình (thực tế nó chỉ để kiểm tra lỗi)"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "easy-mental-model"
+        },
+        {
+          "sectionId": "minimal-syntax"
+        },
+        {
+          "sectionId": "important-rules"
+        }
+      ],
+      "sourceHash": "a28dfa796b924fc80685b2175d2126c1a7cad1f7f8b3e0836b2e9ed0dda4e9d5",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp11-final-001",
+      "lessonId": "cpp11-final",
+      "type": "pitfall",
+      "difficulty": "intermediate",
+      "estimatedMinutes": 5,
+      "prompt": "Đoạn mã dưới đây có lỗi biên dịch không? Nếu có, hãy giải thích lý do tại sao dựa trên quy tắc của từ khóa `final`.",
+      "code": "class Base {\npublic:\n    virtual void execute() {}\n};\n\nclass Middle : public Base {\npublic:\n    void execute() override final {}\n};\n\nclass Leaf : public Middle {\npublic:\n    void execute() override {}\n};",
+      "hint": "Hãy chú ý đến vị trí của từ khóa `final` trong lớp `Middle` và nỗ lực ghi đè (override) trong lớp `Leaf`.",
+      "answer": {
+        "short": "Đoạn mã bị lỗi biên dịch vì lớp `Leaf` cố gắng ghi đè hàm `execute()` đã được đánh dấu là `final` trong lớp `Middle`.",
+        "detailed": "Từ khóa `final` khi áp dụng cho một hàm ảo (virtual function) sẽ ngăn chặn mọi nỗ lực ghi đè hàm đó ở các lớp dẫn xuất sau này. Trong ví dụ này, `Middle::execute()` đã ghi đè thành công `Base::execute()` nhưng đồng thời đánh dấu nó là `final`. Do đó, bất kỳ lớp nào kế thừa từ `Middle` (như lớp `Leaf`) đều không được phép thay thế hành vi của hàm này nữa. Việc cố gắng làm vậy sẽ dẫn đến lỗi biên dịch."
+      },
+      "rubric": {
+        "required": [
+          "Xác định được lỗi nằm ở lớp Leaf",
+          "Giải thích được rằng final ngăn chặn việc ghi đè (overriding) thêm nữa"
+        ],
+        "bonus": [
+          "Đề cập rằng final chuyển đổi một hạn chế kiến trúc thành một quy tắc kiểm tra tại thời điểm biên dịch"
+        ],
+        "misconceptions": [
+          "Nhầm lẫn rằng final ngăn cản việc kế thừa toàn bộ lớp Middle (chỉ hàm execute bị chặn)"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "function-level-final"
+        },
+        {
+          "sectionId": "common-errors"
+        },
+        {
+          "sectionId": "mental-model"
+        }
+      ],
+      "sourceHash": "19f19b7364ebeadd68b8db56c085188582b10110fb7686e2e5fcbc838bac40ae",
+      "status": "draft",
+      "version": 1
+    },
+    {
+      "id": "cpp11-final-002",
+      "lessonId": "cpp11-final",
+      "type": "scenario",
+      "difficulty": "beginner",
+      "estimatedMinutes": 7,
+      "prompt": "Trong thiết kế phần mềm bằng C++, khi nào bạn nên đánh dấu một lớp là `final`? Việc sử dụng `final` bừa bãi cho mọi lớp có phải là một thói quen tốt không?",
+      "hint": "Hãy nghĩ về mục đích của việc kế thừa và những rủi ro khi thay đổi các thuật toán đã được kiểm chứng hoặc các quy tắc bảo mật.",
+      "answer": {
+        "short": "Nên dùng `final` khi lớp không được thiết kế để làm lớp cơ sở hoặc để bảo vệ các thuật toán/quy tắc bảo mật cố định. Không nên dùng bừa bãi vì nó cản trở khả năng mở rộng hợp lệ.",
+        "detailed": "Bạn nên sử dụng `final` cho một lớp khi: 1) Lớp đó đại diện cho tầng cuối cùng của một hệ thống phân cấp. 2) Lớp chứa các thuật toán đã được xác thực hoặc các quy tắc bảo mật/rủi ro không được phép thay đổi. 3) Lớp không được thiết kế để hỗ trợ việc kế thừa. Tuy nhiên, không nên thêm `final` ở khắp mọi nơi; chỉ nên sử dụng khi thiết kế cố tình cấm mở rộng thêm. Việc lạm dụng quá mức có thể ngăn cản các phần mở rộng hợp lệ của hệ thống phân cấp lớp trong tương lai."
+      },
+      "rubric": {
+        "required": [
+          "Nêu được ít nhất 2 trường hợp thực tế nên dùng final (ví dụ: bảo mật, thuật toán cố định)",
+          "Giải thích được tác hại của việc lạm dụng final (ngăn cản mở rộng hợp lệ)"
+        ],
+        "bonus": [
+          "Nhắc đến việc final giúp biến ý đồ thiết kế thành quy tắc biên dịch"
+        ],
+        "misconceptions": [
+          "Cho rằng final giúp tăng hiệu năng (tài liệu không đề cập đến điều này)"
+        ]
+      },
+      "sources": [
+        {
+          "sectionId": "class-level-final"
+        },
+        {
+          "sectionId": "practical-uses"
+        },
+        {
+          "sectionId": "recommended-style"
+        },
+        {
+          "sectionId": "common-errors"
+        }
+      ],
+      "sourceHash": "19f19b7364ebeadd68b8db56c085188582b10110fb7686e2e5fcbc838bac40ae",
+      "status": "draft",
+      "version": 1
+    },
+    {
       "id": "cpp11-auto-001",
       "lessonId": "cpp11-auto",
       "type": "recall",
