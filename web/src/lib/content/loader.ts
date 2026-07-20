@@ -21,6 +21,10 @@ import {
 const KNOWLEDGE_FILE = "knowledge.md";
 const CODE_FILE = "main.cpp";
 
+export function normalizeSourceText(value: string) {
+  return value.replace(/\r\n?/g, "\n").replace(/\n/g, "\r\n");
+}
+
 function toPosix(filePath: string) {
   return filePath.split(path.sep).join("/");
 }
@@ -215,8 +219,10 @@ export async function loadContentManifest(
       throw new Error(`Missing ${KNOWLEDGE_FILE} for ${entry.id}`);
     }
 
-    const markdown = await readFile(knowledgeFile, "utf8");
-    const code = (await exists(codeFile)) ? await readFile(codeFile, "utf8") : null;
+    const markdown = normalizeSourceText(await readFile(knowledgeFile, "utf8"));
+    const code = (await exists(codeFile))
+      ? normalizeSourceText(await readFile(codeFile, "utf8"))
+      : null;
     const parsed = parseSections(markdown);
 
     lessons.push({

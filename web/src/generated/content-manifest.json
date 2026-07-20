@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "sourceRevision": "cf562257557efe55d67ff8d3c7dcdf872ad7422f3467251759f82d82a74ca28c",
+  "sourceRevision": "fff3dbcfd8c2ad1ebe002d495b7edc5125c491646ad2d45d5931aaaff662af62",
   "lessons": [
     {
       "id": "cpp98-object-variable-memory",
@@ -1888,60 +1888,60 @@
       "title": "Day 17 — final in C++11",
       "knowledgePath": "cpp11/17_final/knowledge.md",
       "codePath": null,
-      "sourceHash": "19f19b7364ebeadd68b8db56c085188582b10110fb7686e2e5fcbc838bac40ae",
+      "sourceHash": "fc7ac9f621f7efded324f5c2a7518355a7517add3b7426ead4c4e40466c85475",
       "sections": [
         {
           "id": "core-idea",
           "heading": "1. Core Idea",
-          "bodyMarkdown": "The `final` specifier prevents further inheritance or virtual-function overriding.\n\nIt can be applied to:\n\n- A virtual function\n- An entire class\n\n---",
+          "bodyMarkdown": "The `final` specifier prevents further inheritance or virtual-function overriding.\r\n\r\nIt can be applied to:\r\n\r\n- A virtual function\r\n- An entire class\r\n\r\n---",
           "bodyText": "The final specifier prevents further inheritance or virtual-function overriding.It can be applied to:A virtual functionAn entire class"
         },
         {
           "id": "function-level-final",
           "heading": "2. Function-Level final",
-          "bodyMarkdown": "A virtual function marked `final` cannot be overridden by later derived classes.\n\n```cpp\nclass Base\n{\npublic:\n    virtual void run();\n};\n\nclass Derived : public Base\n{\npublic:\n    void run() override final;\n};\n```\n\n`Derived::run()` overrides `Base::run()`, but no class derived from `Derived` may override it again.",
-          "bodyText": "A virtual function marked final cannot be overridden by later derived classes.class Base\n{\npublic:\n    virtual void run();\n};\n\nclass Derived : public Base\n{\npublic:\n    void run() override final;\n};Derived::run() overrides Base::run(), but no class derived from Derived may override it again."
+          "bodyMarkdown": "A virtual function marked `final` cannot be overridden by later derived classes.\r\n\r\n```cpp\r\nclass Base\r\n{\r\npublic:\r\n    virtual void run();\r\n};\r\n\r\nclass Derived : public Base\r\n{\r\npublic:\r\n    void run() override final;\r\n};\r\n```\r\n\r\n`Derived::run()` overrides `Base::run()`, but no class derived from `Derived` may override it again.",
+          "bodyText": "A virtual function marked final cannot be overridden by later derived classes.class Base\r\n{\r\npublic:\r\n    virtual void run();\r\n};\r\n\r\nclass Derived : public Base\r\n{\r\npublic:\r\n    void run() override final;\r\n};Derived::run() overrides Base::run(), but no class derived from Derived may override it again."
         },
         {
           "id": "class-level-final",
           "heading": "3. Class-Level final",
-          "bodyMarkdown": "A class marked `final` cannot be used as a base class.\n\n```cpp\nclass Connection final\n{\n};\n```\n\nAny attempt to inherit from `Connection` causes a compilation error.",
-          "bodyText": "A class marked final cannot be used as a base class.class Connection final\n{\n};Any attempt to inherit from Connection causes a compilation error."
+          "bodyMarkdown": "A class marked `final` cannot be used as a base class.\r\n\r\n```cpp\r\nclass Connection final\r\n{\r\n};\r\n```\r\n\r\nAny attempt to inherit from `Connection` causes a compilation error.",
+          "bodyText": "A class marked final cannot be used as a base class.class Connection final\r\n{\r\n};Any attempt to inherit from Connection causes a compilation error."
         },
         {
           "id": "relationship-with-virtual-and-override",
           "heading": "4. Relationship with virtual and override",
-          "bodyMarkdown": "`virtual` means:\n\nDerived classes may replace this behavior.\n\n`override` means:\n\nVerify that this function correctly replaces a base virtual function.\n\n`final` means:\n\nDo not allow any further replacement.\n\nA common modern C++ declaration is:\n\n```cpp\nvoid run() override final;\n```",
+          "bodyMarkdown": "`virtual` means:\r\n\r\nDerived classes may replace this behavior.\r\n\r\n`override` means:\r\n\r\nVerify that this function correctly replaces a base virtual function.\r\n\r\n`final` means:\r\n\r\nDo not allow any further replacement.\r\n\r\nA common modern C++ declaration is:\r\n\r\n```cpp\r\nvoid run() override final;\r\n```",
           "bodyText": "virtual means:Derived classes may replace this behavior.override means:Verify that this function correctly replaces a base virtual function.final means:Do not allow any further replacement.A common modern C++ declaration is:void run() override final;"
         },
         {
           "id": "common-errors",
           "heading": "5. Common Errors",
-          "bodyMarkdown": "### Overriding a Final Function\n\nA derived class cannot override a function already marked `final`.\n\n### Inheriting from a Final Class\n\nA class marked `final` cannot have derived classes.\n\n### Using `final` on a Non-Virtual Function\n\nFunction-level `final` is only valid for virtual functions.\n\n### Applying `final` Too Early\n\nExcessive use of `final` may prevent legitimate extension of a class hierarchy.",
+          "bodyMarkdown": "### Overriding a Final Function\r\n\r\nA derived class cannot override a function already marked `final`.\r\n\r\n### Inheriting from a Final Class\r\n\r\nA class marked `final` cannot have derived classes.\r\n\r\n### Using `final` on a Non-Virtual Function\r\n\r\nFunction-level `final` is only valid for virtual functions.\r\n\r\n### Applying `final` Too Early\r\n\r\nExcessive use of `final` may prevent legitimate extension of a class hierarchy.",
           "bodyText": "Overriding a Final FunctionA derived class cannot override a function already marked final.Inheriting from a Final ClassA class marked final cannot have derived classes.Using final on a Non-Virtual FunctionFunction-level final is only valid for virtual functions.Applying final Too EarlyExcessive use of final may prevent legitimate extension of a class hierarchy."
         },
         {
           "id": "practical-uses",
           "heading": "6. Practical Uses",
-          "bodyMarkdown": "`final` is useful when:\n\n- A validated algorithm must not be changed\n- A security or risk rule must remain fixed\n- A class is not designed for inheritance\n- Further overriding would violate an invariant\n- An implementation represents the final layer of a hierarchy",
+          "bodyMarkdown": "`final` is useful when:\r\n\r\n- A validated algorithm must not be changed\r\n- A security or risk rule must remain fixed\r\n- A class is not designed for inheritance\r\n- Further overriding would violate an invariant\r\n- An implementation represents the final layer of a hierarchy",
           "bodyText": "final is useful when:A validated algorithm must not be changedA security or risk rule must remain fixedA class is not designed for inheritanceFurther overriding would violate an invariantAn implementation represents the final layer of a hierarchy"
         },
         {
           "id": "recommended-style",
           "heading": "7. Recommended Style",
-          "bodyMarkdown": "Use:\n\n```cpp\nvoid function() override final;\n```\n\nwhen a derived function both overrides a base virtual function and must not be overridden again.\n\nUse:\n\n```cpp\nclass ClassName final;\n```\n\nwhen the class is intentionally not designed as a base class.\n\nDo not add `final` everywhere. Use it only when the design intentionally forbids further extension.",
+          "bodyMarkdown": "Use:\r\n\r\n```cpp\r\nvoid function() override final;\r\n```\r\n\r\nwhen a derived function both overrides a base virtual function and must not be overridden again.\r\n\r\nUse:\r\n\r\n```cpp\r\nclass ClassName final;\r\n```\r\n\r\nwhen the class is intentionally not designed as a base class.\r\n\r\nDo not add `final` everywhere. Use it only when the design intentionally forbids further extension.",
           "bodyText": "Use:void function() override final;when a derived function both overrides a base virtual function and must not be overridden again.Use:class ClassName final;when the class is intentionally not designed as a base class.Do not add final everywhere. Use it only when the design intentionally forbids further extension."
         },
         {
           "id": "mental-model",
           "heading": "8. Mental Model",
-          "bodyMarkdown": "```text\nvirtual  -> extension is allowed\noverride -> extension is checked\nfinal    -> extension stops here\n```",
-          "bodyText": "virtual  -> extension is allowed\noverride -> extension is checked\nfinal    -> extension stops here"
+          "bodyMarkdown": "```text\r\nvirtual  -> extension is allowed\r\noverride -> extension is checked\r\nfinal    -> extension stops here\r\n```",
+          "bodyText": "virtual  -> extension is allowed\r\noverride -> extension is checked\r\nfinal    -> extension stops here"
         },
         {
           "id": "key-takeaway",
           "heading": "9. Key Takeaway",
-          "bodyMarkdown": "`final` protects class hierarchies from unintended extension.\n\nIt converts an architectural restriction into a compile-time rule.",
+          "bodyMarkdown": "`final` protects class hierarchies from unintended extension.\r\n\r\nIt converts an architectural restriction into a compile-time rule.",
           "bodyText": "final protects class hierarchies from unintended extension.It converts an architectural restriction into a compile-time rule."
         }
       ],
