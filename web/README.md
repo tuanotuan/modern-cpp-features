@@ -21,7 +21,8 @@ Phase 0–5 provides:
 - question-level source snapshots that automatically quarantine stale questions;
 - OpenAI Luna-generated question drafts with a human review gate;
 - Luna for routine grading and Terra for deeper follow-up explanations;
-- an atomic monthly AI budget guard stored in Supabase.
+- an atomic daily/monthly AI budget guard reset at midnight Vietnam time;
+- official OpenAI Costs API reconciliation with realtime token accounting.
 - a private web Review Queue with exact-version/hash bulk approval;
 - GitHub Actions reconciliation for note additions, edits, renames, and deletes.
 
@@ -37,6 +38,12 @@ Copy `.env.example` to `.env.local` and add an OpenAI API key before using the
 AI coach. The key is read only by the server route and is never exposed to the
 browser. `OPENAI_MONTHLY_BUDGET_USD` defaults to `5`; also set the same project
 budget in the OpenAI dashboard as the provider-level backstop.
+
+For Billing-accurate quota reconciliation, add an organization Admin API key as
+`OPENAI_ADMIN_KEY` and the matching project ID as `OPENAI_PROJECT_ID`. These are
+server-only variables. The app uses OpenAI's official Costs API as the source of
+truth and keeps response-token accounting as a realtime fallback while provider
+cost data is being settled.
 
 Cloud sync is optional. Add the Supabase project URL and publishable key, then
 follow [`supabase/README.md`](supabase/README.md) to apply the RLS migration and

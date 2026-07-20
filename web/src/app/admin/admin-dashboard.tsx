@@ -173,7 +173,7 @@ export function AdminDashboard({
           <MetricCard
             label="AI web tháng này"
             value={`$${((aiUsage?.actualUsdMicros ?? 0) / 1_000_000).toFixed(3)}`}
-            detail={`${aiUsage?.requestCount ?? 0} lượt · giới hạn $5`}
+            detail={`${aiUsage?.requestCount ?? 0} lượt web · OpenAI Billing + realtime`}
             tone={(aiUsage?.actualUsdMicros ?? 0) >= 4_000_000 ? "warning" : "default"}
           />
         </section>

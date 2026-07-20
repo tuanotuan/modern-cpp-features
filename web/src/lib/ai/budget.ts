@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { AiTokenUsage } from "./usage";
+import { syncOpenAiBilling } from "./billing";
 import {
   dailyBudgetRemainingPercent,
   dailyBudgetUsdMicros,
@@ -22,6 +23,8 @@ export class AiBudgetConfigurationError extends Error {}
 
 export type AiDailyBudgetSnapshot = {
   actualUsdMicros: number;
+  billingUsdMicros: number | null;
+  billingSyncedAt: string | null;
   limitUsdMicros: number;
   remainingPercent: number;
   usageDate: string;
@@ -32,6 +35,7 @@ export async function withAiBudget<T extends { model: string; usage: AiTokenUsag
   reservedUsdMicros: number,
   operation: () => Promise<T>,
 ) {
+  if (client) await syncOpenAiBilling(client);
   const reservation = await reserveAiBudget(client, reservedUsdMicros);
   try {
     const result = await operation();
@@ -100,16 +104,25 @@ export async function finalizeAiBudget(
   const usageDate = reservation.usageDate ?? vietnamUsageDate();
   const { data: dailyRow, error: readError } = await reservation.client
     .from("ai_usage_daily")
-    .select("actual_usd_micros")
+    .select("actual_usd_micros, provider_usd_micros, provider_synced_at")
     .eq("usage_date", usageDate)
     .maybeSingle();
   if (readError) {
     console.error("Daily AI budget read failed", { code: readError.code });
     return null;
   }
-  const used = Number(dailyRow?.actual_usd_micros ?? actualUsdMicros);
+  const estimated = Number(dailyRow?.actual_usd_micros ?? actualUsdMicros);
+  const billing = dailyRow?.provider_synced_at
+    ? Number(dailyRow.provider_usd_micros ?? 0)
+    : null;
+  const used = Math.max(estimated, billing ?? 0);
   return {
     actualUsdMicros: used,
+    billingUsdMicros: billing,
+    billingSyncedAt:
+      typeof dailyRow?.provider_synced_at === "string"
+        ? dailyRow.provider_synced_at
+        : null,
     limitUsdMicros: dailyBudgetUsdMicros(),
     remainingPercent: dailyBudgetRemainingPercent(used),
     usageDate,

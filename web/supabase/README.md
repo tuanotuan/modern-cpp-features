@@ -28,8 +28,9 @@ whose `user_id` matches their JWT identity. Question approvals are bound to an
 exact question version and source hash, so a source edit automatically sends the
 question back to the Review Queue.
 
-`20260720170000_create_ai_usage_budget.sql` reserves a conservative amount before
-each web AI call and records the actual token cost afterward. This keeps
-concurrent requests from crossing `OPENAI_MONTHLY_BUDGET_USD`. Automated draft
-generation in GitHub Actions is protected by the OpenAI project budget, so set
-that project budget to the same USD value.
+The AI budget migrations reserve a conservative amount before each web AI call,
+record the actual response-token cost afterward, and reconcile it against the
+official OpenAI Costs API. Daily quota uses the Vietnam calendar day and the
+larger of Billing-reported cost or the realtime local estimate. Automated draft
+generation is included when it uses the same `OPENAI_PROJECT_ID`. Keep the OpenAI
+project budget at the same value as `OPENAI_MONTHLY_BUDGET_USD`.
