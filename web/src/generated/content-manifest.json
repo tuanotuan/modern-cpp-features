@@ -1989,7 +1989,31 @@
       ],
       "sourceHash": "c4f64c954dbcb3f643cce352b7d46c0ccec30159b70e772f38ffee06c0af2aa7",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "container",
+          "iteration",
+          "performance"
+        ],
+        "skill": "pitfall",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-range-based-for",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::container",
+          "topic::iteration",
+          "topic::performance",
+          "skill::pitfall",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-range-based-for"
+        ]
+      }
     },
     {
       "id": "cpp11-range-based-for-002",
@@ -2025,7 +2049,31 @@
       ],
       "sourceHash": "c4f64c954dbcb3f643cce352b7d46c0ccec30159b70e772f38ffee06c0af2aa7",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "container",
+          "iteration",
+          "performance"
+        ],
+        "skill": "scenario",
+        "difficulty": "beginner",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-range-based-for",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::container",
+          "topic::iteration",
+          "topic::performance",
+          "skill::scenario",
+          "difficulty::beginner",
+          "response::text",
+          "source::cpp11-range-based-for"
+        ]
+      }
     },
     {
       "id": "cpp98-object-variable-memory-001",
@@ -2065,7 +2113,31 @@
       ],
       "sourceHash": "b959f00fa3b7fd7587e37fbbb0f1cac44d6285a9a6bd7afcbdaceea3626b6637",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp98",
+        "topics": [
+          "lifetime",
+          "memory",
+          "object-model"
+        ],
+        "skill": "recall",
+        "difficulty": "beginner",
+        "responseMode": "text",
+        "sourceLessonId": "cpp98-object-variable-memory",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp98",
+          "topic::lifetime",
+          "topic::memory",
+          "topic::object-model",
+          "skill::recall",
+          "difficulty::beginner",
+          "response::text",
+          "source::cpp98-object-variable-memory"
+        ]
+      }
     },
     {
       "id": "cpp98-object-variable-memory-002",
@@ -2105,7 +2177,31 @@
       ],
       "sourceHash": "b959f00fa3b7fd7587e37fbbb0f1cac44d6285a9a6bd7afcbdaceea3626b6637",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp98",
+        "topics": [
+          "lifetime",
+          "memory",
+          "object-model"
+        ],
+        "skill": "pitfall",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp98-object-variable-memory",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp98",
+          "topic::lifetime",
+          "topic::memory",
+          "topic::object-model",
+          "skill::pitfall",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp98-object-variable-memory"
+        ]
+      }
     },
     {
       "id": "cpp98-reference-001",
@@ -2147,7 +2243,31 @@
       ],
       "sourceHash": "e9060a1301c4e23e5338a9e3224d05afcd5cd1aab0074963e75ab012c467cb72",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp98",
+        "topics": [
+          "aliasing",
+          "lifetime",
+          "reference"
+        ],
+        "skill": "recall",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp98-reference",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp98",
+          "topic::aliasing",
+          "topic::lifetime",
+          "topic::reference",
+          "skill::recall",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp98-reference"
+        ]
+      }
     },
     {
       "id": "cpp98-reference-002",
@@ -2185,7 +2305,31 @@
       ],
       "sourceHash": "e9060a1301c4e23e5338a9e3224d05afcd5cd1aab0074963e75ab012c467cb72",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp98",
+        "topics": [
+          "aliasing",
+          "lifetime",
+          "reference"
+        ],
+        "skill": "pitfall",
+        "difficulty": "advanced",
+        "responseMode": "text",
+        "sourceLessonId": "cpp98-reference",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp98",
+          "topic::aliasing",
+          "topic::lifetime",
+          "topic::reference",
+          "skill::pitfall",
+          "difficulty::advanced",
+          "response::text",
+          "source::cpp98-reference"
+        ]
+      }
     },
     {
       "id": "cpp98-array-one-past-end-001",
@@ -2225,7 +2369,31 @@
       ],
       "sourceHash": "a2cecfa2c0f84182c8927b8f56c3b3af6f1f35e093a57eae06a0f35003520866",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp98",
+        "topics": [
+          "array",
+          "bounds",
+          "pointer-arithmetic"
+        ],
+        "skill": "pitfall",
+        "difficulty": "beginner",
+        "responseMode": "text",
+        "sourceLessonId": "cpp98-array-one-past-end",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp98",
+          "topic::array",
+          "topic::bounds",
+          "topic::pointer-arithmetic",
+          "skill::pitfall",
+          "difficulty::beginner",
+          "response::text",
+          "source::cpp98-array-one-past-end"
+        ]
+      }
     },
     {
       "id": "cpp98-array-one-past-end-002",
@@ -2268,7 +2436,31 @@
       ],
       "sourceHash": "a2cecfa2c0f84182c8927b8f56c3b3af6f1f35e093a57eae06a0f35003520866",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp98",
+        "topics": [
+          "array",
+          "bounds",
+          "pointer-arithmetic"
+        ],
+        "skill": "scenario",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp98-array-one-past-end",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp98",
+          "topic::array",
+          "topic::bounds",
+          "topic::pointer-arithmetic",
+          "skill::scenario",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp98-array-one-past-end"
+        ]
+      }
     },
     {
       "id": "cpp11-using-alias-001",
@@ -2306,7 +2498,31 @@
       ],
       "sourceHash": "b24249c84b39083ab8375737fe4a34a883a0231974228c5461bff57a8426812c",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "alias",
+          "readability",
+          "templates"
+        ],
+        "skill": "code_reasoning",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-using-alias",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::alias",
+          "topic::readability",
+          "topic::templates",
+          "skill::code-reasoning",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-using-alias"
+        ]
+      }
     },
     {
       "id": "cpp11-using-alias-002",
@@ -2343,7 +2559,31 @@
       ],
       "sourceHash": "b24249c84b39083ab8375737fe4a34a883a0231974228c5461bff57a8426812c",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "alias",
+          "readability",
+          "templates"
+        ],
+        "skill": "pitfall",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-using-alias",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::alias",
+          "topic::readability",
+          "topic::templates",
+          "skill::pitfall",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-using-alias"
+        ]
+      }
     },
     {
       "id": "cpp11-old-style-enum-001",
@@ -2380,7 +2620,31 @@
       ],
       "sourceHash": "ceecf76389592924d7bfee7907e79e219cb88ac5f3eb0daea6fbc9925be58271",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "enum",
+          "foundation",
+          "type-safety"
+        ],
+        "skill": "pitfall",
+        "difficulty": "beginner",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-old-style-enum",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::enum",
+          "topic::foundation",
+          "topic::type-safety",
+          "skill::pitfall",
+          "difficulty::beginner",
+          "response::text",
+          "source::cpp11-old-style-enum"
+        ]
+      }
     },
     {
       "id": "cpp11-old-style-enum-002",
@@ -2420,7 +2684,31 @@
       ],
       "sourceHash": "ceecf76389592924d7bfee7907e79e219cb88ac5f3eb0daea6fbc9925be58271",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "enum",
+          "foundation",
+          "type-safety"
+        ],
+        "skill": "code_reasoning",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-old-style-enum",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::enum",
+          "topic::foundation",
+          "topic::type-safety",
+          "skill::code-reasoning",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-old-style-enum"
+        ]
+      }
     },
     {
       "id": "cpp11-enum-class-001",
@@ -2457,7 +2745,31 @@
       ],
       "sourceHash": "6181e10b4b838470fb4fba54fd62cf49b6fdaa7601c95cbbdeb9f5111da26096",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "enum",
+          "scope",
+          "type-safety"
+        ],
+        "skill": "pitfall",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-enum-class",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::enum",
+          "topic::scope",
+          "topic::type-safety",
+          "skill::pitfall",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-enum-class"
+        ]
+      }
     },
     {
       "id": "cpp11-enum-class-002",
@@ -2495,7 +2807,31 @@
       ],
       "sourceHash": "6181e10b4b838470fb4fba54fd62cf49b6fdaa7601c95cbbdeb9f5111da26096",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "enum",
+          "scope",
+          "type-safety"
+        ],
+        "skill": "code_reasoning",
+        "difficulty": "beginner",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-enum-class",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::enum",
+          "topic::scope",
+          "topic::type-safety",
+          "skill::code-reasoning",
+          "difficulty::beginner",
+          "response::text",
+          "source::cpp11-enum-class"
+        ]
+      }
     },
     {
       "id": "cpp11-initializer-list-001",
@@ -2532,7 +2868,31 @@
       ],
       "sourceHash": "6684d49feac6ccaa58b1651f290e6a61f4e4da3b13dc628118b7b3533b732524",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "constructor",
+          "initialization",
+          "narrowing"
+        ],
+        "skill": "pitfall",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-initializer-list",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::constructor",
+          "topic::initialization",
+          "topic::narrowing",
+          "skill::pitfall",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-initializer-list"
+        ]
+      }
     },
     {
       "id": "cpp11-initializer-list-002",
@@ -2570,7 +2930,31 @@
       ],
       "sourceHash": "6684d49feac6ccaa58b1651f290e6a61f4e4da3b13dc628118b7b3533b732524",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "constructor",
+          "initialization",
+          "narrowing"
+        ],
+        "skill": "code_reasoning",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-initializer-list",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::constructor",
+          "topic::initialization",
+          "topic::narrowing",
+          "skill::code-reasoning",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-initializer-list"
+        ]
+      }
     },
     {
       "id": "cpp11-lambda-basic-001",
@@ -2610,7 +2994,31 @@
       ],
       "sourceHash": "b536281a684c420b3787a07c92cc2693a783ef56882533c4e5bf1a2123ca6b41",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "algorithm",
+          "callable",
+          "lambda"
+        ],
+        "skill": "scenario",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-lambda-basic",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::algorithm",
+          "topic::callable",
+          "topic::lambda",
+          "skill::scenario",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-lambda-basic"
+        ]
+      }
     },
     {
       "id": "cpp11-lambda-basic-002",
@@ -2647,7 +3055,31 @@
       ],
       "sourceHash": "b536281a684c420b3787a07c92cc2693a783ef56882533c4e5bf1a2123ca6b41",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "algorithm",
+          "callable",
+          "lambda"
+        ],
+        "skill": "pitfall",
+        "difficulty": "beginner",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-lambda-basic",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::algorithm",
+          "topic::callable",
+          "topic::lambda",
+          "skill::pitfall",
+          "difficulty::beginner",
+          "response::text",
+          "source::cpp11-lambda-basic"
+        ]
+      }
     },
     {
       "id": "cpp11-lambda-capture-value-001",
@@ -2684,7 +3116,31 @@
       ],
       "sourceHash": "6b5987e7109ffa1c075d293934727412220f98def9b4ed10db67737341686905",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "capture",
+          "lambda",
+          "lifetime"
+        ],
+        "skill": "code_reasoning",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-lambda-capture-value",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::capture",
+          "topic::lambda",
+          "topic::lifetime",
+          "skill::code-reasoning",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-lambda-capture-value"
+        ]
+      }
     },
     {
       "id": "cpp11-lambda-capture-value-002",
@@ -2723,7 +3179,31 @@
       ],
       "sourceHash": "6b5987e7109ffa1c075d293934727412220f98def9b4ed10db67737341686905",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "capture",
+          "lambda",
+          "lifetime"
+        ],
+        "skill": "pitfall",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-lambda-capture-value",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::capture",
+          "topic::lambda",
+          "topic::lifetime",
+          "skill::pitfall",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-lambda-capture-value"
+        ]
+      }
     },
     {
       "id": "cpp11-mutable-lambda-001",
@@ -2764,7 +3244,31 @@
       ],
       "sourceHash": "031472acac3954460c5c511914ec594fb59a4c5b07326b7e2df7cdab37257beb",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "capture",
+          "lambda",
+          "mutable"
+        ],
+        "skill": "code_reasoning",
+        "difficulty": "beginner",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-mutable-lambda",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::capture",
+          "topic::lambda",
+          "topic::mutable",
+          "skill::code-reasoning",
+          "difficulty::beginner",
+          "response::text",
+          "source::cpp11-mutable-lambda"
+        ]
+      }
     },
     {
       "id": "cpp11-mutable-lambda-002",
@@ -2801,7 +3305,31 @@
       ],
       "sourceHash": "031472acac3954460c5c511914ec594fb59a4c5b07326b7e2df7cdab37257beb",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "capture",
+          "lambda",
+          "mutable"
+        ],
+        "skill": "scenario",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-mutable-lambda",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::capture",
+          "topic::lambda",
+          "topic::mutable",
+          "skill::scenario",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-mutable-lambda"
+        ]
+      }
     },
     {
       "id": "cpp11-lambda-algorithms-001",
@@ -2838,7 +3366,33 @@
       ],
       "sourceHash": "02bcc9b9c9874a0d29690cb0b5c981939bd7911849ffa97ca013ee72a17e2647",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "algorithm",
+          "for-each",
+          "lambda",
+          "sort"
+        ],
+        "skill": "pitfall",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-lambda-algorithms",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::algorithm",
+          "topic::for-each",
+          "topic::lambda",
+          "topic::sort",
+          "skill::pitfall",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-lambda-algorithms"
+        ]
+      }
     },
     {
       "id": "cpp11-lambda-algorithms-002",
@@ -2879,7 +3433,33 @@
       ],
       "sourceHash": "02bcc9b9c9874a0d29690cb0b5c981939bd7911849ffa97ca013ee72a17e2647",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "algorithm",
+          "for-each",
+          "lambda",
+          "sort"
+        ],
+        "skill": "scenario",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-lambda-algorithms",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::algorithm",
+          "topic::for-each",
+          "topic::lambda",
+          "topic::sort",
+          "skill::scenario",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-lambda-algorithms"
+        ]
+      }
     },
     {
       "id": "cpp11-static-assert-001",
@@ -2917,7 +3497,31 @@
       ],
       "sourceHash": "9173c6bfb3e4b733a510dfa5d7922416b68b41a5d6417afce5f4fc9cacf5879e",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "assertion",
+          "compile-time",
+          "constraint"
+        ],
+        "skill": "pitfall",
+        "difficulty": "beginner",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-static-assert",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::assertion",
+          "topic::compile-time",
+          "topic::constraint",
+          "skill::pitfall",
+          "difficulty::beginner",
+          "response::text",
+          "source::cpp11-static-assert"
+        ]
+      }
     },
     {
       "id": "cpp11-static-assert-002",
@@ -2957,7 +3561,31 @@
       ],
       "sourceHash": "9173c6bfb3e4b733a510dfa5d7922416b68b41a5d6417afce5f4fc9cacf5879e",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "assertion",
+          "compile-time",
+          "constraint"
+        ],
+        "skill": "scenario",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-static-assert",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::assertion",
+          "topic::compile-time",
+          "topic::constraint",
+          "skill::scenario",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-static-assert"
+        ]
+      }
     },
     {
       "id": "cpp11-defaulted-functions-001",
@@ -2995,7 +3623,29 @@
       ],
       "sourceHash": "858ea00b54d09ef8a71c834ad89beb8edeb71d18aff23342cc6cf7f256fbc0ef",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "class-design",
+          "special-member-function"
+        ],
+        "skill": "code_reasoning",
+        "difficulty": "beginner",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-defaulted-functions",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::class-design",
+          "topic::special-member-function",
+          "skill::code-reasoning",
+          "difficulty::beginner",
+          "response::text",
+          "source::cpp11-defaulted-functions"
+        ]
+      }
     },
     {
       "id": "cpp11-defaulted-functions-002",
@@ -3032,7 +3682,29 @@
       ],
       "sourceHash": "858ea00b54d09ef8a71c834ad89beb8edeb71d18aff23342cc6cf7f256fbc0ef",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "class-design",
+          "special-member-function"
+        ],
+        "skill": "pitfall",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-defaulted-functions",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::class-design",
+          "topic::special-member-function",
+          "skill::pitfall",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-defaulted-functions"
+        ]
+      }
     },
     {
       "id": "cpp11-override-001",
@@ -3073,7 +3745,27 @@
       ],
       "sourceHash": "a28dfa796b924fc80685b2175d2126c1a7cad1f7f8b3e0836b2e9ed0dda4e9d5",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "override"
+        ],
+        "skill": "pitfall",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-override",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::override",
+          "skill::pitfall",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-override"
+        ]
+      }
     },
     {
       "id": "cpp11-override-002",
@@ -3113,7 +3805,27 @@
       ],
       "sourceHash": "a28dfa796b924fc80685b2175d2126c1a7cad1f7f8b3e0836b2e9ed0dda4e9d5",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "override"
+        ],
+        "skill": "recall",
+        "difficulty": "beginner",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-override",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::override",
+          "skill::recall",
+          "difficulty::beginner",
+          "response::text",
+          "source::cpp11-override"
+        ]
+      }
     },
     {
       "id": "cpp11-final-001",
@@ -3153,7 +3865,27 @@
       ],
       "sourceHash": "19f19b7364ebeadd68b8db56c085188582b10110fb7686e2e5fcbc838bac40ae",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "final"
+        ],
+        "skill": "pitfall",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-final",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::final",
+          "skill::pitfall",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-final"
+        ]
+      }
     },
     {
       "id": "cpp11-final-002",
@@ -3195,7 +3927,27 @@
       ],
       "sourceHash": "19f19b7364ebeadd68b8db56c085188582b10110fb7686e2e5fcbc838bac40ae",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "final"
+        ],
+        "skill": "scenario",
+        "difficulty": "beginner",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-final",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::final",
+          "skill::scenario",
+          "difficulty::beginner",
+          "response::text",
+          "source::cpp11-final"
+        ]
+      }
     },
     {
       "id": "cpp11-override-003",
@@ -3237,7 +3989,27 @@
       ],
       "sourceHash": "1b45ef38d22b76f3bc79ef7f055599e7342f40260916abd9ddec4c92ce217921",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "override"
+        ],
+        "skill": "code_reasoning",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-override",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::override",
+          "skill::code-reasoning",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-override"
+        ]
+      }
     },
     {
       "id": "cpp11-override-004",
@@ -3282,7 +4054,27 @@
       ],
       "sourceHash": "1b45ef38d22b76f3bc79ef7f055599e7342f40260916abd9ddec4c92ce217921",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "override"
+        ],
+        "skill": "scenario",
+        "difficulty": "beginner",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-override",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::override",
+          "skill::scenario",
+          "difficulty::beginner",
+          "response::text",
+          "source::cpp11-override"
+        ]
+      }
     },
     {
       "id": "cpp11-final-003",
@@ -3328,7 +4120,27 @@
       ],
       "sourceHash": "fc7ac9f621f7efded324f5c2a7518355a7517add3b7426ead4c4e40466c85475",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "final"
+        ],
+        "skill": "code_reasoning",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-final",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::final",
+          "skill::code-reasoning",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-final"
+        ]
+      }
     },
     {
       "id": "cpp11-final-004",
@@ -3379,7 +4191,27 @@
       ],
       "sourceHash": "fc7ac9f621f7efded324f5c2a7518355a7517add3b7426ead4c4e40466c85475",
       "status": "draft",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "final"
+        ],
+        "skill": "scenario",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-final",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::final",
+          "skill::scenario",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-final"
+        ]
+      }
     },
     {
       "id": "cpp11-auto-001",
@@ -3414,7 +4246,31 @@
       ],
       "sourceHash": "d883070d939f311c2aed28298b494d8a3d9c03861c39a2e872fcbc546eaa2d89",
       "status": "verified",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "performance",
+          "reference",
+          "type-deduction"
+        ],
+        "skill": "recall",
+        "difficulty": "beginner",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-auto",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::performance",
+          "topic::reference",
+          "topic::type-deduction",
+          "skill::recall",
+          "difficulty::beginner",
+          "response::text",
+          "source::cpp11-auto"
+        ]
+      }
     },
     {
       "id": "cpp11-auto-002",
@@ -3449,7 +4305,31 @@
       ],
       "sourceHash": "d883070d939f311c2aed28298b494d8a3d9c03861c39a2e872fcbc546eaa2d89",
       "status": "verified",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "performance",
+          "reference",
+          "type-deduction"
+        ],
+        "skill": "code_reasoning",
+        "difficulty": "beginner",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-auto",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::performance",
+          "topic::reference",
+          "topic::type-deduction",
+          "skill::code-reasoning",
+          "difficulty::beginner",
+          "response::text",
+          "source::cpp11-auto"
+        ]
+      }
     },
     {
       "id": "cpp11-nullptr-001",
@@ -3483,7 +4363,31 @@
       ],
       "sourceHash": "65a5be159d9eb8779f5807aaedfeb383d1decfe9047e63817955e3aa66be51e5",
       "status": "verified",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "overload",
+          "pointer",
+          "type-safety"
+        ],
+        "skill": "scenario",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-nullptr",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::overload",
+          "topic::pointer",
+          "topic::type-safety",
+          "skill::scenario",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-nullptr"
+        ]
+      }
     },
     {
       "id": "cpp11-lambda-reference-001",
@@ -3517,7 +4421,33 @@
       ],
       "sourceHash": "186fb6fb811d886dea845b29557cd0f71ccff6dee6bca7c0db525c850498969c",
       "status": "verified",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "capture",
+          "lambda",
+          "lifetime",
+          "mutation"
+        ],
+        "skill": "pitfall",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-lambda-capture-reference",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::capture",
+          "topic::lambda",
+          "topic::lifetime",
+          "topic::mutation",
+          "skill::pitfall",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-lambda-capture-reference"
+        ]
+      }
     },
     {
       "id": "cpp11-constexpr-001",
@@ -3551,7 +4481,31 @@
       ],
       "sourceHash": "616889384744c8e3aa8a42f820102f2677cfd819cba85a54a57115ccff84bada",
       "status": "verified",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "compile-time",
+          "constant",
+          "performance"
+        ],
+        "skill": "recall",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-constexpr",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::compile-time",
+          "topic::constant",
+          "topic::performance",
+          "skill::recall",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-constexpr"
+        ]
+      }
     },
     {
       "id": "cpp11-deleted-functions-001",
@@ -3588,7 +4542,31 @@
       ],
       "sourceHash": "a75201d0283a6c61873928e453e28672027ae45fa72c14091c3f5da01bd053be",
       "status": "verified",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp11",
+        "topics": [
+          "class-design",
+          "ownership",
+          "special-member-function"
+        ],
+        "skill": "scenario",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp11-deleted-functions",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp11",
+          "topic::class-design",
+          "topic::ownership",
+          "topic::special-member-function",
+          "skill::scenario",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp11-deleted-functions"
+        ]
+      }
     },
     {
       "id": "cpp20-designated-initializers-001",
@@ -3626,7 +4604,31 @@
       ],
       "sourceHash": "77220c505e8b03b2f6646e03eee9a3e31bbcdfa6b1b0bf0cd6db45d2a56c7f24",
       "status": "verified",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp20",
+        "topics": [
+          "aggregate",
+          "initialization",
+          "readability"
+        ],
+        "skill": "code_reasoning",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp20-designated-initializers",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp20",
+          "topic::aggregate",
+          "topic::initialization",
+          "topic::readability",
+          "skill::code-reasoning",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp20-designated-initializers"
+        ]
+      }
     },
     {
       "id": "cpp98-address-pointer-001",
@@ -3660,7 +4662,31 @@
       ],
       "sourceHash": "aa153e754d77a72d89eff13c9d2c517e950c1d947061bca1289f9ea3a40c045c",
       "status": "verified",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp98",
+        "topics": [
+          "address",
+          "lifetime",
+          "pointer"
+        ],
+        "skill": "recall",
+        "difficulty": "beginner",
+        "responseMode": "text",
+        "sourceLessonId": "cpp98-address-pointer",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp98",
+          "topic::address",
+          "topic::lifetime",
+          "topic::pointer",
+          "skill::recall",
+          "difficulty::beginner",
+          "response::text",
+          "source::cpp98-address-pointer"
+        ]
+      }
     },
     {
       "id": "cpp98-address-pointer-002",
@@ -3694,7 +4720,31 @@
       ],
       "sourceHash": "aa153e754d77a72d89eff13c9d2c517e950c1d947061bca1289f9ea3a40c045c",
       "status": "verified",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp98",
+        "topics": [
+          "address",
+          "lifetime",
+          "pointer"
+        ],
+        "skill": "pitfall",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp98-address-pointer",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp98",
+          "topic::address",
+          "topic::lifetime",
+          "topic::pointer",
+          "skill::pitfall",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp98-address-pointer"
+        ]
+      }
     },
     {
       "id": "cpp98-struct-padding-001",
@@ -3730,7 +4780,31 @@
       ],
       "sourceHash": "d87a0674a56e2699438c3775f1bead1dfb83a0d32716b8434d0a1e92e4f7398a",
       "status": "verified",
-      "version": 1
+      "version": 1,
+      "taxonomy": {
+        "deckId": "cpp-interview",
+        "standard": "cpp98",
+        "topics": [
+          "alignment",
+          "performance",
+          "struct"
+        ],
+        "skill": "scenario",
+        "difficulty": "intermediate",
+        "responseMode": "text",
+        "sourceLessonId": "cpp98-struct-padding",
+        "tags": [
+          "deck::cpp-interview",
+          "standard::cpp98",
+          "topic::alignment",
+          "topic::performance",
+          "topic::struct",
+          "skill::scenario",
+          "difficulty::intermediate",
+          "response::text",
+          "source::cpp98-struct-padding"
+        ]
+      }
     }
   ]
 }

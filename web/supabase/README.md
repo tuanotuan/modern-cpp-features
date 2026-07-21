@@ -42,3 +42,9 @@ usage twice.
 Gemini fallback requests are counted separately in `gemini_usage_daily`; they do
 not reduce the OpenAI dollar budget. `ai_provider_settings` stores the owner's
 Admin toggle for that fallback. Both tables remain private under RLS.
+
+`user_question_states` is the Anki-style current-state projection for each
+user/question pair. `practice_reviews` remains the immutable learning history.
+The Phase A migration backfills practiced questions as Review or Relearning;
+unseen questions are created lazily as New when the Phase B scheduler is wired
+to the practice flow.

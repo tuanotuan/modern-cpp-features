@@ -17,6 +17,7 @@ import {
   questionFileSchema,
   type Question,
 } from "./schema";
+import { buildQuestionTaxonomy } from "./taxonomy";
 
 const KNOWLEDGE_FILE = "knowledge.md";
 const CODE_FILE = "main.cpp";
@@ -268,6 +269,7 @@ export async function loadContentManifest(
 
     return {
       ...question,
+      taxonomy: buildQuestionTaxonomy(question, lesson),
       status: resolveQuestionStatus(
         question.status,
         question.sourceHash,

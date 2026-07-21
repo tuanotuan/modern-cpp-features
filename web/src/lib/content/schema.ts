@@ -6,6 +6,37 @@ const idSchema = z
 
 export const cppStandardSchema = z.enum(["cpp98", "cpp11", "cpp20"]);
 
+export const questionSkillSchema = z.enum([
+  "recall",
+  "code_reasoning",
+  "pitfall",
+  "scenario",
+]);
+
+export const questionDifficultySchema = z.enum([
+  "beginner",
+  "intermediate",
+  "advanced",
+]);
+
+export const questionResponseModeSchema = z.enum(["text", "code"]);
+
+export const taxonomyTagSchema = z.string().regex(
+  /^(?:deck|standard|topic|skill|difficulty|response|source)::[a-z0-9]+(?:-[a-z0-9]+)*$/,
+  "Use a controlled namespace::lowercase-kebab-case taxonomy tag",
+);
+
+export const questionTaxonomySchema = z.object({
+  deckId: z.literal("cpp-interview"),
+  standard: cppStandardSchema,
+  topics: z.array(idSchema).min(1),
+  skill: questionSkillSchema,
+  difficulty: questionDifficultySchema,
+  responseMode: questionResponseModeSchema,
+  sourceLessonId: idSchema,
+  tags: z.array(taxonomyTagSchema).min(6),
+});
+
 export const lessonRegistryEntrySchema = z.object({
   id: idSchema,
   sourcePath: z.string().trim().min(1),
@@ -23,9 +54,9 @@ export const lessonRegistrySchema = z.object({
 export const questionSchema = z.object({
   id: idSchema,
   lessonId: idSchema,
-  type: z.enum(["recall", "code_reasoning", "pitfall", "scenario"]),
-  responseMode: z.enum(["text", "code"]).optional(),
-  difficulty: z.enum(["beginner", "intermediate", "advanced"]),
+  type: questionSkillSchema,
+  responseMode: questionResponseModeSchema.optional(),
+  difficulty: questionDifficultySchema,
   estimatedMinutes: z.number().int().min(1).max(15),
   prompt: z.string().trim().min(10),
   code: z.string().trim().min(1).optional(),
@@ -77,11 +108,17 @@ export const contentManifestSchema = z.object({
   schemaVersion: z.literal(1),
   sourceRevision: z.string().regex(/^[a-f0-9]{64}$/),
   lessons: z.array(generatedLessonSchema),
-  questions: z.array(questionSchema),
+  questions: z.array(
+    questionSchema.extend({
+      taxonomy: questionTaxonomySchema,
+    }),
+  ),
 });
 
 export type Question = z.infer<typeof questionSchema>;
+export type QuestionTaxonomy = z.infer<typeof questionTaxonomySchema>;
 export type GeneratedLesson = z.infer<typeof generatedLessonSchema>;
 export type ContentManifest = z.infer<typeof contentManifestSchema>;
+export type ContentQuestion = ContentManifest["questions"][number];
 export type LessonRegistry = z.infer<typeof lessonRegistrySchema>;
 export type LessonRegistryEntry = z.infer<typeof lessonRegistryEntrySchema>;
