@@ -63,6 +63,7 @@ describe("cloud progress contract", () => {
           is_suspended: false,
           is_leech: false,
           content_changed: false,
+          history_reset_on: null,
         },
       ])[0],
     ).toMatchObject({

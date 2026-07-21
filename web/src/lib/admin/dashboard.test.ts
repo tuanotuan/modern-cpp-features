@@ -98,6 +98,7 @@ describe("admin dashboard snapshot", () => {
           },
         ],
       },
+      [],
       "2026-07-20",
     );
 
@@ -110,6 +111,11 @@ describe("admin dashboard snapshot", () => {
       dueQuestions: 1,
     });
     expect(snapshot.questions[0].adminStatus).toBe("active");
+    expect(snapshot.questions[0].learning).toMatchObject({
+      state: "review",
+      dueOn: "2026-07-20",
+    });
+    expect(snapshot.questions[0].reviewHistory).toHaveLength(1);
     expect(snapshot.ratingCounts.hard).toBe(1);
   });
 });

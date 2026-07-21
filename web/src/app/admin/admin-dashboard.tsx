@@ -14,6 +14,9 @@ import type {
   GeminiUsageSummary,
   PracticeAccount,
 } from "@/lib/practice/cloud-server";
+import { parseProgress } from "@/lib/practice/scheduler";
+
+const PROGRESS_STORAGE_KEY = "cpp-recall:progress:v1";
 
 const statusLabels: Record<AdminQuestionStatus, string> = {
   active: "Đang dùng",
@@ -23,6 +26,13 @@ const statusLabels: Record<AdminQuestionStatus, string> = {
 };
 
 const standardLabels = { cpp98: "C++98", cpp11: "C++11", cpp20: "C++20" };
+const learningLabels = {
+  new: "Mới",
+  learning: "Đang học",
+  review: "Ôn tập",
+  relearning: "Học lại",
+} as const;
+type ScheduleAction = "suspend" | "unsuspend" | "reset" | "reschedule";
 
 export function AdminDashboard({
   account,
@@ -42,12 +52,19 @@ export function AdminDashboard({
   const [standard, setStandard] = useState("all");
   const [status, setStatus] = useState("all");
   const [type, setType] = useState("all");
+  const [learningFilter, setLearningFilter] = useState("all");
+  const [topic, setTopic] = useState("all");
   const [savingIds, setSavingIds] = useState<Set<string>>(() => new Set());
   const [notice, setNotice] = useState<string | null>(null);
   const [geminiFallbackEnabled, setGeminiFallbackEnabled] = useState(
     initialGeminiFallbackEnabled,
   );
   const [geminiSettingSaving, setGeminiSettingSaving] = useState(false);
+  const topics = useMemo(
+    () =>
+      [...new Set(questions.flatMap((question) => question.taxonomy.topics))].sort(),
+    [questions],
+  );
 
   const filteredQuestions = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -57,15 +74,31 @@ export function AdminDashboard({
         question.id.includes(normalized) ||
         question.prompt.toLowerCase().includes(normalized) ||
         question.lessonTitle.toLowerCase().includes(normalized) ||
-        question.knowledgePath.toLowerCase().includes(normalized);
+        question.knowledgePath.toLowerCase().includes(normalized) ||
+        question.taxonomy.tags.some((tag) => tag.includes(normalized));
+      const matchesLearning =
+        learningFilter === "all" ||
+        (learningFilter === "suspended"
+          ? question.learning.suspended
+          : learningFilter === "leech"
+            ? question.learning.leech
+            : learningFilter === "due"
+              ? !question.learning.suspended &&
+                question.learning.state !== "new" &&
+                question.learning.dueOn !== null &&
+                question.learning.dueOn <= initialSnapshot.today
+              : question.learning.state === learningFilter &&
+                !question.learning.suspended);
       return (
         matchesQuery &&
         (standard === "all" || question.standard === standard) &&
         (status === "all" || question.adminStatus === status) &&
-        (type === "all" || question.type === type)
+        (type === "all" || question.type === type) &&
+        (topic === "all" || question.taxonomy.topics.includes(topic)) &&
+        matchesLearning
       );
     });
-  }, [query, questions, standard, status, type]);
+  }, [initialSnapshot.today, learningFilter, query, questions, standard, status, topic, type]);
 
   const reviewQueue = questions.filter(
     (question) => question.adminStatus === "pending" || question.adminStatus === "stale",
@@ -76,6 +109,21 @@ export function AdminDashboard({
   const staleCount = questions.filter(
     (question) => question.adminStatus === "stale",
   ).length;
+  const currentDueCount = questions.filter(
+    (question) =>
+      question.adminStatus === "active" &&
+      !question.learning.suspended &&
+      question.learning.state !== "new" &&
+      question.learning.dueOn !== null &&
+      question.learning.dueOn <= initialSnapshot.today,
+  ).length;
+  const practicedCount = questions.filter(
+    (question) => question.reviewHistory.length > 0,
+  ).length;
+  const totalReviewCount = questions.reduce(
+    (total, question) => total + question.reviewHistory.length,
+    0,
+  );
   const lessonCoverage = initialSnapshot.lessons.map((lesson) => ({
     ...lesson,
     activeQuestions: questions.filter(
@@ -160,6 +208,72 @@ export function AdminDashboard({
     }
   }
 
+  async function manageSchedule(
+    question: AdminQuestion,
+    action: ScheduleAction,
+    dueOn?: string,
+  ) {
+    setSavingIds(new Set([question.id]));
+    setNotice(null);
+    try {
+      const response = await fetch("/api/admin/question-state", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questionId: question.id, action, dueOn }),
+      });
+      const payload = (await response.json()) as {
+        learning?: AdminQuestion["learning"];
+        reviewHistory?: AdminQuestion["reviewHistory"];
+        error?: string;
+      };
+      if (!response.ok || !payload.learning || !payload.reviewHistory) {
+        throw new Error(payload.error || "Không cập nhật được lịch học.");
+      }
+      setQuestions((current) =>
+        current.map((item) =>
+          item.id === question.id
+            ? {
+                ...item,
+                learning: payload.learning!,
+                reviewHistory: payload.reviewHistory!,
+              }
+            : item,
+        ),
+      );
+      if (action === "reset") {
+        try {
+          const local = parseProgress(
+            window.localStorage.getItem(PROGRESS_STORAGE_KEY),
+          );
+          window.localStorage.setItem(
+            PROGRESS_STORAGE_KEY,
+            JSON.stringify({
+              ...local,
+              reviews: local.reviews.filter(
+                (review) => review.questionId !== question.id,
+              ),
+            }),
+          );
+        } catch {
+          // The cloud reset cutoff prevents stale history from returning later.
+        }
+      }
+      const actionLabel = {
+        suspend: "tạm dừng",
+        unsuspend: "tiếp tục",
+        reset: "đặt lại thành câu mới",
+        reschedule: `đổi hạn sang ${dueOn}`,
+      }[action];
+      setNotice(`Đã ${actionLabel} câu ${question.id}.`);
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : "Không cập nhật được lịch học.",
+      );
+    } finally {
+      setSavingIds(new Set());
+    }
+  }
+
   return (
     <main className="min-h-screen px-4 py-5 sm:px-7 lg:px-10">
       <div className="mx-auto max-w-[1500px]">
@@ -213,7 +327,7 @@ export function AdminDashboard({
           <MetricCard label="Nguồn tri thức" value={initialSnapshot.metrics.lessons} detail={`${uncovered.length} bài chưa có câu hiện tại`} tone="dark" />
           <MetricCard label="Ngân hàng câu hỏi" value={questions.filter((item) => item.status !== "archived").length} detail={`${activeCount} câu đang dùng`} />
           <MetricCard label="Review queue" value={reviewQueue.length} detail={`${staleCount} câu cần rà lại nguồn`} tone={reviewQueue.length ? "warning" : "default"} />
-          <MetricCard label="Lượt ôn đã lưu" value={initialSnapshot.metrics.totalReviews} detail={`${initialSnapshot.metrics.practicedQuestions} câu đã từng luyện`} />
+          <MetricCard label="Lượt ôn đã lưu" value={totalReviewCount} detail={`${practicedCount} câu đã từng luyện`} />
           <MetricCard
             label="AI web tháng này"
             value={`$${((aiUsage?.actualUsdMicros ?? 0) / 1_000_000).toFixed(3)}`}
@@ -324,7 +438,7 @@ export function AdminDashboard({
               </span>
             </div>
 
-            <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
@@ -334,6 +448,8 @@ export function AdminDashboard({
               <Filter value={standard} onChange={setStandard} label="C++ version" options={[['all', 'Mọi version'], ['cpp98', 'C++98'], ['cpp11', 'C++11'], ['cpp20', 'C++20']]} />
               <Filter value={status} onChange={setStatus} label="Trạng thái" options={[['all', 'Mọi trạng thái'], ['active', 'Đang dùng'], ['pending', 'Chờ duyệt'], ['stale', 'Nguồn đã đổi'], ['archived', 'Đã lưu trữ']]} />
               <Filter value={type} onChange={setType} label="Loại câu" options={[['all', 'Mọi loại'], ['recall', 'Recall'], ['code_reasoning', 'Code reasoning'], ['pitfall', 'Pitfall'], ['scenario', 'Scenario']]} />
+              <Filter value={learningFilter} onChange={setLearningFilter} label="Trạng thái học" options={[['all', 'Mọi trạng thái học'], ['new', 'Mới'], ['learning', 'Đang học'], ['review', 'Ôn tập'], ['relearning', 'Học lại'], ['due', 'Đến hạn'], ['suspended', 'Tạm dừng'], ['leech', 'Leech']]} />
+              <Filter value={topic} onChange={setTopic} label="Topic" options={[['all', 'Mọi topic'], ...topics.map((item): [string, string] => [item, item])]} />
             </div>
 
             <div className="mt-6 space-y-3">
@@ -343,6 +459,9 @@ export function AdminDashboard({
                   question={question}
                   saving={savingIds.has(question.id)}
                   onApprove={() => void approve([question.id])}
+                  onManage={(action, dueOn) =>
+                    void manageSchedule(question, action, dueOn)
+                  }
                 />
               ))}
               {!filteredQuestions.length ? (
@@ -360,8 +479,8 @@ export function AdminDashboard({
                 Learning health
               </p>
               <div className="mt-5 grid grid-cols-2 gap-3">
-                <SmallStat label="Đến hạn" value={initialSnapshot.metrics.dueQuestions} />
-                <SmallStat label="Đã luyện" value={initialSnapshot.metrics.practicedQuestions} />
+                <SmallStat label="Đến hạn" value={currentDueCount} />
+                <SmallStat label="Đã luyện" value={practicedCount} />
                 <SmallStat label="Chưa nhớ" value={initialSnapshot.ratingCounts.again} />
                 <SmallStat label="Khó" value={initialSnapshot.ratingCounts.hard} />
               </div>
@@ -426,14 +545,28 @@ function QueueReviewCard({ question, saving, onApprove }: { question: AdminQuest
   );
 }
 
-function QuestionCard({ question, saving, onApprove }: { question: AdminQuestion; saving: boolean; onApprove: () => void }) {
+function QuestionCard({
+  question,
+  saving,
+  onApprove,
+  onManage,
+}: {
+  question: AdminQuestion;
+  saving: boolean;
+  onApprove: () => void;
+  onManage: (action: ScheduleAction, dueOn?: string) => void;
+}) {
   const reviewable = question.adminStatus === "pending" || question.adminStatus === "stale";
+  const [dueOn, setDueOn] = useState(
+    question.learning.dueOn ?? new Date().toISOString().slice(0, 10),
+  );
   return (
     <details className="group rounded-2xl border border-[#173f35]/12 bg-white/75 open:border-[#356b58]/35">
       <summary className="flex list-none cursor-pointer items-start justify-between gap-4 p-4 sm:p-5">
         <div className="min-w-0">
           <div className="flex flex-wrap gap-2">
             <StatusBadge status={question.adminStatus} />
+            <LearningBadge question={question} />
             <span className="rounded-full bg-[#edf0e8] px-2.5 py-1 font-mono text-[10px] font-bold uppercase">{standardLabels[question.standard]}</span>
             <span className="rounded-full bg-[#edf0e8] px-2.5 py-1 font-mono text-[10px] font-bold uppercase">{question.type.replace('_', ' ')}</span>
           </div>
@@ -446,8 +579,56 @@ function QuestionCard({ question, saving, onApprove }: { question: AdminQuestion
       </summary>
       <div className="border-t border-[#173f35]/10 px-4 py-5 sm:px-5">
         <QuestionDetails question={question} />
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-[#173f35]/10 pt-4">
           {reviewable ? <button type="button" disabled={saving} onClick={onApprove} className="rounded-xl bg-[#ba4b2f] px-4 py-2 text-xs font-bold text-white disabled:opacity-60">{saving ? "Đang duyệt…" : "Duyệt câu này"}</button> : null}
+          {question.adminStatus === "active" ? (
+            <>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() =>
+                  onManage(question.learning.suspended ? "unsuspend" : "suspend")
+                }
+                className="rounded-xl border border-[#173f35]/20 bg-white px-3 py-2 text-xs font-bold text-[#356b58] disabled:opacity-50"
+              >
+                {question.learning.suspended ? "Tiếp tục" : "Tạm dừng"}
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Đặt câu này về New và xóa toàn bộ lịch sử review của riêng câu này?",
+                    )
+                  ) {
+                    onManage("reset");
+                  }
+                }}
+                className="rounded-xl border border-[#ba4b2f]/25 bg-white px-3 py-2 text-xs font-bold text-[#8e3825] disabled:opacity-50"
+              >
+                Reset thành New
+              </button>
+              {question.learning.state !== "new" ? (
+                <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+                  <input
+                    type="date"
+                    value={dueOn}
+                    onChange={(event) => setDueOn(event.target.value)}
+                    className="rounded-xl border border-[#173f35]/15 bg-white px-3 py-2 text-xs"
+                  />
+                  <button
+                    type="button"
+                    disabled={saving || !dueOn}
+                    onClick={() => onManage("reschedule", dueOn)}
+                    className="rounded-xl bg-[#173f35] px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                  >
+                    Đổi hạn
+                  </button>
+                </div>
+              ) : null}
+            </>
+          ) : null}
         </div>
       </div>
     </details>
@@ -471,6 +652,53 @@ function QuestionDetails({ question }: { question: AdminQuestion }) {
       <p className="mt-4 text-xs text-[#64736c]">
         Nguồn: {question.sourceHeadings.join(" · ")}
       </p>
+      <div className="mt-4 rounded-xl border border-[#173f35]/10 bg-white/70 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="font-mono text-[10px] font-bold tracking-wide text-[#356b58] uppercase">
+              Lịch Anki
+            </p>
+            <p className="mt-1 text-sm font-semibold">
+              {learningLabels[question.learning.state]}
+              {question.learning.suspended ? " · đang tạm dừng" : ""}
+            </p>
+          </div>
+          <p className="font-mono text-xs text-[#64736c]">
+            hạn {question.learning.dueOn ?? "—"} · interval {question.learning.intervalDays}d
+          </p>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-[#64736c]">
+          <span>{question.learning.reviewCount} lượt ôn</span>
+          <span>· {question.learning.lapseCount} lapse</span>
+          {question.learning.leech ? <span className="font-bold text-[#ba4b2f]">· Leech</span> : null}
+          {question.taxonomy.topics.map((item) => (
+            <span key={item} className="rounded-full bg-[#edf0e8] px-2 py-0.5 font-mono">
+              {item}
+            </span>
+          ))}
+        </div>
+        <details className="mt-4 border-t border-[#173f35]/10 pt-3">
+          <summary className="cursor-pointer text-xs font-bold text-[#356b58]">
+            Lịch sử trả lời ({question.reviewHistory.length})
+          </summary>
+          {question.reviewHistory.length ? (
+            <ol className="mt-3 max-h-56 space-y-2 overflow-y-auto">
+              {question.reviewHistory.map((review) => (
+                <li
+                  key={`${review.questionId}:${review.reviewedOn}`}
+                  className="flex items-center justify-between gap-3 rounded-lg bg-[#f3f4ee] px-3 py-2 text-xs"
+                >
+                  <span>{review.reviewedOn}</span>
+                  <strong className="uppercase text-[#356b58]">{review.rating}</strong>
+                  <span className="font-mono text-[#64736c]">→ {review.nextDueOn}</span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="mt-3 text-xs text-[#64736c]">Chưa có lần review nào.</p>
+          )}
+        </details>
+      </div>
     </>
   );
 }
@@ -497,6 +725,26 @@ function MetricCard({ label, value, detail, tone = "default" }: { label: string;
 
 function SmallStat({ label, value }: { label: string; value: number }) {
   return <div className="rounded-2xl bg-white/10 p-4"><p className="text-2xl font-semibold text-[#d7ff91]">{value}</p><p className="mt-1 text-xs text-white/65">{label}</p></div>;
+}
+
+function LearningBadge({ question }: { question: AdminQuestion }) {
+  const label = question.learning.suspended
+    ? "Tạm dừng"
+    : question.learning.leech
+      ? "Leech"
+      : learningLabels[question.learning.state];
+  const classes = question.learning.suspended
+    ? "bg-[#e4e6e2] text-[#64736c]"
+    : question.learning.state === "relearning" || question.learning.leech
+      ? "bg-[#f1d6c9] text-[#8e3825]"
+      : question.learning.state === "new"
+        ? "bg-[#e8f0ff] text-[#315e91]"
+        : "bg-[#e8f3dc] text-[#356b58]";
+  return (
+    <span className={`rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase ${classes}`}>
+      {label}
+    </span>
+  );
 }
 
 function StatusBadge({ status }: { status: AdminQuestionStatus }) {

@@ -72,6 +72,7 @@ export type QuestionLearningStateRow = {
   is_suspended: boolean;
   is_leech: boolean;
   content_changed: boolean;
+  history_reset_on: string | null;
 };
 
 export function rowsToProgress(rows: PracticeReviewRow[]): PracticeProgress {
@@ -120,6 +121,7 @@ export function rowsToLearningStates(
     suspended: row.is_suspended,
     leech: row.is_leech,
     contentChanged: row.content_changed,
+    historyResetOn: row.history_reset_on,
   }));
 }
 

@@ -104,7 +104,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
         .limit(1000),
       supabase
         .from("user_question_states")
-        .select("question_id, question_version, source_hash, learning_state, due_on, interval_days, review_count, lapse_count, last_rating, last_reviewed_on, is_suspended, is_leech, content_changed"),
+        .select("question_id, question_version, source_hash, learning_state, due_on, interval_days, review_count, lapse_count, last_rating, last_reviewed_on, is_suspended, is_leech, content_changed, history_reset_on"),
       supabase
         .from("question_approvals")
         .select("question_id, question_version, source_hash"),

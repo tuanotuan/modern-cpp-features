@@ -105,7 +105,7 @@ export async function POST(request: Request) {
     supabase
       .from("user_question_states")
       .select(
-        "question_id, question_version, source_hash, learning_state, due_on, interval_days, review_count, lapse_count, last_rating, last_reviewed_on, is_suspended, is_leech, content_changed",
+        "question_id, question_version, source_hash, learning_state, due_on, interval_days, review_count, lapse_count, last_rating, last_reviewed_on, is_suspended, is_leech, content_changed, history_reset_on",
       ),
   ]);
   if (reviewsResult.error || statesResult.error) {
