@@ -23,6 +23,7 @@ Each question contains:
 
 - a stable ID and version;
 - a lesson ID, type, difficulty, and expected duration;
+- an optional `responseMode: code` only when the candidate must write or modify C++ code;
 - a canonical short answer and detailed explanation;
 - required points, optional bonus points, and common misconceptions;
 - one or more source section IDs from the parsed note.

@@ -24,6 +24,7 @@ export const questionSchema = z.object({
   id: idSchema,
   lessonId: idSchema,
   type: z.enum(["recall", "code_reasoning", "pitfall", "scenario"]),
+  responseMode: z.enum(["text", "code"]).optional(),
   difficulty: z.enum(["beginner", "intermediate", "advanced"]),
   estimatedMinutes: z.number().int().min(1).max(15),
   prompt: z.string().trim().min(10),

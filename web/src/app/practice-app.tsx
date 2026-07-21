@@ -12,6 +12,7 @@ import type { Question } from "@/lib/content/schema";
 import type { PracticeAccount } from "@/lib/practice/cloud-server";
 import {
   buildCandidateAnswer,
+  requiresCodeAnswer,
   SCENARIO_CODE_MAX,
   SCENARIO_EXPLANATION_MAX,
 } from "@/lib/practice/candidate-answer";
@@ -942,7 +943,7 @@ export function PracticeApp({
                     </pre>
                   ) : null}
 
-                  {current.type === "scenario" ? (
+                  {requiresCodeAnswer(current) ? (
                     <div className="mt-8 space-y-5">
                       <ScenarioCodeEditor
                         value={codeAnswers[current.id] ?? ""}
@@ -1007,7 +1008,7 @@ export function PracticeApp({
                         type="button"
                         onClick={askCoach}
                         disabled={
-                          (current.type === "scenario"
+                          (requiresCodeAnswer(current)
                             ? (codeAnswers[current.id]?.trim().length ?? 0) < 10
                             : (answers[current.id]?.trim().length ?? 0) < 10) ||
                           coachLoading === current.id
