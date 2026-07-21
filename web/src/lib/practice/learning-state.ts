@@ -33,6 +33,7 @@ export type QuestionLearningState = {
   suspended: boolean;
   leech: boolean;
   contentChanged: boolean;
+  historyResetOn: string | null;
 };
 
 export type QuestionIdentity = {
@@ -66,6 +67,7 @@ export function newQuestionLearningState({
     suspended: false,
     leech: false,
     contentChanged: false,
+    historyResetOn: null,
   };
 }
 
@@ -114,6 +116,7 @@ export function deriveLearningStateFromReviews(
     suspended: false,
     leech: lapseCount >= LEECH_LAPSE_THRESHOLD,
     contentChanged: false,
+    historyResetOn: null,
   };
 }
 
@@ -341,6 +344,7 @@ function newerState(
   cloud?: QuestionLearningState,
 ) {
   if (!cloud) return local;
+  if (cloud.state === "new" && cloud.historyResetOn) return cloud;
   if (!local.lastReviewedOn) return cloud;
   if (!cloud.lastReviewedOn) return local;
   return local.lastReviewedOn > cloud.lastReviewedOn ? local : cloud;

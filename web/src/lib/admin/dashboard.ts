@@ -6,7 +6,11 @@ import {
   isQuestionApproved,
   type QuestionApproval,
 } from "../practice/approvals";
-import { latestReviews, type PracticeProgress } from "../practice/scheduler";
+import {
+  buildLearningStates,
+  type QuestionLearningState,
+} from "../practice/learning-state";
+import type { PracticeProgress, Review } from "../practice/scheduler";
 
 export type AdminQuestionStatus = "active" | "pending" | "stale" | "archived";
 
@@ -17,6 +21,8 @@ export type AdminQuestion = ContentQuestion & {
   sourceHeadings: string[];
   approved: boolean;
   adminStatus: AdminQuestionStatus;
+  learning: QuestionLearningState;
+  reviewHistory: Review[];
 };
 
 export type AdminLessonCoverage = {
@@ -30,6 +36,7 @@ export type AdminLessonCoverage = {
 
 export type AdminDashboardSnapshot = {
   sourceRevision: string;
+  today: string;
   metrics: {
     lessons: number;
     questions: number;
@@ -50,9 +57,19 @@ export function buildAdminDashboardSnapshot(
   manifest: ContentManifest,
   approvals: QuestionApproval[],
   progress: PracticeProgress,
+  cloudStates: QuestionLearningState[],
   today: string,
 ): AdminDashboardSnapshot {
   const lessonById = new Map(manifest.lessons.map((lesson) => [lesson.id, lesson]));
+  const learningStates = buildLearningStates(
+    manifest.questions.map((question) => ({
+      id: question.id,
+      version: question.version,
+      sourceHash: question.sourceHash,
+    })),
+    progress.reviews,
+    cloudStates,
+  );
   const questions = manifest.questions.map((question): AdminQuestion => {
     const lesson = lessonById.get(question.lessonId);
     if (!lesson) throw new Error(`Missing lesson ${question.lessonId}`);
@@ -69,6 +86,10 @@ export function buildAdminDashboardSnapshot(
       }),
       approved,
       adminStatus: resolveAdminQuestionStatus(question, approved),
+      learning: learningStates.get(question.id)!,
+      reviewHistory: progress.reviews
+        .filter((review) => review.questionId === question.id)
+        .sort((left, right) => right.reviewedOn.localeCompare(left.reviewedOn)),
     };
   });
 
@@ -90,7 +111,6 @@ export function buildAdminDashboardSnapshot(
     };
   });
 
-  const latest = latestReviews(progress.reviews);
   const activeIds = new Set(
     questions
       .filter((question) => question.adminStatus === "active")
@@ -103,6 +123,7 @@ export function buildAdminDashboardSnapshot(
 
   return {
     sourceRevision: manifest.sourceRevision,
+    today,
     metrics: {
       lessons: lessons.length,
       questions: questions.filter((question) => question.status !== "archived").length,
@@ -115,8 +136,13 @@ export function buildAdminDashboardSnapshot(
       uncoveredLessons: lessons.filter((lesson) => lesson.currentQuestions === 0).length,
       totalReviews: progress.reviews.length,
       practicedQuestions: new Set(progress.reviews.map((review) => review.questionId)).size,
-      dueQuestions: [...latest.values()].filter(
-        (review) => activeIds.has(review.questionId) && review.nextDueOn <= today,
+      dueQuestions: [...learningStates.values()].filter(
+        (state) =>
+          activeIds.has(state.questionId) &&
+          !state.suspended &&
+          state.state !== "new" &&
+          state.dueOn !== null &&
+          state.dueOn <= today,
       ).length,
     },
     ratingCounts,

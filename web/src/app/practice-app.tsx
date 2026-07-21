@@ -18,6 +18,10 @@ import {
   SCENARIO_EXPLANATION_MAX,
 } from "@/lib/practice/candidate-answer";
 import {
+  buildCustomStudyQueue,
+  type CustomStudyFilters,
+} from "@/lib/practice/custom-study";
+import {
   parseSavedItems,
   removeSavedItem,
   SAVED_ITEMS_KEY,
@@ -190,6 +194,8 @@ export function PracticeApp({
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(
     null,
   );
+  const [customStudyIds, setCustomStudyIds] = useState<string[] | null>(null);
+  const [customStudyNotice, setCustomStudyNotice] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(() =>
     cloudSetupError ? "error" : account ? "syncing" : "local",
   );
@@ -369,9 +375,21 @@ export function PracticeApp({
     if (snapshot === null || !account || initialSyncStarted.current) return;
     initialSyncStarted.current = true;
 
-    const localProgress = parseProgress(
+    const resetCutoffs = new Map(
+      initialQuestionStates
+        .filter((state) => state.historyResetOn)
+        .map((state) => [state.questionId, state.historyResetOn!]),
+    );
+    const parsedLocalProgress = parseProgress(
       snapshot === EMPTY_SNAPSHOT ? null : snapshot,
     );
+    const localProgress: PracticeProgress = {
+      ...parsedLocalProgress,
+      reviews: parsedLocalProgress.reviews.filter((review) => {
+        const resetOn = resetCutoffs.get(review.questionId);
+        return !resetOn || review.reviewedOn > resetOn;
+      }),
+    };
     const merged = mergeProgress(initialCloudProgress, localProgress);
     saveProgress(JSON.stringify(merged));
     const cloudReviewKeys = new Set(
@@ -380,8 +398,13 @@ export function PracticeApp({
       ),
     );
     const localOnlyReviews = reviewsForCloudSync(merged.reviews).filter(
-      (review) =>
-        !cloudReviewKeys.has(`${review.questionId}:${review.reviewedOn}`),
+      (review) => {
+        const resetOn = resetCutoffs.get(review.questionId);
+        return (
+          (!resetOn || review.reviewedOn > resetOn) &&
+          !cloudReviewKeys.has(`${review.questionId}:${review.reviewedOn}`)
+        );
+      },
     );
 
     void fetch("/api/progress/sync", {
@@ -401,7 +424,7 @@ export function PracticeApp({
         setSyncStatus("synced");
       })
       .catch(() => setSyncStatus("error"));
-  }, [account, initialCloudProgress, snapshot]);
+  }, [account, initialCloudProgress, initialQuestionStates, snapshot]);
 
   if (snapshot === null) {
     return <LoadingScreen />;
@@ -434,15 +457,25 @@ export function PracticeApp({
   const selectedQuestion = selectedQuestionId
     ? questionById.get(selectedQuestionId)
     : undefined;
+  const customRemainingIds = (customStudyIds ?? []).filter(
+    (questionId) =>
+      questionById.has(questionId) &&
+      latest.get(questionId)?.reviewedOn !== today,
+  );
   const current =
     selectedQuestion && latest.get(selectedQuestion.id)?.reviewedOn !== today
       ? selectedQuestion
-      : questionById.get(remainingIds[0]);
+      : customStudyIds
+        ? questionById.get(customRemainingIds[0])
+        : questionById.get(remainingIds[0]);
   const currentLearningState = current
     ? learningStates.get(current.id)
     : undefined;
   const isRandomQuestion = Boolean(
     current && selectedQuestionId === current.id && !remainingIds.includes(current.id),
+  );
+  const isCustomStudyQuestion = Boolean(
+    current && customStudyIds?.includes(current.id),
   );
   const randomCandidates = availableQuestions.filter(
     (question) =>
@@ -453,6 +486,11 @@ export function PracticeApp({
   );
   const dailyTotal = completedToday + remainingIds.length;
   const streak = calculateStreak(progress.reviews, today);
+  const customStudyTopics = [
+    ...new Set(
+      availableQuestions.flatMap((question) => question.taxonomy.topics),
+    ),
+  ].sort();
 
   async function approveAllPending() {
     if (!pendingReview.length || approvalStatus === "saving") return;
@@ -493,6 +531,10 @@ export function PracticeApp({
     );
     const updated = recordScheduledReview(progress, scheduled.review);
     saveProgress(JSON.stringify(updated));
+    if (isCustomStudyQuestion && customRemainingIds.length <= 1) {
+      setCustomStudyIds(null);
+      setCustomStudyNotice("Đã hoàn thành phiên Custom Study.");
+    }
     setSelectedQuestionId(null);
     clearStudySessionState();
     if (account) {
@@ -500,10 +542,29 @@ export function PracticeApp({
     }
   }
 
+  function startCustomStudy(filters: CustomStudyFilters) {
+    const ids = buildCustomStudyQueue(
+      availableQuestions,
+      learningStates,
+      today,
+      filters,
+    );
+    if (!ids.length) {
+      setCustomStudyNotice("Không có câu nào khớp bộ lọc Custom Study.");
+      return;
+    }
+    clearStudySessionState();
+    setSelectedQuestionId(null);
+    setCustomStudyIds(ids);
+    setCustomStudyNotice(`Đã tạo phiên Custom Study gồm ${ids.length} câu.`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   function showRandomQuestion() {
     if (!randomCandidates.length) return;
     const next = randomCandidates[Math.floor(Math.random() * randomCandidates.length)];
     clearStudySessionState();
+    setCustomStudyIds(null);
     setSelectedQuestionId(next.id);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -911,6 +972,17 @@ export function PracticeApp({
           </p>
         ) : null}
 
+        <CustomStudyPanel
+          topics={customStudyTopics}
+          activeCount={customRemainingIds.length}
+          notice={customStudyNotice}
+          onStart={startCustomStudy}
+          onStop={() => {
+            setCustomStudyIds(null);
+            setCustomStudyNotice("Đã dừng Custom Study, quay lại lịch hôm nay.");
+          }}
+        />
+
         {!current && pendingReview.length ? (
           <section className="mt-7 rounded-3xl border border-[#ba4b2f]/25 bg-[#fff4df] p-6 sm:p-8">
             <p className="font-mono text-xs tracking-[0.15em] text-[#ba4b2f] uppercase">
@@ -948,14 +1020,18 @@ export function PracticeApp({
               <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <span className="rounded-full bg-[#d7ff91] px-3 py-1 font-mono text-xs font-bold text-[#173f35]">
-                    {isRandomQuestion
+                    {isCustomStudyQuestion
+                      ? "CUSTOM STUDY"
+                      : isRandomQuestion
                       ? "CÂU NGẪU NHIÊN"
                       : completedToday === 0
                         ? "CÂU HÔM NAY"
                         : "ÔN ĐẾN HẠN"}
                   </span>
                   <span className="font-mono text-xs text-[#6c7b73]">
-                    {isRandomQuestion
+                    {isCustomStudyQuestion && customStudyIds
+                      ? `${customStudyIds.length - customRemainingIds.length + 1}/${customStudyIds.length}`
+                      : isRandomQuestion
                       ? "ngoài lịch hôm nay"
                       : `${completedToday + 1}/${dailyTotal}`}
                   </span>
@@ -1467,6 +1543,157 @@ function CompletionScreen({
         ) : null}
       </div>
     </section>
+  );
+}
+
+function CustomStudyPanel({
+  topics,
+  activeCount,
+  notice,
+  onStart,
+  onStop,
+}: {
+  topics: string[];
+  activeCount: number;
+  notice: string | null;
+  onStart: (filters: CustomStudyFilters) => void;
+  onStop: () => void;
+}) {
+  const [learningState, setLearningState] = useState<
+    CustomStudyFilters["learningState"]
+  >("all");
+  const [standard, setStandard] = useState<CustomStudyFilters["standard"]>(
+    "all",
+  );
+  const [skill, setSkill] = useState<CustomStudyFilters["skill"]>("all");
+  const [topic, setTopic] = useState("all");
+  const [limit, setLimit] = useState(10);
+
+  return (
+    <details className="mt-5 rounded-2xl border border-[#173f35]/15 bg-white/55 px-4 py-3 open:bg-white/70">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-bold text-[#356b58]">
+        <span>Custom Study · ôn theo trạng thái hoặc tag</span>
+        <span className="font-mono text-xs">
+          {activeCount ? `${activeCount} câu còn lại` : "Mở bộ lọc ↓"}
+        </span>
+      </summary>
+      <div className="mt-4 grid gap-3 border-t border-[#173f35]/10 pt-4 sm:grid-cols-2 lg:grid-cols-5">
+        <StudySelect
+          label="Trạng thái"
+          value={learningState}
+          onChange={(value) =>
+            setLearningState(value as CustomStudyFilters["learningState"])
+          }
+          options={[
+            ["all", "Tất cả"],
+            ["new", "Mới"],
+            ["learning", "Đang học"],
+            ["review", "Ôn tập"],
+            ["relearning", "Học lại"],
+            ["due", "Đến hạn"],
+            ["leech", "Leech"],
+          ]}
+        />
+        <StudySelect
+          label="C++"
+          value={standard}
+          onChange={(value) =>
+            setStandard(value as CustomStudyFilters["standard"])
+          }
+          options={[
+            ["all", "Mọi version"],
+            ["cpp98", "C++98"],
+            ["cpp11", "C++11"],
+            ["cpp20", "C++20"],
+          ]}
+        />
+        <StudySelect
+          label="Kỹ năng"
+          value={skill}
+          onChange={(value) => setSkill(value as CustomStudyFilters["skill"])}
+          options={[
+            ["all", "Mọi loại"],
+            ["recall", "Recall"],
+            ["code_reasoning", "Code reasoning"],
+            ["pitfall", "Pitfall"],
+            ["scenario", "Scenario"],
+          ]}
+        />
+        <StudySelect
+          label="Topic"
+          value={topic}
+          onChange={setTopic}
+          options={[
+            ["all", "Mọi topic"],
+            ...topics.map((item): [string, string] => [item, item]),
+          ]}
+        />
+        <label className="text-xs font-bold text-[#52645c]">
+          Số câu
+          <input
+            type="number"
+            min={1}
+            max={20}
+            value={limit}
+            onChange={(event) => setLimit(Number(event.target.value))}
+            className="mt-1 w-full rounded-xl border border-[#173f35]/15 bg-white px-3 py-2 text-sm"
+          />
+        </label>
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() =>
+            onStart({ learningState, standard, skill, topic, limit })
+          }
+          className="rounded-xl bg-[#173f35] px-4 py-2.5 text-xs font-bold text-white"
+        >
+          Bắt đầu phiên học
+        </button>
+        {activeCount ? (
+          <button
+            type="button"
+            onClick={onStop}
+            className="rounded-xl border border-[#ba4b2f]/25 bg-white px-4 py-2.5 text-xs font-bold text-[#8e3825]"
+          >
+            Dừng phiên
+          </button>
+        ) : null}
+        {notice ? <p className="text-xs text-[#64736c]">{notice}</p> : null}
+      </div>
+      <p className="mt-3 text-[11px] text-[#718078]">
+        Rating trong Custom Study vẫn cập nhật lịch Anki của câu hỏi.
+      </p>
+    </details>
+  );
+}
+
+function StudySelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<[string, string]>;
+}) {
+  return (
+    <label className="text-xs font-bold text-[#52645c]">
+      {label}
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 w-full rounded-xl border border-[#173f35]/15 bg-white px-3 py-2 text-sm"
+      >
+        {options.map(([optionValue, optionLabel]) => (
+          <option key={optionValue} value={optionValue}>
+            {optionLabel}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

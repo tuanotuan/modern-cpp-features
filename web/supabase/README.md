@@ -53,3 +53,8 @@ Phase B extends `practice_reviews` with the state produced by each rating and
 uses `record_practice_review(...)` to update review history plus
 `user_question_states` in one database transaction. The browser may calculate
 an optimistic interval, but the RPC remains authoritative for cloud progress.
+
+Phase C adds owner-only scheduling operations through
+`manage_question_schedule(...)`: suspend, unsuspend, reset, and reschedule.
+Reset removes that question's review history and records a cutoff so stale
+browser storage on another device cannot silently restore the deleted progress.

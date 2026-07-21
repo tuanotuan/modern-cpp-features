@@ -30,6 +30,7 @@ export default async function AdminPage() {
     manifest,
     cloud.approvals,
     cloud.progress,
+    cloud.questionStates,
     vietnamDateKey(),
   );
 

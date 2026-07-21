@@ -232,4 +232,29 @@ describe("Anki-style learning-state foundation", () => {
       dueOn: "2026-08-12",
     });
   });
+
+  it("keeps an explicit cloud reset as New even when old local reviews remain", () => {
+    const questions = [
+      { id: "cpp11-auto-001", version: 1, sourceHash: "a".repeat(64) },
+    ];
+    const reviews: Review[] = [
+      {
+        questionId: "cpp11-auto-001",
+        reviewedOn: "2026-07-20",
+        rating: "good",
+        nextDueOn: "2026-07-24",
+      },
+    ];
+    const reset = {
+      ...newQuestionLearningState({
+        questionId: "cpp11-auto-001",
+        questionVersion: 1,
+        sourceHash: "a".repeat(64),
+      }),
+      historyResetOn: "2026-07-21",
+    };
+
+    expect(buildLearningStates(questions, reviews, [reset]).get("cpp11-auto-001"))
+      .toMatchObject({ state: "new", reviewCount: 0, historyResetOn: "2026-07-21" });
+  });
 });
