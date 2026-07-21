@@ -17,6 +17,7 @@ const questionStudySessionSchema = z.object({
   questionVersion: z.number().int().positive(),
   sourceHash: z.string().min(1).max(200),
   answer: z.string().max(6000).optional(),
+  codeAnswer: z.string().max(3200).optional(),
   revealed: z.boolean().optional(),
   hint: z.boolean().optional(),
   sourceVisible: z.boolean().optional(),

@@ -16,6 +16,7 @@ describe("study session persistence", () => {
           questionVersion: identity.version,
           sourceHash: identity.sourceHash,
           answer: "Aggregate initialization follows declaration order.",
+          codeAnswer: "class RiskConfig {};",
           revealed: true,
           sourceVisible: true,
           followUpChat: [
@@ -32,6 +33,7 @@ describe("study session persistence", () => {
     expect(restored.activeQuestionId).toBe(identity.id);
     expect(restored.questions[identity.id]).toMatchObject({
       answer: "Aggregate initialization follows declaration order.",
+      codeAnswer: "class RiskConfig {};",
       revealed: true,
       sourceVisible: true,
       deepDiveOpen: true,
