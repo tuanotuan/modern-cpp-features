@@ -8,6 +8,11 @@ export type Review = {
   reviewedOn: string;
   rating: Rating;
   nextDueOn: string;
+  questionVersion?: number;
+  sourceHash?: string;
+  stateAfter?: "learning" | "review" | "relearning";
+  intervalDaysAfter?: number;
+  lapseCountAfter?: number;
 };
 
 export type PracticeProgress = {
@@ -194,7 +199,19 @@ export function parseProgress(raw: string | null): PracticeProgress {
         typeof review.questionId === "string" &&
         typeof review.reviewedOn === "string" &&
         ["again", "hard", "good", "easy"].includes(review.rating) &&
-        typeof review.nextDueOn === "string",
+        typeof review.nextDueOn === "string" &&
+        (review.questionVersion === undefined ||
+          (Number.isInteger(review.questionVersion) && review.questionVersion > 0)) &&
+        (review.sourceHash === undefined ||
+          /^[a-f0-9]{64}$/.test(review.sourceHash)) &&
+        (review.stateAfter === undefined ||
+          ["learning", "review", "relearning"].includes(review.stateAfter)) &&
+        (review.intervalDaysAfter === undefined ||
+          (Number.isInteger(review.intervalDaysAfter) &&
+            review.intervalDaysAfter >= 1)) &&
+        (review.lapseCountAfter === undefined ||
+          (Number.isInteger(review.lapseCountAfter) &&
+            review.lapseCountAfter >= 0)),
     );
 
     return { version: PROGRESS_VERSION, reviews };

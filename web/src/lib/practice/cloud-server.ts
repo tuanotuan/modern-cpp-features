@@ -12,7 +12,13 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import { EMPTY_PROGRESS, type PracticeProgress } from "./scheduler";
-import { rowsToProgress, type PracticeReviewRow } from "./cloud";
+import {
+  rowsToLearningStates,
+  rowsToProgress,
+  type PracticeReviewRow,
+  type QuestionLearningStateRow,
+} from "./cloud";
+import type { QuestionLearningState } from "./learning-state";
 import {
   rowsToApprovals,
   type QuestionApproval,
@@ -29,6 +35,7 @@ export type CloudContext = {
   enabled: boolean;
   account: PracticeAccount | null;
   progress: PracticeProgress;
+  questionStates: QuestionLearningState[];
   approvals: QuestionApproval[];
   aiUsage: AiUsageSummary | null;
   geminiUsage: GeminiUsageSummary | null;
@@ -60,6 +67,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
       enabled: false,
       account: null,
       progress: EMPTY_PROGRESS,
+      questionStates: [],
       approvals: [],
       aiUsage: null,
       geminiUsage: null,
@@ -76,6 +84,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
       enabled: true,
       account: null,
       progress: EMPTY_PROGRESS,
+      questionStates: [],
       approvals: [],
       aiUsage: null,
       geminiUsage: null,
@@ -86,13 +95,16 @@ export async function loadCloudContext(): Promise<CloudContext> {
   }
 
   const usageDate = vietnamUsageDate();
-  const [reviewsResult, approvalsResult, monthlyUsageResult, dailyUsageResult, geminiUsageResult, providerSettingsResult] =
+  const [reviewsResult, statesResult, approvalsResult, monthlyUsageResult, dailyUsageResult, geminiUsageResult, providerSettingsResult] =
     await Promise.all([
       supabase
         .from("practice_reviews")
-        .select("question_id, reviewed_on, rating, next_due_on")
+        .select("question_id, reviewed_on, rating, next_due_on, question_version, source_hash, learning_state_after, interval_days_after, lapse_count_after")
         .order("reviewed_on", { ascending: false })
         .limit(1000),
+      supabase
+        .from("user_question_states")
+        .select("question_id, question_version, source_hash, learning_state, due_on, interval_days, review_count, lapse_count, last_rating, last_reviewed_on, is_suspended, is_leech, content_changed"),
       supabase
         .from("question_approvals")
         .select("question_id, question_version, source_hash"),
@@ -117,6 +129,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
         .maybeSingle(),
     ]);
   const { data: rows, error } = reviewsResult;
+  const { data: stateRows, error: statesError } = statesResult;
   const { data: approvalRows, error: approvalError } = approvalsResult;
   const { data: usageRow, error: usageError } = monthlyUsageResult;
   const { data: dailyUsageRow, error: dailyUsageError } = dailyUsageResult;
@@ -141,6 +154,11 @@ export async function loadCloudContext(): Promise<CloudContext> {
     progress: error
       ? EMPTY_PROGRESS
       : rowsToProgress((rows ?? []) as PracticeReviewRow[]),
+    questionStates: statesError
+      ? []
+      : rowsToLearningStates(
+          (stateRows ?? []) as QuestionLearningStateRow[],
+        ),
     approvals: approvalError
       ? []
       : rowsToApprovals((approvalRows ?? []) as QuestionApprovalRow[]),
@@ -199,6 +217,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
     },
     error: Boolean(
       error ||
+        statesError ||
         approvalError ||
         usageError ||
         dailyUsageError ||
