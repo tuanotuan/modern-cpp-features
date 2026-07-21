@@ -4,6 +4,7 @@ import Link from "next/link";
 import manifestJson from "@/generated/content-manifest.json";
 import { buildAdminDashboardSnapshot } from "@/lib/admin/dashboard";
 import { contentManifestSchema } from "@/lib/content/schema";
+import { applyQuestionOverrides } from "@/lib/content/question-overrides";
 import { loadCloudContext } from "@/lib/practice/cloud-server";
 
 import { AdminDashboard } from "./admin-dashboard";
@@ -25,13 +26,17 @@ export default async function AdminPage() {
     return <AdminGate mode="login" />;
   }
 
-  const manifest = contentManifestSchema.parse(manifestJson);
+  const manifest = applyQuestionOverrides(
+    contentManifestSchema.parse(manifestJson),
+    cloud.questionOverrides,
+  );
   const snapshot = buildAdminDashboardSnapshot(
     manifest,
     cloud.approvals,
     cloud.progress,
     cloud.questionStates,
     vietnamDateKey(),
+    cloud.questionOverrides,
   );
 
   return (

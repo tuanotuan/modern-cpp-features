@@ -2,6 +2,7 @@ import type {
   ContentManifest,
   ContentQuestion,
 } from "../content/schema";
+import type { QuestionOverride } from "../content/question-overrides";
 import {
   isQuestionApproved,
   type QuestionApproval,
@@ -23,6 +24,7 @@ export type AdminQuestion = ContentQuestion & {
   adminStatus: AdminQuestionStatus;
   learning: QuestionLearningState;
   reviewHistory: Review[];
+  archivedByOwner: boolean;
 };
 
 export type AdminLessonCoverage = {
@@ -59,6 +61,7 @@ export function buildAdminDashboardSnapshot(
   progress: PracticeProgress,
   cloudStates: QuestionLearningState[],
   today: string,
+  overrides: QuestionOverride[] = [],
 ): AdminDashboardSnapshot {
   const lessonById = new Map(manifest.lessons.map((lesson) => [lesson.id, lesson]));
   const learningStates = buildLearningStates(
@@ -90,6 +93,10 @@ export function buildAdminDashboardSnapshot(
       reviewHistory: progress.reviews
         .filter((review) => review.questionId === question.id)
         .sort((left, right) => right.reviewedOn.localeCompare(left.reviewedOn)),
+      archivedByOwner: overrides.some(
+        (override) =>
+          override.questionId === question.id && override.archived,
+      ),
     };
   });
 

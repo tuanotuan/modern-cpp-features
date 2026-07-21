@@ -2,6 +2,12 @@ import type { User } from "@supabase/supabase-js";
 
 import type { AiDailyBudgetSnapshot } from "@/lib/ai/budget";
 import {
+  questionOverrideSelect,
+  rowsToQuestionOverrides,
+  type QuestionOverride,
+  type QuestionOverrideRow,
+} from "@/lib/content/question-overrides";
+import {
   dailyBudgetRemainingPercent,
   dailyBudgetUsdMicros,
   reconciledUsageUsdMicros,
@@ -37,6 +43,7 @@ export type CloudContext = {
   progress: PracticeProgress;
   questionStates: QuestionLearningState[];
   approvals: QuestionApproval[];
+  questionOverrides: QuestionOverride[];
   aiUsage: AiUsageSummary | null;
   geminiUsage: GeminiUsageSummary | null;
   geminiFallbackEnabled: boolean;
@@ -69,6 +76,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
       progress: EMPTY_PROGRESS,
       questionStates: [],
       approvals: [],
+      questionOverrides: [],
       aiUsage: null,
       geminiUsage: null,
       geminiFallbackEnabled: false,
@@ -86,6 +94,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
       progress: EMPTY_PROGRESS,
       questionStates: [],
       approvals: [],
+      questionOverrides: [],
       aiUsage: null,
       geminiUsage: null,
       geminiFallbackEnabled: false,
@@ -95,7 +104,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
   }
 
   const usageDate = vietnamUsageDate();
-  const [reviewsResult, statesResult, approvalsResult, monthlyUsageResult, dailyUsageResult, geminiUsageResult, providerSettingsResult] =
+  const [reviewsResult, statesResult, approvalsResult, overridesResult, monthlyUsageResult, dailyUsageResult, geminiUsageResult, providerSettingsResult] =
     await Promise.all([
       supabase
         .from("practice_reviews")
@@ -108,6 +117,9 @@ export async function loadCloudContext(): Promise<CloudContext> {
       supabase
         .from("question_approvals")
         .select("question_id, question_version, source_hash"),
+      supabase
+        .from("question_overrides")
+        .select(questionOverrideSelect),
       supabase
         .from("ai_usage_monthly")
         .select("actual_usd_micros, provider_usd_micros, provider_actual_baseline_usd_micros, provider_synced_at, request_count, input_tokens, output_tokens, last_model")
@@ -131,6 +143,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
   const { data: rows, error } = reviewsResult;
   const { data: stateRows, error: statesError } = statesResult;
   const { data: approvalRows, error: approvalError } = approvalsResult;
+  const { data: overrideRows, error: overridesError } = overridesResult;
   const { data: usageRow, error: usageError } = monthlyUsageResult;
   const { data: dailyUsageRow, error: dailyUsageError } = dailyUsageResult;
   const { data: geminiUsageRow, error: geminiUsageError } = geminiUsageResult;
@@ -162,6 +175,11 @@ export async function loadCloudContext(): Promise<CloudContext> {
     approvals: approvalError
       ? []
       : rowsToApprovals((approvalRows ?? []) as QuestionApprovalRow[]),
+    questionOverrides: overridesError
+      ? []
+      : rowsToQuestionOverrides(
+          (overrideRows ?? []) as QuestionOverrideRow[],
+        ),
     aiUsage: usageRow
       ? {
           actualUsdMicros: reconciledUsageUsdMicros({
@@ -219,6 +237,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
       error ||
         statesError ||
         approvalError ||
+        overridesError ||
         usageError ||
         dailyUsageError ||
         geminiUsageError ||

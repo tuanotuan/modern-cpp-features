@@ -1,4 +1,6 @@
 import manifestJson from "@/generated/content-manifest.json";
+import { applyQuestionOverrides } from "@/lib/content/question-overrides";
+import { loadQuestionOverrides } from "@/lib/content/question-overrides-server";
 import { contentManifestSchema } from "@/lib/content/schema";
 import { approveQuestionsSchema } from "@/lib/practice/approvals";
 import { isAllowedPracticeUser } from "@/lib/supabase/authorization";
@@ -7,7 +9,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-const manifest = contentManifestSchema.parse(manifestJson);
+const baseManifest = contentManifestSchema.parse(manifestJson);
 
 export async function POST(request: Request) {
   if (!isSupabaseConfigured()) {
@@ -31,6 +33,15 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return Response.json({ error: "Approval payload không hợp lệ." }, { status: 400 });
   }
+
+  const loaded = await loadQuestionOverrides(supabase);
+  if (loaded.error) {
+    return Response.json(
+      { error: "Không đọc được question overrides." },
+      { status: 502 },
+    );
+  }
+  const manifest = applyQuestionOverrides(baseManifest, loaded.overrides);
 
   const pendingById = new Map(
     manifest.questions

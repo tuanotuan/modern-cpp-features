@@ -103,6 +103,19 @@ Repository approval captures the current source hash. Re-approving a stale
 question bumps its version; approving a new draft keeps version 1. AI never
 changes a question to `verified` by itself.
 
+## Admin edits and archives
+
+The owner can edit or archive a question from the Admin question bank. These
+changes are stored as a private Supabase overlay; the generated YAML and source
+note remain unchanged for audit and regeneration.
+
+Saving an edit increments the question version, invalidates its previous
+approval, and sends it back to the Review Queue. Existing review and AI-attempt
+rows remain attached to the stable question ID, while the Anki state detects the
+new version as changed content. "Delete" is implemented as an archive: the
+question is excluded from practice, sync, and AI coach, but its history is not
+deleted and the owner can restore it from the Archived filter.
+
 ## Commands
 
 ```bash

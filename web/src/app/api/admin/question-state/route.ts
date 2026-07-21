@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import manifestJson from "@/generated/content-manifest.json";
+import { applyQuestionOverrides } from "@/lib/content/question-overrides";
+import { loadQuestionOverrides } from "@/lib/content/question-overrides-server";
 import { contentManifestSchema } from "@/lib/content/schema";
 import {
   rowsToLearningStates,
@@ -14,7 +16,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-const manifest = contentManifestSchema.parse(manifestJson);
+const baseManifest = contentManifestSchema.parse(manifestJson);
 const requestSchema = z
   .object({
     questionId: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
@@ -48,6 +50,15 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return Response.json({ error: "Schedule action không hợp lệ." }, { status: 400 });
   }
+
+  const loaded = await loadQuestionOverrides(supabase);
+  if (loaded.error) {
+    return Response.json(
+      { error: "Không đọc được question overrides." },
+      { status: 502 },
+    );
+  }
+  const manifest = applyQuestionOverrides(baseManifest, loaded.overrides);
 
   const question = manifest.questions.find(
     (item) => item.id === parsed.data.questionId && item.status !== "archived",

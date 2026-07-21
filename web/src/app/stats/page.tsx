@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import manifestJson from "@/generated/content-manifest.json";
 import { contentManifestSchema } from "@/lib/content/schema";
+import { applyQuestionOverrides } from "@/lib/content/question-overrides";
 import { isQuestionApproved } from "@/lib/practice/approvals";
 import { buildPracticeAnalytics } from "@/lib/practice/analytics";
 import { loadCloudContext } from "@/lib/practice/cloud-server";
@@ -35,7 +36,10 @@ export default async function StatsPage() {
   if (!cloud.enabled) return <StatsGate mode="not-configured" />;
   if (!cloud.account) return <StatsGate mode="login" />;
 
-  const manifest = contentManifestSchema.parse(manifestJson);
+  const manifest = applyQuestionOverrides(
+    contentManifestSchema.parse(manifestJson),
+    cloud.questionOverrides,
+  );
   const questions = manifest.questions.filter(
     (question) =>
       question.status !== "archived" &&

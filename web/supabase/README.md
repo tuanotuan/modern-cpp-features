@@ -63,3 +63,8 @@ Phase D adds a server-rendered learning analytics page from the existing review
 history and question-state projection. Retention, 28-day activity, 14-day due
 forecast, deck distribution, and weak-topic ranking require no new table, RPC,
 or AI request, so this phase has no additional Supabase migration.
+
+`question_overrides` stores owner-only edits and archive flags over the generated
+question manifest. Editing increments the effective question version and
+requires a new approval; archiving hides the question without deleting review or
+coach history. RLS keeps the overlay private to the authenticated owner.
