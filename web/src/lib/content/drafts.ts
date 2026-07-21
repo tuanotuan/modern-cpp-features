@@ -12,6 +12,7 @@ const MAX_PROVIDER_ATTEMPTS = 3;
 
 const aiQuestionDraftSchema = z.object({
   type: z.enum(["recall", "code_reasoning", "pitfall", "scenario"]),
+  responseMode: z.enum(["text", "code"]),
   difficulty: z.enum(["beginner", "intermediate", "advanced"]),
   estimatedMinutes: z.number().int().min(1).max(15),
   prompt: z.string().trim().min(10),
@@ -164,6 +165,8 @@ export function buildDraftPrompt(lesson: GeneratedLesson, count: number) {
         "Test understanding and reasoning, not trivia.",
         "Keep the canonical short answer concise and make the detailed answer interview-ready.",
         "Use code only when it materially improves the question; otherwise return null.",
+        "Set responseMode to code only when the candidate is explicitly required to write or modify C++ code. Explanatory, analytical, and scenario questions must use text.",
+        "When responseMode is code, make the prompt explicitly ask the candidate to write or modify code.",
       ],
       lesson: {
         id: lesson.id,
