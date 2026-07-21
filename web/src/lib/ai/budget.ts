@@ -6,6 +6,7 @@ import {
   dailyBudgetRemainingPercent,
   dailyBudgetUsdMicros,
   monthlyBudgetUsdMicros,
+  reconciledUsageUsdMicros,
   usageCostUsdMicros,
   vietnamUsageDate,
 } from "./usage";
@@ -108,7 +109,7 @@ export async function finalizeAiBudget(
   const usageDate = reservation.usageDate ?? vietnamUsageDate();
   const { data: dailyRow, error: readError } = await reservation.client
     .from("ai_usage_daily")
-    .select("actual_usd_micros, provider_usd_micros, provider_synced_at, request_count, input_tokens, output_tokens, last_model")
+    .select("actual_usd_micros, provider_usd_micros, provider_actual_baseline_usd_micros, provider_synced_at, request_count, input_tokens, output_tokens, last_model")
     .eq("usage_date", usageDate)
     .maybeSingle();
   if (readError) {
@@ -119,7 +120,14 @@ export async function finalizeAiBudget(
   const billing = dailyRow?.provider_synced_at
     ? Number(dailyRow.provider_usd_micros ?? 0)
     : null;
-  const used = Math.max(estimated, billing ?? 0);
+  const used = reconciledUsageUsdMicros({
+    realtimeUsdMicros: estimated,
+    providerUsdMicros: billing ?? 0,
+    realtimeBaselineUsdMicros: Number(
+      dailyRow?.provider_actual_baseline_usd_micros ?? 0,
+    ),
+    providerSynced: billing !== null,
+  });
   const snapshot = {
     actualUsdMicros: used,
     billingUsdMicros: billing,

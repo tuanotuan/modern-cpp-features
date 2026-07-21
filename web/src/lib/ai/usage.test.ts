@@ -5,6 +5,7 @@ import {
   dailyBudgetUsdMicros,
   monthlyBudgetUsdMicros,
   usageCostUsdMicros,
+  reconciledUsageUsdMicros,
   vietnamUsageDate,
 } from "./usage";
 
@@ -58,5 +59,27 @@ describe("OpenAI usage accounting", () => {
   it("keys usage by the calendar day in Vietnam", () => {
     expect(vietnamUsageDate(new Date("2026-07-20T16:59:59.000Z"))).toBe("2026-07-20");
     expect(vietnamUsageDate(new Date("2026-07-20T17:00:00.000Z"))).toBe("2026-07-21");
+  });
+
+  it("adds realtime usage after the latest provider billing baseline", () => {
+    expect(
+      reconciledUsageUsdMicros({
+        realtimeUsdMicros: 110_065,
+        providerUsdMicros: 110_065,
+        realtimeBaselineUsdMicros: 104_682,
+        providerSynced: true,
+      }),
+    ).toBe(115_448);
+  });
+
+  it("uses realtime directly before provider billing has synced", () => {
+    expect(
+      reconciledUsageUsdMicros({
+        realtimeUsdMicros: 12_345,
+        providerUsdMicros: 0,
+        realtimeBaselineUsdMicros: 0,
+        providerSynced: false,
+      }),
+    ).toBe(12_345);
   });
 });

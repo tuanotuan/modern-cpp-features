@@ -70,6 +70,25 @@ export function dailyBudgetRemainingPercent(actualUsdMicros: number) {
   return Math.max(0, Math.min(100, Math.round(percentage * 10) / 10));
 }
 
+export function reconciledUsageUsdMicros({
+  realtimeUsdMicros,
+  providerUsdMicros,
+  realtimeBaselineUsdMicros,
+  providerSynced,
+}: {
+  realtimeUsdMicros: number;
+  providerUsdMicros: number;
+  realtimeBaselineUsdMicros: number;
+  providerSynced: boolean;
+}) {
+  const realtime = Math.max(0, realtimeUsdMicros);
+  if (!providerSynced) return realtime;
+  return (
+    Math.max(0, providerUsdMicros) +
+    Math.max(0, realtime - Math.max(0, realtimeBaselineUsdMicros))
+  );
+}
+
 export function vietnamUsageDate(now = new Date()) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: AI_BUDGET_TIME_ZONE,
