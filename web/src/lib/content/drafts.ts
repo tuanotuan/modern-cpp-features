@@ -55,7 +55,7 @@ export async function generateQuestionDraftsWithOpenAI({
       store: false,
       safety_identifier: safetyIdentifier("content-automation"),
       instructions:
-        "You create grounded C++ interview questions from the supplied private study note. Return Vietnamese questions and answers. Never introduce facts not supported by the note.",
+        "You create grounded C++ interview questions for software-engineering interviews at trading, quantitative-finance, and low-latency companies. Return Vietnamese questions and answers. Never introduce facts not supported by the supplied private study note.",
       input: buildDraftPrompt(lesson, count),
       reasoning: { effort: "low" },
       max_output_tokens: 6000,
@@ -163,6 +163,14 @@ export function buildDraftPrompt(lesson: GeneratedLesson, count: number) {
       rules: [
         "Use Vietnamese for prompt, hint, answers, and rubric.",
         "Test understanding and reasoning, not trivia.",
+        "Target C++ software-engineering interviews at trading, quantitative-finance, and low-latency companies.",
+        count >= 2
+          ? "Include at least one question whose type is scenario and whose situation is realistic for a production trading system."
+          : "Prefer type scenario when the lesson can support a realistic production trading situation without forcing the context.",
+        "A trading scenario must involve a concrete engineering constraint or failure mode, such as market-data throughput, order-book updates, order routing, pre-trade risk checks, position state, exchange connectivity, latency, allocation, cache locality, concurrency, contention, backpressure, deterministic behavior, ownership, or recovery.",
+        "Do not merely rename a toy variable to Order or Price. The trading context must materially affect the design choice, correctness argument, performance trade-off, or failure analysis being tested.",
+        "Keep scenarios plausible and answerable in an interview. State enough context and constraints for the candidate; do not assume undocumented infrastructure.",
+        "Do not require finance-domain knowledge that is absent from the lesson. Never invent exchange rules, latency numbers, market behavior, or risk formulas; the assessed C++ facts must remain grounded in the supplied sections.",
         "Keep the canonical short answer concise and make the detailed answer interview-ready.",
         "Use code only when it materially improves the question; otherwise return null.",
         "Never put fenced code or a code snippet inside prompt. When a snippet is needed, store it only in the separate code field and let prompt refer to it as the code below.",
