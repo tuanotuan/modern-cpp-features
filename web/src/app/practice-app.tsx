@@ -11,6 +11,11 @@ import type { AiDailyBudgetSnapshot } from "@/lib/ai/budget";
 import type { Question } from "@/lib/content/schema";
 import type { PracticeAccount } from "@/lib/practice/cloud-server";
 import {
+  buildCandidateAnswer,
+  SCENARIO_CODE_MAX,
+  SCENARIO_EXPLANATION_MAX,
+} from "@/lib/practice/candidate-answer";
+import {
   parseSavedItems,
   removeSavedItem,
   SAVED_ITEMS_KEY,
@@ -131,6 +136,7 @@ export function PracticeApp({
     [snapshot],
   );
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [codeAnswers, setCodeAnswers] = useState<Record<string, string>>({});
   const [revealed, setRevealed] = useState<Set<string>>(() => new Set());
   const [hints, setHints] = useState<Set<string>>(() => new Set());
   const [visibleSources, setVisibleSources] = useState<Set<string>>(
@@ -192,6 +198,7 @@ export function PracticeApp({
       sessionQuestions,
     );
     const restoredAnswers: Record<string, string> = {};
+    const restoredCodeAnswers: Record<string, string> = {};
     const restoredFeedback: Record<string, CoachFeedback> = {};
     const restoredModels: Record<string, string> = {};
     const restoredCoachAnswers: Record<string, string> = {};
@@ -207,6 +214,9 @@ export function PracticeApp({
 
     Object.entries(session.questions).forEach(([questionId, saved]) => {
       if (saved.answer !== undefined) restoredAnswers[questionId] = saved.answer;
+      if (saved.codeAnswer !== undefined) {
+        restoredCodeAnswers[questionId] = saved.codeAnswer;
+      }
       if (saved.revealed) restoredRevealed.add(questionId);
       if (saved.hint) restoredHints.add(questionId);
       if (saved.sourceVisible) restoredVisibleSources.add(questionId);
@@ -226,6 +236,7 @@ export function PracticeApp({
     });
 
     setAnswers(restoredAnswers);
+    setCodeAnswers(restoredCodeAnswers);
     setRevealed(restoredRevealed);
     setHints(restoredHints);
     setVisibleSources(restoredVisibleSources);
@@ -252,6 +263,7 @@ export function PracticeApp({
     const savedQuestions: Record<string, QuestionStudySession> = {};
     sessionQuestions.forEach((question) => {
       const answer = answers[question.id];
+      const codeAnswer = codeAnswers[question.id];
       const feedback = coachFeedback[question.id];
       const model = coachModels[question.id];
       const coachAnswer = coachAnswers[question.id];
@@ -266,6 +278,7 @@ export function PracticeApp({
       const sourceVisible = visibleSources.has(question.id);
       const hasSession = Boolean(
         answer ||
+          codeAnswer ||
           feedback ||
           followUpInput ||
           followUpChat?.length ||
@@ -282,6 +295,7 @@ export function PracticeApp({
         questionVersion: question.version,
         sourceHash: question.sourceHash,
         ...(answer ? { answer } : {}),
+        ...(codeAnswer ? { codeAnswer } : {}),
         ...(isRevealed ? { revealed: true } : {}),
         ...(hasHint ? { hint: true } : {}),
         ...(sourceVisible ? { sourceVisible: true } : {}),
@@ -315,6 +329,7 @@ export function PracticeApp({
     coachAnswers,
     coachFeedback,
     coachModels,
+    codeAnswers,
     deepDiveAnswers,
     deepDiveFeedback,
     deepDiveModels,
@@ -465,6 +480,7 @@ export function PracticeApp({
 
   function clearStudySessionState() {
     setAnswers({});
+    setCodeAnswers({});
     setCoachFeedback({});
     setCoachModels({});
     setCoachAnswers({});
@@ -501,7 +517,11 @@ export function PracticeApp({
 
   async function askCoach() {
     if (!current) return;
-    const answer = answers[current.id]?.trim() ?? "";
+    const answer = buildCandidateAnswer(
+      current,
+      answers[current.id] ?? "",
+      codeAnswers[current.id] ?? "",
+    );
     if (answer.length < 10) return;
 
     setCoachLoading(current.id);
@@ -719,6 +739,20 @@ export function PracticeApp({
     setFollowUpErrors((values) => omitRecordKey(values, questionId));
   }
 
+  function updateCodeAnswer(questionId: string, value: string) {
+    setCodeAnswers((currentAnswers) => ({
+      ...currentAnswers,
+      [questionId]: value,
+    }));
+    setCoachFeedback((values) => omitRecordKey(values, questionId));
+    setCoachModels((values) => omitRecordKey(values, questionId));
+    setCoachAnswers((values) => omitRecordKey(values, questionId));
+    setCoachErrors((values) => omitRecordKey(values, questionId));
+    setFollowUpInputs((values) => omitRecordKey(values, questionId));
+    setFollowUpChats((values) => omitRecordKey(values, questionId));
+    setFollowUpErrors((values) => omitRecordKey(values, questionId));
+  }
+
   function toggleSet(
     setter: React.Dispatch<React.SetStateAction<Set<string>>>,
     id: string,
@@ -908,25 +942,57 @@ export function PracticeApp({
                     </pre>
                   ) : null}
 
-                  <div className="mt-8 flex flex-wrap items-center justify-between gap-2">
-                    <label
-                      className="text-sm font-semibold text-[#344a40]"
-                      htmlFor="candidate-answer"
-                    >
-                      Câu trả lời của mày
-                    </label>
-                    <span className="font-mono text-[11px] text-[#6c7b73]">
-                      ● tự lưu trên trình duyệt
-                    </span>
-                  </div>
-                  <textarea
-                    id="candidate-answer"
-                    value={answers[current.id] ?? ""}
-                    onChange={(event) => updateAnswer(current.id, event.target.value)}
-                    maxLength={6000}
-                    className="mt-2 min-h-36 w-full resize-y rounded-2xl border border-[#173f35]/20 bg-[#fbfaf5] px-4 py-3 leading-7 outline-none transition focus:border-[#356b58] focus:ring-4 focus:ring-[#d7ff91]/45"
-                    placeholder="Tự trả lời như đang ngồi phỏng vấn…"
-                  />
+                  {current.type === "scenario" ? (
+                    <div className="mt-8 space-y-5">
+                      <ScenarioCodeEditor
+                        value={codeAnswers[current.id] ?? ""}
+                        onChange={(value) => updateCodeAnswer(current.id, value)}
+                      />
+                      <div>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <label
+                            className="text-sm font-semibold text-[#344a40]"
+                            htmlFor="candidate-answer"
+                          >
+                            Giải thích lựa chọn thiết kế
+                          </label>
+                          <span className="font-mono text-[11px] text-[#6c7b73]">
+                            không bắt buộc · {(answers[current.id] ?? "").length}/{SCENARIO_EXPLANATION_MAX}
+                          </span>
+                        </div>
+                        <textarea
+                          id="candidate-answer"
+                          value={answers[current.id] ?? ""}
+                          onChange={(event) => updateAnswer(current.id, event.target.value)}
+                          maxLength={SCENARIO_EXPLANATION_MAX}
+                          className="mt-2 min-h-28 w-full resize-y rounded-2xl border border-[#173f35]/20 bg-[#fbfaf5] px-4 py-3 leading-7 outline-none transition focus:border-[#356b58] focus:ring-4 focus:ring-[#d7ff91]/45"
+                          placeholder="Giải thích ownership, API, trade-off và các quyết định quan trọng…"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mt-8 flex flex-wrap items-center justify-between gap-2">
+                        <label
+                          className="text-sm font-semibold text-[#344a40]"
+                          htmlFor="candidate-answer"
+                        >
+                          Câu trả lời của mày
+                        </label>
+                        <span className="font-mono text-[11px] text-[#6c7b73]">
+                          ● tự lưu trên trình duyệt
+                        </span>
+                      </div>
+                      <textarea
+                        id="candidate-answer"
+                        value={answers[current.id] ?? ""}
+                        onChange={(event) => updateAnswer(current.id, event.target.value)}
+                        maxLength={6000}
+                        className="mt-2 min-h-36 w-full resize-y rounded-2xl border border-[#173f35]/20 bg-[#fbfaf5] px-4 py-3 leading-7 outline-none transition focus:border-[#356b58] focus:ring-4 focus:ring-[#d7ff91]/45"
+                        placeholder="Tự trả lời như đang ngồi phỏng vấn…"
+                      />
+                    </>
+                  )}
 
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                     <button
@@ -941,7 +1007,9 @@ export function PracticeApp({
                         type="button"
                         onClick={askCoach}
                         disabled={
-                          (answers[current.id]?.trim().length ?? 0) < 10 ||
+                          (current.type === "scenario"
+                            ? (codeAnswers[current.id]?.trim().length ?? 0) < 10
+                            : (answers[current.id]?.trim().length ?? 0) < 10) ||
                           coachLoading === current.id
                         }
                         className="rounded-xl border border-[#356b58]/25 bg-[#d7ff91] px-5 py-3 text-sm font-bold text-[#173f35] shadow-sm transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 focus:ring-4 focus:ring-[#d7ff91]/60 focus:outline-none"
@@ -1436,6 +1504,111 @@ function Tag({ children }: { children: React.ReactNode }) {
     </span>
   );
 }
+
+function ScenarioCodeEditor({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const lineNumbersRef = useRef<HTMLPreElement>(null);
+  const lineCount = Math.max(16, value.split("\n").length);
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Tab") return;
+    event.preventDefault();
+    const input = event.currentTarget;
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    const nextValue = `${value.slice(0, start)}  ${value.slice(end)}`;
+    onChange(nextValue.slice(0, SCENARIO_CODE_MAX));
+    window.requestAnimationFrame(() => input.setSelectionRange(start + 2, start + 2));
+  }
+
+  return (
+    <section
+      className={
+        expanded
+          ? "fixed inset-0 z-50 flex flex-col bg-[#071b16]/95 p-3 backdrop-blur-sm sm:p-6"
+          : ""
+      }
+    >
+      <div className="overflow-hidden rounded-2xl border border-[#356b58]/35 bg-[#0d2821] shadow-[0_18px_55px_rgba(7,27,22,0.22)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-[#102f27] px-4 py-3 text-white">
+          <div className="flex items-center gap-3">
+            <span className="flex gap-1.5" aria-hidden="true">
+              <i className="size-2.5 rounded-full bg-[#e2684a]" />
+              <i className="size-2.5 rounded-full bg-[#e7b84b]" />
+              <i className="size-2.5 rounded-full bg-[#75aa52]" />
+            </span>
+            <span className="font-mono text-xs font-bold text-[#d7ff91]">main.cpp</span>
+            <span className="rounded-full bg-white/8 px-2 py-0.5 font-mono text-[10px] text-white/55">
+              C++ design
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {!value ? (
+              <button
+                type="button"
+                onClick={() => onChange(CPLUSPLUS_DESIGN_TEMPLATE)}
+                className="rounded-lg px-2.5 py-1.5 font-mono text-[10px] font-bold text-white/65 transition hover:bg-white/10 hover:text-white"
+              >
+                Chèn khung C++
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setExpanded((current) => !current)}
+              className="rounded-lg border border-white/10 px-2.5 py-1.5 font-mono text-[10px] font-bold text-white/70 transition hover:bg-white/10 hover:text-white"
+            >
+              {expanded ? "Thu nhỏ" : "Mở toàn màn hình"}
+            </button>
+          </div>
+        </div>
+        <div className="grid grid-cols-[3rem_minmax(0,1fr)] bg-[#0b241d]">
+          <pre
+            ref={lineNumbersRef}
+            aria-hidden="true"
+            className={`${expanded ? "h-[calc(100vh-9rem)]" : "h-96"} overflow-hidden border-r border-white/7 bg-black/10 py-4 pr-3 text-right font-mono text-[12px] leading-6 text-white/25 select-none`}
+          >
+            {Array.from({ length: lineCount }, (_, index) => index + 1).join("\n")}
+          </pre>
+          <textarea
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            onKeyDown={handleKeyDown}
+            onScroll={(event) => {
+              if (lineNumbersRef.current) {
+                lineNumbersRef.current.scrollTop = event.currentTarget.scrollTop;
+              }
+            }}
+            maxLength={SCENARIO_CODE_MAX}
+            spellCheck={false}
+            aria-label="Code C++ cho câu hỏi thiết kế"
+            className={`${expanded ? "h-[calc(100vh-9rem)]" : "h-96"} w-full resize-none overflow-auto bg-transparent p-4 font-mono text-[13px] leading-6 text-[#e8f4ec] caret-[#d7ff91] outline-none placeholder:text-white/25`}
+            placeholder={'// Thiết kế class/API của mày ở đây…\n\nclass Solution {\npublic:\n    // ...\n};'}
+          />
+        </div>
+        <div className="flex items-center justify-between border-t border-white/8 bg-[#102f27] px-4 py-2 font-mono text-[10px] text-white/40">
+          <span>Tab = 2 spaces · tự lưu khi F5</span>
+          <span>{value.length}/{SCENARIO_CODE_MAX}</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+const CPLUSPLUS_DESIGN_TEMPLATE = `#include <utility>
+
+class Solution {
+public:
+    // Thiết kế public API ở đây.
+
+private:
+    // Khai báo state và ownership ở đây.
+};`;
 
 function InlineCode({ text, inverted = false }: { text: string; inverted?: boolean }) {
   return text.split(/(`[^`]+`)/g).map((part, index) =>
