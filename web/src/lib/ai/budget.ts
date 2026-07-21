@@ -35,6 +35,27 @@ export type AiDailyBudgetSnapshot = {
   usageDate: string;
 };
 
+export function mergeAiDailyBudgetSnapshot(
+  current: AiDailyBudgetSnapshot | null,
+  incoming: AiDailyBudgetSnapshot,
+): AiDailyBudgetSnapshot {
+  if (!current || current.usageDate !== incoming.usageDate) return incoming;
+  return {
+    ...incoming,
+    actualUsdMicros: Math.max(
+      current.actualUsdMicros,
+      incoming.actualUsdMicros,
+    ),
+    requestCount: Math.max(current.requestCount, incoming.requestCount),
+    inputTokens: Math.max(current.inputTokens, incoming.inputTokens),
+    outputTokens: Math.max(current.outputTokens, incoming.outputTokens),
+    remainingPercent: Math.min(
+      current.remainingPercent,
+      incoming.remainingPercent,
+    ),
+  };
+}
+
 export async function withAiBudget<T extends { model: string; usage: AiTokenUsage }>(
   client: SupabaseClient | null,
   reservedUsdMicros: number,
@@ -109,7 +130,7 @@ export async function finalizeAiBudget(
   const usageDate = reservation.usageDate ?? vietnamUsageDate();
   const { data: dailyRow, error: readError } = await reservation.client
     .from("ai_usage_daily")
-    .select("actual_usd_micros, provider_usd_micros, provider_actual_baseline_usd_micros, provider_synced_at, request_count, input_tokens, output_tokens, last_model")
+    .select("actual_usd_micros, provider_usd_micros, provider_actual_baseline_usd_micros, usage_floor_usd_micros, provider_synced_at, request_count, input_tokens, output_tokens, last_model")
     .eq("usage_date", usageDate)
     .maybeSingle();
   if (readError) {
@@ -126,6 +147,7 @@ export async function finalizeAiBudget(
     realtimeBaselineUsdMicros: Number(
       dailyRow?.provider_actual_baseline_usd_micros ?? 0,
     ),
+    usageFloorUsdMicros: Number(dailyRow?.usage_floor_usd_micros ?? 0),
     providerSynced: billing !== null,
   });
   const snapshot = {

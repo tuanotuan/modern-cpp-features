@@ -74,18 +74,23 @@ export function reconciledUsageUsdMicros({
   realtimeUsdMicros,
   providerUsdMicros,
   realtimeBaselineUsdMicros,
+  usageFloorUsdMicros = 0,
   providerSynced,
 }: {
   realtimeUsdMicros: number;
   providerUsdMicros: number;
   realtimeBaselineUsdMicros: number;
+  usageFloorUsdMicros?: number;
   providerSynced: boolean;
 }) {
   const realtime = Math.max(0, realtimeUsdMicros);
-  if (!providerSynced) return realtime;
-  return (
+  const floor = Math.max(0, usageFloorUsdMicros);
+  if (!providerSynced) return Math.max(floor, realtime);
+  return Math.max(
+    floor,
+    realtime,
     Math.max(0, providerUsdMicros) +
-    Math.max(0, realtime - Math.max(0, realtimeBaselineUsdMicros))
+      Math.max(0, realtime - Math.max(0, realtimeBaselineUsdMicros)),
   );
 }
 
