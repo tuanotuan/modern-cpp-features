@@ -1554,3 +1554,117 @@ questions:
     sourceHash: fc7ac9f621f7efded324f5c2a7518355a7517add3b7426ead4c4e40466c85475
     status: draft
     version: 1
+  - id: cpp11-reference-001
+    lessonId: cpp11-reference
+    type: scenario
+    responseMode: text
+    difficulty: advanced
+    estimatedMinutes: 8
+    prompt: Trong một hệ thống xử lý market-data, mỗi bản cập nhật cần sửa trực tiếp một đối tượng
+      `Position` đã được lưu trong bảng trạng thái; việc sao chép đối tượng lớn là không mong muốn.
+      Một API hiện tại có dạng `void apply_update(Position& position, int delta)`. Hãy phân tích vì
+      sao dùng `Position&` phù hợp, và nêu các điều kiện phải kiểm tra trước khi giữ hoặc sử dụng
+      reference này trong mã production, đặc biệt nếu `Position` nằm trong container có thể thay đổi
+      kích thước hoặc xóa phần tử. Bạn cũng phải giải thích khi nào API nên đổi thành `const
+      Position&`.
+    hint: Tập trung vào alias, mutation, lifetime và khả năng reference bị invalidated bởi thao tác trên
+      container.
+    answer:
+      short: "`Position&` là alias tới đối tượng gốc, cho phép cập nhật tại chỗ mà không sao chép; nhưng
+        phải bảo đảm lifetime, tính ổn định của phần tử trong container và mutation là có chủ ý.
+        Dùng `const Position&` khi chỉ đọc."
+      detailed: >-
+        `Position&` phù hợp vì hàm cần sửa chính đối tượng `Position` đang được lưu trong trạng
+        thái, và reference tránh tạo bản sao. Thay đổi qua `position` sẽ xuất hiện trên đối tượng
+        caller sở hữu. API này cũng thể hiện rằng đối tượng bắt buộc phải tồn tại và hàm được phép
+        ghi.
+
+
+        Trước khi dùng reference, cần bảo đảm đối tượng còn sống lâu hơn reference; không giữ
+        reference sau khi đối tượng bị hủy; và các thao tác trên container không làm reference tới
+        phần tử bị invalidated, chẳng hạn reallocation, erase hoặc rehash tùy container. Cũng phải
+        kiểm tra aliasing: hai tên có thể trỏ tới cùng một `Position`, nên mutation có thể ảnh hưởng
+        tới nơi khác.
+
+
+        Nếu hàm chỉ đọc trạng thái để kiểm tra hoặc xuất dữ liệu, nên dùng `const Position&`: vẫn
+        tránh copy đối tượng lớn nhưng không cho phép sửa qua reference đó. Reference không tự giải
+        quyết ownership, lifetime, concurrency hay độ an toàn.
+    rubric:
+      required:
+        - Giải thích reference là alias và mutation tác động lên đối tượng gốc.
+        - Nêu lifetime và container invalidation.
+        - Phân biệt `Position&` với `const Position&` theo ý định mutation.
+      bonus:
+        - Nhận ra aliasing có thể khiến thay đổi qua một tên xuất hiện qua tên khác.
+        - Nêu rằng reference không phải cơ chế ownership hoặc tự động bảo đảm an toàn.
+      misconceptions:
+        - Cho rằng reference là bản sao nhẹ của đối tượng.
+        - Cho rằng reference luôn ổn định dù container reallocate, erase hoặc rehash.
+        - Cho rằng dùng reference tự động làm chương trình an toàn hoặc nhanh hơn.
+    sources:
+      - sectionId: purpose
+      - sectionId: core-semantics
+      - sectionId: common-failure-modes
+      - sectionId: trading-system-perspective
+      - sectionId: mental-model
+    sourceHash: c3a4f678731fee7b4b4ddf811319b273166257f5148959b475ea4b7a4a507476
+    status: draft
+    version: 1
+  - id: cpp11-reference-002
+    lessonId: cpp11-reference
+    type: code_reasoning
+    responseMode: code
+    difficulty: intermediate
+    estimatedMinutes: 7
+    prompt: Hãy sửa mã C++ dưới đây để `read_position` chỉ đọc một `Position` và trả về reference hợp lệ
+      tới đối tượng do caller cung cấp. Không được tạo bản sao, không được trả về reference tới đối
+      tượng cục bộ, và chữ ký hàm phải thể hiện rằng hàm không sửa dữ liệu. Viết lại phần khai báo
+      và định nghĩa cần thiết.
+    code: |-
+      struct Position {
+          int quantity;
+      };
+
+      Position& read_position(Position position) {
+          return position;
+      }
+    hint: Tham số cần là reference const tới đối tượng đã tồn tại; kiểu trả về cũng phải ngăn mutation
+      và không được tham chiếu tới bản sao cục bộ.
+    answer:
+      short: |-
+        ```cpp
+        const Position& read_position(const Position& position) {
+            return position;
+        }
+        ```
+      detailed: >-
+        Tham số `const Position&` nhận alias tới `Position` đã tồn tại, không tạo bản sao và không
+        cho hàm sửa đối tượng qua reference đó. Trả về `const Position&` giữ đúng ý định chỉ đọc và
+        trả về đối tượng của caller.
+
+
+        Mã ban đầu truyền `Position` by value nên tạo bản sao cục bộ; trả về reference tới
+        `position` là dangling reference ngay khi hàm kết thúc. Đổi thành `Position&` ở kiểu trả về
+        sẽ cho phép caller sửa đối tượng qua kết quả, trái với yêu cầu chỉ đọc. Cách sửa trên vẫn
+        yêu cầu caller bảo đảm đối tượng được tham chiếu còn sống khi reference được sử dụng.
+    rubric:
+      required:
+        - Viết đúng chữ ký và định nghĩa dùng `const Position&` ở tham số.
+        - Trả về `const Position&`.
+        - Nhận diện reference tới biến tham số by-value sẽ dangling sau khi hàm kết thúc.
+      bonus:
+        - Giải thích vì sao không trả về `Position&` nếu API chỉ đọc.
+        - Nêu điều kiện lifetime của đối tượng caller.
+      misconceptions:
+        - Nghĩ rằng trả về reference luôn tránh được dangling.
+        - Dùng `Position&` cho API chỉ đọc.
+        - Giữ tham số by-value rồi trả về reference tới tham số đó.
+    sources:
+      - sectionId: minimal-syntax
+      - sectionId: core-semantics
+      - sectionId: common-failure-modes
+      - sectionId: practical-guideline
+    sourceHash: c3a4f678731fee7b4b4ddf811319b273166257f5148959b475ea4b7a4a507476
+    status: draft
+    version: 1

@@ -227,3 +227,10 @@ lessons:
     tags:
       - final
     prerequisites: []
+  - id: cpp11-reference
+    sourcePath: cpp11/18_reference
+    standard: cpp11
+    order: 19
+    tags:
+      - reference
+    prerequisites: []
