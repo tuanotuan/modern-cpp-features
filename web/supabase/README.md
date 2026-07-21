@@ -69,6 +69,26 @@ question manifest. Editing increments the effective question version and
 requires a new approval; archiving hides the question without deleting review or
 coach history. RLS keeps the overlay private to the authenticated owner.
 
+## Hybrid content bank foundation
+
+`20260723090000_create_content_question_bank.sql` adds the Phase A database
+foundation without changing the production content source. Git remains the source
+of truth for `knowledge.md` and `main.cpp`; Supabase will hold derived, immutable
+lesson and question revisions in later phases.
+
+The new tables are additive. They do not import or mutate the existing YAML bank,
+approvals, practice history, Anki state, coach attempts, or overrides. The app
+continues to default to `QUESTION_STORE=repo` until a later cutover.
+
+Lesson revisions, question revisions, and question audit events are append-only.
+Current pointers and lifecycle state live on `content_lessons` and
+`content_questions`. `content_generation_jobs` and `content_sync_runs` provide the
+idempotency and retry ledger for the future Git-to-Supabase automation.
+
+Only authenticated readers that pass RLS can see content. Browser roles receive no
+direct write grants. Add the owner to `content_admins` during the Phase B backfill;
+do not expose a service-role key through a `NEXT_PUBLIC_` variable.
+
 The monotonic AI budget migration stores a conservative usage floor before each
 OpenAI Billing reconciliation. Billing data can lag realtime requests, but that
 lag can no longer make used cost decrease or remaining daily quota increase.
