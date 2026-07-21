@@ -1,4 +1,7 @@
-import type { ContentManifest, Question } from "../content/schema";
+import type {
+  ContentManifest,
+  ContentQuestion,
+} from "../content/schema";
 import {
   isQuestionApproved,
   type QuestionApproval,
@@ -7,7 +10,7 @@ import { latestReviews, type PracticeProgress } from "../practice/scheduler";
 
 export type AdminQuestionStatus = "active" | "pending" | "stale" | "archived";
 
-export type AdminQuestion = Question & {
+export type AdminQuestion = ContentQuestion & {
   lessonTitle: string;
   standard: "cpp98" | "cpp11" | "cpp20";
   knowledgePath: string;
@@ -123,7 +126,7 @@ export function buildAdminDashboardSnapshot(
 }
 
 function resolveAdminQuestionStatus(
-  question: Question,
+  question: ContentQuestion,
   approved: boolean,
 ): AdminQuestionStatus {
   if (question.status === "archived") return "archived";
