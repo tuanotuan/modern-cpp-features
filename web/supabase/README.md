@@ -89,6 +89,32 @@ Only authenticated readers that pass RLS can see content. Browser roles receive 
 direct write grants. Add the owner to `content_admins` during the Phase B backfill;
 do not expose a service-role key through a `NEXT_PUBLIC_` variable.
 
+## Content bank backfill
+
+`20260723130000_backfill_content_question_bank.sql` installs the Phase B importer.
+The function is not executable by browser roles. Run it through the Supabase SQL
+Editor with the deterministic payload generated from the checked-out Git commit:
+
+```powershell
+npm.cmd run --silent content:backfill:sql | Set-Clipboard
+```
+
+Paste the clipboard into a new SQL query and run it. The returned JSON must contain
+`"ok": true`; it also reports expected/imported lesson and question counts,
+checksum mismatches, missing current revisions, and materialized Admin overrides.
+
+The importer is idempotent. Re-running the same payload does not create duplicate
+revisions or audit events. If an existing question ID/version has different
+content, the transaction raises a checksum conflict and rolls back instead of
+overwriting history. Existing approvals, practice reviews, Anki state, coach
+attempts, and overrides are never mutated.
+
+For a local payload-only dry run that does not connect to Supabase:
+
+```powershell
+npm.cmd run --silent content:backfill:check
+```
+
 The monotonic AI budget migration stores a conservative usage floor before each
 OpenAI Billing reconciliation. Billing data can lag realtime requests, but that
 lag can no longer make used cost decrease or remaining daily quota increase.
