@@ -8,7 +8,7 @@ import type {
   CoachFollowUpResponse,
 } from "@/lib/ai/contracts";
 import type { AiDailyBudgetSnapshot } from "@/lib/ai/budget";
-import type { Question } from "@/lib/content/schema";
+import type { ContentQuestion } from "@/lib/content/schema";
 import { displayQuestionPrompt } from "@/lib/content/question-prompt";
 import type { PracticeAccount } from "@/lib/practice/cloud-server";
 import {
@@ -30,18 +30,25 @@ import {
   type QuestionStudySession,
 } from "@/lib/practice/study-session";
 import {
-  buildDailyQueue,
   calculateStreak,
   latestReviews,
   localDateKey,
   mergeProgress,
   parseProgress,
-  recordReview,
   reviewsForCloudSync,
   type PracticeProgress,
   type Rating,
   type Review,
 } from "@/lib/practice/scheduler";
+import {
+  buildAnkiDailyQueue,
+  buildLearningStates,
+  countLearningStates,
+  ratingIntervalDays,
+  recordScheduledReview,
+  scheduleQuestionReview,
+  type QuestionLearningState,
+} from "@/lib/practice/learning-state";
 
 const STORAGE_KEY = "cpp-recall:progress:v1";
 const STUDY_SESSION_KEY = "cpp-recall:study-session:v1";
@@ -74,7 +81,14 @@ const standardLabels = {
   cpp20: "C++20",
 } as const;
 
-export type PracticeQuestion = Question & {
+const learningStateLabels = {
+  new: "Mới",
+  learning: "Đang học",
+  review: "Ôn tập",
+  relearning: "Học lại",
+} as const;
+
+export type PracticeQuestion = ContentQuestion & {
   lessonTitle: string;
   standard: keyof typeof standardLabels;
   sourcePath: string;
@@ -114,6 +128,7 @@ export function PracticeApp({
   cloudEnabled,
   account,
   initialCloudProgress,
+  initialQuestionStates,
   cloudSetupError,
   initialAiDailyBudget,
   authNotice,
@@ -124,6 +139,7 @@ export function PracticeApp({
   cloudEnabled: boolean;
   account: PracticeAccount | null;
   initialCloudProgress: PracticeProgress;
+  initialQuestionStates: QuestionLearningState[];
   cloudSetupError: boolean;
   initialAiDailyBudget: AiDailyBudgetSnapshot | null;
   authNotice: string | null;
@@ -168,6 +184,9 @@ export function PracticeApp({
   const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
   const [savedLibraryOpen, setSavedLibraryOpen] = useState(false);
   const [aiDailyBudget, setAiDailyBudget] = useState(initialAiDailyBudget);
+  const [cloudQuestionStates, setCloudQuestionStates] = useState(
+    initialQuestionStates,
+  );
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(
     null,
   );
@@ -355,17 +374,30 @@ export function PracticeApp({
     );
     const merged = mergeProgress(initialCloudProgress, localProgress);
     saveProgress(JSON.stringify(merged));
+    const cloudReviewKeys = new Set(
+      initialCloudProgress.reviews.map(
+        (review) => `${review.questionId}:${review.reviewedOn}`,
+      ),
+    );
+    const localOnlyReviews = reviewsForCloudSync(merged.reviews).filter(
+      (review) =>
+        !cloudReviewKeys.has(`${review.questionId}:${review.reviewedOn}`),
+    );
 
     void fetch("/api/progress/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reviews: reviewsForCloudSync(merged.reviews) }),
+      body: JSON.stringify({ reviews: localOnlyReviews }),
     })
       .then(async (response) => {
         if (!response.ok) throw new Error("Cloud sync failed");
-        const payload = (await response.json()) as { progress: PracticeProgress };
+        const payload = (await response.json()) as {
+          progress: PracticeProgress;
+          questionStates: QuestionLearningState[];
+        };
         const currentLocal = parseProgress(getProgressSnapshot());
-        saveProgress(JSON.stringify(mergeProgress(payload.progress, currentLocal)));
+        saveProgress(JSON.stringify(mergeProgress(currentLocal, payload.progress)));
+        setCloudQuestionStates(payload.questionStates);
         setSyncStatus("synced");
       })
       .catch(() => setSyncStatus("error"));
@@ -379,11 +411,17 @@ export function PracticeApp({
   const questionById = new Map(
     availableQuestions.map((question) => [question.id, question]),
   );
-  const queue = buildDailyQueue(
-    availableQuestions.map((question) => question.id),
+  const learningStates = buildLearningStates(
+    availableQuestions.map((question) => ({
+      id: question.id,
+      version: question.version,
+      sourceHash: question.sourceHash,
+    })),
     progress.reviews,
-    today,
+    cloudQuestionStates,
   );
+  const queue = buildAnkiDailyQueue(learningStates, today);
+  const learningCounts = countLearningStates(learningStates.values());
   const latest = latestReviews(progress.reviews);
   const remainingIds = queue.filter(
     (questionId) => latest.get(questionId)?.reviewedOn !== today,
@@ -400,6 +438,9 @@ export function PracticeApp({
     selectedQuestion && latest.get(selectedQuestion.id)?.reviewedOn !== today
       ? selectedQuestion
       : questionById.get(remainingIds[0]);
+  const currentLearningState = current
+    ? learningStates.get(current.id)
+    : undefined;
   const isRandomQuestion = Boolean(
     current && selectedQuestionId === current.id && !remainingIds.includes(current.id),
   );
@@ -444,17 +485,18 @@ export function PracticeApp({
   }
 
   function rateCurrent(rating: Rating) {
-    if (!current) return;
-    const updated = recordReview(progress, current.id, rating, today);
+    if (!current || !currentLearningState) return;
+    const scheduled = scheduleQuestionReview(
+      currentLearningState,
+      rating,
+      today,
+    );
+    const updated = recordScheduledReview(progress, scheduled.review);
     saveProgress(JSON.stringify(updated));
     setSelectedQuestionId(null);
     clearStudySessionState();
     if (account) {
-      const newReview = updated.reviews.find(
-        (review) =>
-          review.questionId === current.id && review.reviewedOn === today,
-      );
-      if (newReview) void syncReviews([newReview]);
+      void syncReviews([scheduled.review]);
     }
   }
 
@@ -508,9 +550,13 @@ export function PracticeApp({
         body: JSON.stringify({ reviews }),
       });
       if (!response.ok) throw new Error("Cloud sync failed");
-      const payload = (await response.json()) as { progress: PracticeProgress };
+      const payload = (await response.json()) as {
+        progress: PracticeProgress;
+        questionStates: QuestionLearningState[];
+      };
       const currentLocal = parseProgress(getProgressSnapshot());
-      saveProgress(JSON.stringify(mergeProgress(payload.progress, currentLocal)));
+      saveProgress(JSON.stringify(mergeProgress(currentLocal, payload.progress)));
+      setCloudQuestionStates(payload.questionStates);
       setSyncStatus("synced");
     } catch {
       setSyncStatus("error");
@@ -913,6 +959,11 @@ export function PracticeApp({
                       ? "ngoài lịch hôm nay"
                       : `${completedToday + 1}/${dailyTotal}`}
                   </span>
+                  {currentLearningState ? (
+                    <span className="rounded-full border border-[#173f35]/15 bg-white/55 px-2.5 py-1 font-mono text-[10px] font-bold text-[#356b58] uppercase">
+                      {learningStateLabels[currentLearningState.state]}
+                    </span>
+                  ) : null}
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <button
@@ -1219,7 +1270,10 @@ export function PracticeApp({
                           >
                             <span className="block text-sm font-bold">{option.label}</span>
                             <span className="mt-1 block font-mono text-[11px] opacity-65">
-                              lại sau {option.interval}
+                              lại sau{" "}
+                              {currentLearningState
+                                ? `${ratingIntervalDays(currentLearningState, option.value)} ngày`
+                                : option.interval}
                             </span>
                           </button>
                         ))}
@@ -1285,8 +1339,14 @@ export function PracticeApp({
                   />
                 </div>
                 <p className="mt-3 text-sm text-white/65">
-                  {remainingIds.length} câu còn lại · tối đa 6 câu/ngày
+                  {remainingIds.length} câu còn lại · 1 mới + 5 ôn/ngày
                 </p>
+                <div className="mt-5 grid grid-cols-2 gap-2 text-xs">
+                  <LearningCount label="Mới" value={learningCounts.new} />
+                  <LearningCount label="Đang học" value={learningCounts.learning} />
+                  <LearningCount label="Ôn tập" value={learningCounts.review} />
+                  <LearningCount label="Học lại" value={learningCounts.relearning} />
+                </div>
               </div>
 
               <div className="rounded-3xl border border-[#173f35]/15 bg-white/55 p-6">
@@ -1407,6 +1467,17 @@ function CompletionScreen({
         ) : null}
       </div>
     </section>
+  );
+}
+
+function LearningCount({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl bg-white/10 px-3 py-2">
+      <span className="block font-mono text-[10px] tracking-wide text-white/55 uppercase">
+        {label}
+      </span>
+      <strong className="mt-0.5 block text-base text-[#d7ff91]">{value}</strong>
+    </div>
   );
 }
 

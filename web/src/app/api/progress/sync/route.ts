@@ -1,11 +1,18 @@
 import manifestJson from "@/generated/content-manifest.json";
-import { rowsToProgress, syncProgressSchema, type PracticeReviewRow } from "@/lib/practice/cloud";
 import { contentManifestSchema } from "@/lib/content/schema";
 import {
   activeQuestionIds,
   rowsToApprovals,
   type QuestionApprovalRow,
 } from "@/lib/practice/approvals";
+import {
+  hasAnkiTransition,
+  rowsToLearningStates,
+  rowsToProgress,
+  syncProgressSchema,
+  type PracticeReviewRow,
+  type QuestionLearningStateRow,
+} from "@/lib/practice/cloud";
 import { isAllowedPracticeUser } from "@/lib/supabase/authorization";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -33,6 +40,10 @@ export async function POST(request: Request) {
   }
 
   const parsed = syncProgressSchema.safeParse(body);
+  if (!parsed.success) {
+    return Response.json({ error: "Progress payload không hợp lệ." }, { status: 400 });
+  }
+
   const { data: approvalRows, error: approvalError } = await supabase
     .from("question_approvals")
     .select("question_id, question_version, source_hash");
@@ -43,39 +54,70 @@ export async function POST(request: Request) {
     manifest.questions,
     rowsToApprovals((approvalRows ?? []) as QuestionApprovalRow[]),
   );
-  if (
-    !parsed.success ||
-    parsed.data.reviews.some((review) => !allowedQuestionIds.has(review.questionId))
-  ) {
+  const questionById = new Map(
+    manifest.questions.map((question) => [question.id, question]),
+  );
+  const invalidReview = parsed.data.reviews.some((review) => {
+    if (!allowedQuestionIds.has(review.questionId)) return true;
+    if (!hasAnkiTransition(review)) return false;
+    const question = questionById.get(review.questionId);
+    return (
+      !question ||
+      review.questionVersion !== question.version ||
+      review.sourceHash !== question.sourceHash
+    );
+  });
+  if (invalidReview) {
     return Response.json({ error: "Progress payload không hợp lệ." }, { status: 400 });
   }
 
-  if (parsed.data.reviews.length) {
-    const rows = parsed.data.reviews.map((review) => ({
-      user_id: authData.user.id,
-      question_id: review.questionId,
-      reviewed_on: review.reviewedOn,
-      rating: review.rating,
-      next_due_on: review.nextDueOn,
-    }));
-    const { error } = await supabase.from("practice_reviews").upsert(rows, {
-      onConflict: "user_id,question_id,reviewed_on",
+  const orderedReviews = [...parsed.data.reviews]
+    .sort(
+      (left, right) =>
+        left.reviewedOn.localeCompare(right.reviewedOn) ||
+        left.questionId.localeCompare(right.questionId),
+    );
+  for (const review of orderedReviews) {
+    const question = questionById.get(review.questionId)!;
+    const { error } = await supabase.rpc("record_practice_review", {
+      p_question_id: review.questionId,
+      p_question_version: question.version,
+      p_source_hash: question.sourceHash,
+      p_reviewed_on: review.reviewedOn,
+      p_rating: review.rating,
     });
     if (error) {
-      return Response.json({ error: "Không ghi được cloud progress." }, { status: 502 });
+      return Response.json(
+        { error: "Không ghi được Anki learning state." },
+        { status: 502 },
+      );
     }
   }
 
-  const { data: cloudRows, error: selectError } = await supabase
-    .from("practice_reviews")
-    .select("question_id, reviewed_on, rating, next_due_on")
-    .order("reviewed_on", { ascending: false })
-    .limit(1000);
-  if (selectError) {
+  const [reviewsResult, statesResult] = await Promise.all([
+    supabase
+      .from("practice_reviews")
+      .select(
+        "question_id, reviewed_on, rating, next_due_on, question_version, source_hash, learning_state_after, interval_days_after, lapse_count_after",
+      )
+      .order("reviewed_on", { ascending: false })
+      .limit(1000),
+    supabase
+      .from("user_question_states")
+      .select(
+        "question_id, question_version, source_hash, learning_state, due_on, interval_days, review_count, lapse_count, last_rating, last_reviewed_on, is_suspended, is_leech, content_changed",
+      ),
+  ]);
+  if (reviewsResult.error || statesResult.error) {
     return Response.json({ error: "Không đọc được cloud progress." }, { status: 502 });
   }
 
   return Response.json({
-    progress: rowsToProgress((cloudRows ?? []) as PracticeReviewRow[]),
+    progress: rowsToProgress(
+      (reviewsResult.data ?? []) as PracticeReviewRow[],
+    ),
+    questionStates: rowsToLearningStates(
+      (statesResult.data ?? []) as QuestionLearningStateRow[],
+    ),
   });
 }

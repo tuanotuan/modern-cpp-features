@@ -63,6 +63,7 @@ export default async function Home({
       cloudEnabled={cloud.enabled}
       account={cloud.account}
       initialCloudProgress={cloud.progress}
+      initialQuestionStates={cloud.questionStates}
       cloudSetupError={cloud.error}
       initialAiDailyBudget={cloud.aiDailyBudget}
       authNotice={authNotice(authCode)}

@@ -48,3 +48,8 @@ user/question pair. `practice_reviews` remains the immutable learning history.
 The Phase A migration backfills practiced questions as Review or Relearning;
 unseen questions are created lazily as New when the Phase B scheduler is wired
 to the practice flow.
+
+Phase B extends `practice_reviews` with the state produced by each rating and
+uses `record_practice_review(...)` to update review history plus
+`user_question_states` in one database transaction. The browser may calculate
+an optimistic interval, but the RPC remains authoritative for cloud progress.
