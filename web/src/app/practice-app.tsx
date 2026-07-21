@@ -1758,6 +1758,12 @@ function AccountControl({
     return (
       <div className="flex items-center gap-2">
         <Link
+          href="/stats"
+          className="rounded-full border border-[#173f35]/15 bg-white/65 px-3 py-2 font-mono text-[10px] font-bold uppercase transition hover:border-[#356b58]/40"
+        >
+          Thống kê
+        </Link>
+        <Link
           href="/admin"
           className="rounded-full border border-[#173f35]/15 bg-white/65 px-3 py-2 font-mono text-[10px] font-bold uppercase transition hover:border-[#356b58]/40"
         >
