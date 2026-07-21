@@ -9,6 +9,7 @@ import type {
 } from "@/lib/ai/contracts";
 import type { AiDailyBudgetSnapshot } from "@/lib/ai/budget";
 import type { Question } from "@/lib/content/schema";
+import { displayQuestionPrompt } from "@/lib/content/question-prompt";
 import type { PracticeAccount } from "@/lib/practice/cloud-server";
 import {
   buildCandidateAnswer,
@@ -922,7 +923,7 @@ export function PracticeApp({
                         kind: "question",
                         questionId: current.id,
                         title: current.lessonTitle,
-                        content: current.prompt,
+                        content: displayQuestionPrompt(current),
                         context: current.code || current.sourcePath,
                       })
                     }
@@ -956,7 +957,7 @@ export function PracticeApp({
                   <h1
                     className={`${hasAnswered ? "mt-7" : ""} max-w-4xl text-3xl leading-[1.16] font-semibold tracking-[-0.04em] text-[#17221d] sm:text-4xl lg:text-[2.85rem]`}
                   >
-                    <InlineCode text={current.prompt} />
+                    <InlineCode text={displayQuestionPrompt(current)} />
                   </h1>
 
                   {current.code ? (
@@ -1085,7 +1086,7 @@ export function PracticeApp({
                             questionId: current.id,
                             title: `AI feedback · ${current.lessonTitle}`,
                             content: formatCoachFeedback(coachFeedback[current.id]),
-                            context: current.prompt,
+                            context: displayQuestionPrompt(current),
                           })
                         }
                         onExpandNextStep={() =>
@@ -1146,7 +1147,7 @@ export function PracticeApp({
                             questionId: current.id,
                             title: `AI giải thích · ${current.lessonTitle}`,
                             content: message.content,
-                            context: current.prompt,
+                            context: displayQuestionPrompt(current),
                           })
                         }
                         onInput={(value) =>
@@ -1251,7 +1252,7 @@ export function PracticeApp({
                         <span className="font-mono text-[10px] font-bold text-[#ba4b2f] uppercase">
                           {question.status === "draft" ? "AI draft" : "Nguồn đã đổi"}
                         </span>{" "}
-                        · {question.prompt}
+                        · {displayQuestionPrompt(question)}
                       </li>
                     ))}
                   </ul>

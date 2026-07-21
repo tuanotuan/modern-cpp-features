@@ -1,4 +1,5 @@
 import type { GeneratedLesson, Question } from "../content/schema";
+import { displayQuestionPrompt } from "../content/question-prompt";
 import type { CoachFeedback, CoachFollowUpMessage } from "./contracts";
 
 function sourceNotesFor(question: Question, lesson: GeneratedLesson): string {
@@ -37,7 +38,7 @@ NGUYÊN TẮC CHẤM:
 - sourceSectionIds chỉ được chứa ID từ SOURCE NOTES.
 
 QUESTION (${question.id}):
-${question.prompt}
+${displayQuestionPrompt(question)}
 ${question.code ? `\nCODE:\n${question.code}` : ""}
 
 REQUIRED RUBRIC:
@@ -92,7 +93,7 @@ NGUYÊN TẮC:
 - checkQuestion là một câu hỏi rất ngắn để ứng viên tự kiểm tra xem đã hiểu chưa.
 
 QUESTION (${question.id}):
-${question.prompt}
+${displayQuestionPrompt(question)}
 ${question.code ? `\nCODE:\n${question.code}` : ""}
 
 CANONICAL ANSWER:
