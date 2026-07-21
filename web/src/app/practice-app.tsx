@@ -7,7 +7,10 @@ import type {
   CoachFeedback,
   CoachFollowUpResponse,
 } from "@/lib/ai/contracts";
-import type { AiDailyBudgetSnapshot } from "@/lib/ai/budget";
+import {
+  mergeAiDailyBudgetSnapshot,
+  type AiDailyBudgetSnapshot,
+} from "@/lib/ai/budget";
 import type { ContentQuestion } from "@/lib/content/schema";
 import { displayQuestionPrompt } from "@/lib/content/question-prompt";
 import type { PracticeAccount } from "@/lib/practice/cloud-server";
@@ -666,7 +669,11 @@ export function PracticeApp({
         ...evaluatedAnswers,
         [current.id]: answer,
       }));
-      if (payload.aiDailyBudget) setAiDailyBudget(payload.aiDailyBudget);
+      if (payload.aiDailyBudget) {
+        setAiDailyBudget((current) =>
+          mergeAiDailyBudgetSnapshot(current, payload.aiDailyBudget!),
+        );
+      }
       if (payload.aiUsageRecorded === false) {
         setCoachErrors((errors) => ({
           ...errors,
@@ -744,7 +751,11 @@ export function PracticeApp({
         ],
       }));
       setFollowUpInputs((inputs) => ({ ...inputs, [current.id]: "" }));
-      if (payload.aiDailyBudget) setAiDailyBudget(payload.aiDailyBudget);
+      if (payload.aiDailyBudget) {
+        setAiDailyBudget((current) =>
+          mergeAiDailyBudgetSnapshot(current, payload.aiDailyBudget!),
+        );
+      }
       if (payload.aiUsageRecorded === false) {
         setFollowUpErrors((errors) => ({
           ...errors,
@@ -804,7 +815,11 @@ export function PracticeApp({
         ...models,
         [current.id]: payload.model || "OpenAI",
       }));
-      if (payload.aiDailyBudget) setAiDailyBudget(payload.aiDailyBudget);
+      if (payload.aiDailyBudget) {
+        setAiDailyBudget((current) =>
+          mergeAiDailyBudgetSnapshot(current, payload.aiDailyBudget!),
+        );
+      }
       if (payload.aiUsageRecorded === false) {
         setDeepDiveErrors((errors) => ({
           ...errors,

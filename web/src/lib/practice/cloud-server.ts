@@ -122,12 +122,12 @@ export async function loadCloudContext(): Promise<CloudContext> {
         .select(questionOverrideSelect),
       supabase
         .from("ai_usage_monthly")
-        .select("actual_usd_micros, provider_usd_micros, provider_actual_baseline_usd_micros, provider_synced_at, request_count, input_tokens, output_tokens, last_model")
+        .select("actual_usd_micros, provider_usd_micros, provider_actual_baseline_usd_micros, usage_floor_usd_micros, provider_synced_at, request_count, input_tokens, output_tokens, last_model")
         .eq("month_start", `${usageDate.slice(0, 7)}-01`)
         .maybeSingle(),
       supabase
         .from("ai_usage_daily")
-        .select("actual_usd_micros, provider_usd_micros, provider_actual_baseline_usd_micros, provider_synced_at, request_count, input_tokens, output_tokens, last_model")
+        .select("actual_usd_micros, provider_usd_micros, provider_actual_baseline_usd_micros, usage_floor_usd_micros, provider_synced_at, request_count, input_tokens, output_tokens, last_model")
         .eq("usage_date", usageDate)
         .maybeSingle(),
       supabase
@@ -158,6 +158,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
     realtimeBaselineUsdMicros: Number(
       dailyUsageRow?.provider_actual_baseline_usd_micros ?? 0,
     ),
+    usageFloorUsdMicros: Number(dailyUsageRow?.usage_floor_usd_micros ?? 0),
     providerSynced: dailyBillingUsdMicros !== null,
   });
 
@@ -187,6 +188,9 @@ export async function loadCloudContext(): Promise<CloudContext> {
             providerUsdMicros: Number(usageRow.provider_usd_micros ?? 0),
             realtimeBaselineUsdMicros: Number(
               usageRow.provider_actual_baseline_usd_micros ?? 0,
+            ),
+            usageFloorUsdMicros: Number(
+              usageRow.usage_floor_usd_micros ?? 0,
             ),
             providerSynced:
               typeof usageRow.provider_synced_at === "string",

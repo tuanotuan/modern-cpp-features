@@ -68,3 +68,7 @@ or AI request, so this phase has no additional Supabase migration.
 question manifest. Editing increments the effective question version and
 requires a new approval; archiving hides the question without deleting review or
 coach history. RLS keeps the overlay private to the authenticated owner.
+
+The monotonic AI budget migration stores a conservative usage floor before each
+OpenAI Billing reconciliation. Billing data can lag realtime requests, but that
+lag can no longer make used cost decrease or remaining daily quota increase.
