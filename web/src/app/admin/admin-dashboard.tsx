@@ -8,6 +8,7 @@ import type {
   AdminQuestion,
   AdminQuestionStatus,
 } from "@/lib/admin/dashboard";
+import { displayQuestionPrompt } from "@/lib/content/question-prompt";
 import type {
   AiUsageSummary,
   GeminiUsageSummary,
@@ -406,7 +407,9 @@ function QueueReviewCard({ question, saving, onApprove }: { question: AdminQuest
           {saving ? "Đang duyệt…" : "Duyệt câu này"}
         </button>
       </div>
-      <h3 className="mt-4 font-semibold leading-6">{question.prompt}</h3>
+      <h3 className="mt-4 font-semibold leading-6">
+        {displayQuestionPrompt(question)}
+      </h3>
       <p className="mt-2 font-mono text-[11px] text-[#718078]">
         {question.id} · {question.lessonTitle}
       </p>
@@ -434,7 +437,9 @@ function QuestionCard({ question, saving, onApprove }: { question: AdminQuestion
             <span className="rounded-full bg-[#edf0e8] px-2.5 py-1 font-mono text-[10px] font-bold uppercase">{standardLabels[question.standard]}</span>
             <span className="rounded-full bg-[#edf0e8] px-2.5 py-1 font-mono text-[10px] font-bold uppercase">{question.type.replace('_', ' ')}</span>
           </div>
-          <h3 className="mt-3 font-semibold leading-6">{question.prompt}</h3>
+          <h3 className="mt-3 font-semibold leading-6">
+            {displayQuestionPrompt(question)}
+          </h3>
           <p className="mt-2 truncate font-mono text-[11px] text-[#718078]">{question.id} · {question.lessonTitle}</p>
         </div>
         <span className="mt-1 text-xl text-[#64736c] transition group-open:rotate-45">+</span>
