@@ -9,6 +9,7 @@ import type {
   AdminQuestionStatus,
 } from "@/lib/admin/dashboard";
 import { displayQuestionPrompt } from "@/lib/content/question-prompt";
+import type { EditableQuestionContent } from "@/lib/content/question-overrides";
 import type {
   AiUsageSummary,
   GeminiUsageSummary,
@@ -50,7 +51,7 @@ export function AdminDashboard({
   const [questions, setQuestions] = useState(initialSnapshot.questions);
   const [query, setQuery] = useState("");
   const [standard, setStandard] = useState("all");
-  const [status, setStatus] = useState("all");
+  const [status, setStatus] = useState("current");
   const [type, setType] = useState("all");
   const [learningFilter, setLearningFilter] = useState("all");
   const [topic, setTopic] = useState("all");
@@ -92,7 +93,10 @@ export function AdminDashboard({
       return (
         matchesQuery &&
         (standard === "all" || question.standard === standard) &&
-        (status === "all" || question.adminStatus === status) &&
+        (status === "all" ||
+          (status === "current"
+            ? question.adminStatus !== "archived"
+            : question.adminStatus === status)) &&
         (type === "all" || question.type === type) &&
         (topic === "all" || question.taxonomy.topics.includes(topic)) &&
         matchesLearning
@@ -126,12 +130,17 @@ export function AdminDashboard({
   );
   const lessonCoverage = initialSnapshot.lessons.map((lesson) => ({
     ...lesson,
+    currentQuestions: questions.filter(
+      (question) =>
+        question.lessonId === lesson.id &&
+        question.adminStatus !== "archived",
+    ).length,
     activeQuestions: questions.filter(
       (question) =>
         question.lessonId === lesson.id && question.adminStatus === "active",
     ).length,
   }));
-  const uncovered = initialSnapshot.lessons.filter(
+  const uncovered = lessonCoverage.filter(
     (lesson) => lesson.currentQuestions === 0,
   );
 
@@ -269,6 +278,95 @@ export function AdminDashboard({
       setNotice(
         error instanceof Error ? error.message : "Không cập nhật được lịch học.",
       );
+    } finally {
+      setSavingIds(new Set());
+    }
+  }
+
+  async function mutateQuestion(
+    question: AdminQuestion,
+    action: "edit" | "archive" | "restore",
+    content?: EditableQuestionContent,
+  ) {
+    setSavingIds(new Set([question.id]));
+    setNotice(null);
+    try {
+      const response = await fetch("/api/admin/questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, questionId: question.id, content }),
+      });
+      const payload = (await response.json()) as {
+        question?: Pick<
+          AdminQuestion,
+          | "id"
+          | "type"
+          | "responseMode"
+          | "difficulty"
+          | "estimatedMinutes"
+          | "prompt"
+          | "code"
+          | "hint"
+          | "answer"
+          | "rubric"
+          | "sources"
+          | "sourceHash"
+          | "status"
+          | "version"
+          | "taxonomy"
+        >;
+        approved?: boolean;
+        error?: string;
+      };
+      if (!response.ok || !payload.question || payload.approved === undefined) {
+        throw new Error(payload.error || "Không lưu được thay đổi câu hỏi.");
+      }
+      const changedVersion = payload.question.version !== question.version;
+      setQuestions((current) =>
+        current.map((item) =>
+          item.id === question.id
+            ? {
+                ...item,
+                ...payload.question!,
+                approved: payload.approved!,
+                adminStatus: clientAdminStatus(
+                  payload.question!.status,
+                  payload.approved!,
+                ),
+                learning: changedVersion
+                  ? {
+                      ...item.learning,
+                      questionVersion: payload.question!.version,
+                      sourceHash: payload.question!.sourceHash,
+                      state: item.reviewHistory.length ? "learning" : "new",
+                      dueOn: null,
+                      intervalDays: 0,
+                      contentChanged: item.reviewHistory.length > 0,
+                    }
+                  : item.learning,
+                archivedByOwner:
+                  action === "archive"
+                    ? true
+                    : action === "restore"
+                      ? false
+                      : item.archivedByOwner,
+              }
+            : item,
+        ),
+      );
+      const actionLabel = {
+        edit: "Đã lưu bản sửa; câu hỏi được đưa lại vào queue để duyệt.",
+        archive: "Đã archive; lịch sử ôn và AI attempt vẫn được giữ.",
+        restore: "Đã khôi phục câu hỏi vào ngân hàng.",
+      }[action];
+      setNotice(`${actionLabel} (${question.id})`);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Không lưu được thay đổi câu hỏi.";
+      setNotice(message);
+      throw error;
     } finally {
       setSavingIds(new Set());
     }
@@ -449,7 +547,7 @@ export function AdminDashboard({
                 className="rounded-xl border border-[#173f35]/15 bg-white px-4 py-2.5 text-sm outline-none focus:ring-3 focus:ring-[#d7ff91] md:col-span-2 xl:col-span-1"
               />
               <Filter value={standard} onChange={setStandard} label="C++ version" options={[['all', 'Mọi version'], ['cpp98', 'C++98'], ['cpp11', 'C++11'], ['cpp20', 'C++20']]} />
-              <Filter value={status} onChange={setStatus} label="Trạng thái" options={[['all', 'Mọi trạng thái'], ['active', 'Đang dùng'], ['pending', 'Chờ duyệt'], ['stale', 'Nguồn đã đổi'], ['archived', 'Đã lưu trữ']]} />
+              <Filter value={status} onChange={setStatus} label="Trạng thái" options={[['current', 'Chưa archive'], ['all', 'Mọi trạng thái'], ['active', 'Đang dùng'], ['pending', 'Chờ duyệt'], ['stale', 'Nguồn đã đổi'], ['archived', 'Đã lưu trữ']]} />
               <Filter value={type} onChange={setType} label="Loại câu" options={[['all', 'Mọi loại'], ['recall', 'Recall'], ['code_reasoning', 'Code reasoning'], ['pitfall', 'Pitfall'], ['scenario', 'Scenario']]} />
               <Filter value={learningFilter} onChange={setLearningFilter} label="Trạng thái học" options={[['all', 'Mọi trạng thái học'], ['new', 'Mới'], ['learning', 'Đang học'], ['review', 'Ôn tập'], ['relearning', 'Học lại'], ['due', 'Đến hạn'], ['suspended', 'Tạm dừng'], ['leech', 'Leech']]} />
               <Filter value={topic} onChange={setTopic} label="Topic" options={[['all', 'Mọi topic'], ...topics.map((item): [string, string] => [item, item])]} />
@@ -464,6 +562,9 @@ export function AdminDashboard({
                   onApprove={() => void approve([question.id])}
                   onManage={(action, dueOn) =>
                     void manageSchedule(question, action, dueOn)
+                  }
+                  onMutate={(action, content) =>
+                    mutateQuestion(question, action, content)
                   }
                 />
               ))}
@@ -497,7 +598,7 @@ export function AdminDashboard({
                 <a className="rounded-xl bg-white px-4 py-3 hover:bg-[#edf0e8]" href="https://github.com/tuanotuan/modern-cpp-features" target="_blank" rel="noreferrer">Source repository ↗</a>
               </div>
               <p className="mt-4 text-xs leading-5 text-[#64736c]">
-                Nội dung được sửa trong GitHub. Admin chỉ duyệt và quan sát để không làm lệch source of truth.
+                Bản sửa và archive được lưu như overlay trong Supabase. Note và câu gốc trên GitHub vẫn giữ nguyên để đối chiếu.
               </p>
             </div>
           </aside>
@@ -553,16 +654,22 @@ function QuestionCard({
   saving,
   onApprove,
   onManage,
+  onMutate,
 }: {
   question: AdminQuestion;
   saving: boolean;
   onApprove: () => void;
   onManage: (action: ScheduleAction, dueOn?: string) => void;
+  onMutate: (
+    action: "edit" | "archive" | "restore",
+    content?: EditableQuestionContent,
+  ) => Promise<void>;
 }) {
   const reviewable = question.adminStatus === "pending" || question.adminStatus === "stale";
   const [dueOn, setDueOn] = useState(
     question.learning.dueOn ?? new Date().toISOString().slice(0, 10),
   );
+  const [editing, setEditing] = useState(false);
   return (
     <details className="group rounded-2xl border border-[#173f35]/12 bg-white/75 open:border-[#356b58]/35">
       <summary className="flex list-none cursor-pointer items-start justify-between gap-4 p-4 sm:p-5">
@@ -632,10 +739,226 @@ function QuestionCard({
               ) : null}
             </>
           ) : null}
+          {question.adminStatus !== "archived" ? (
+            <>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => setEditing((current) => !current)}
+                className="rounded-xl border border-[#173f35]/20 bg-white px-3 py-2 text-xs font-bold text-[#356b58] disabled:opacity-50"
+              >
+                {editing ? "Đóng form sửa" : "Chỉnh sửa"}
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Archive câu hỏi này? Nó sẽ biến mất khỏi lịch luyện nhưng lịch sử ôn và AI attempt vẫn được giữ.",
+                    )
+                  ) {
+                    void onMutate("archive");
+                  }
+                }}
+                className="rounded-xl border border-[#ba4b2f]/30 bg-white px-3 py-2 text-xs font-bold text-[#8e3825] disabled:opacity-50"
+              >
+                Xóa (archive)
+              </button>
+            </>
+          ) : question.archivedByOwner ? (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void onMutate("restore")}
+              className="rounded-xl bg-[#173f35] px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+            >
+              Khôi phục câu hỏi
+            </button>
+          ) : (
+            <span className="rounded-xl bg-[#edf0e8] px-3 py-2 text-xs font-bold text-[#64736c]">
+              Archived từ repository
+            </span>
+          )}
         </div>
+        {editing && question.adminStatus !== "archived" ? (
+          <QuestionEditor
+            question={question}
+            saving={saving}
+            onCancel={() => setEditing(false)}
+            onSave={async (content) => {
+              await onMutate("edit", content);
+              setEditing(false);
+            }}
+          />
+        ) : null}
       </div>
     </details>
   );
+}
+
+function QuestionEditor({
+  question,
+  saving,
+  onCancel,
+  onSave,
+}: {
+  question: AdminQuestion;
+  saving: boolean;
+  onCancel: () => void;
+  onSave: (content: EditableQuestionContent) => Promise<void>;
+}) {
+  const [type, setType] = useState(question.type);
+  const [responseMode, setResponseMode] = useState(
+    question.responseMode ?? "text",
+  );
+  const [difficulty, setDifficulty] = useState(question.difficulty);
+  const [estimatedMinutes, setEstimatedMinutes] = useState(
+    question.estimatedMinutes,
+  );
+  const [prompt, setPrompt] = useState(question.prompt);
+  const [code, setCode] = useState(question.code ?? "");
+  const [hint, setHint] = useState(question.hint);
+  const [shortAnswer, setShortAnswer] = useState(question.answer.short);
+  const [detailedAnswer, setDetailedAnswer] = useState(
+    question.answer.detailed,
+  );
+  const [required, setRequired] = useState(
+    question.rubric.required.join("\n"),
+  );
+  const [bonus, setBonus] = useState(question.rubric.bonus.join("\n"));
+  const [misconceptions, setMisconceptions] = useState(
+    question.rubric.misconceptions.join("\n"),
+  );
+
+  function lines(value: string) {
+    return value
+      .split("\n")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return (
+    <form
+      className="mt-5 rounded-2xl border border-[#356b58]/25 bg-[#f7f9f2] p-4 sm:p-5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void onSave({
+          type,
+          responseMode,
+          difficulty,
+          estimatedMinutes,
+          prompt,
+          code: code.trim() || null,
+          hint,
+          answer: { short: shortAnswer, detailed: detailedAnswer },
+          rubric: {
+            required: lines(required),
+            bonus: lines(bonus),
+            misconceptions: lines(misconceptions),
+          },
+        }).catch(() => undefined);
+      }}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="font-mono text-[10px] font-bold tracking-[0.16em] text-[#356b58] uppercase">
+            Question editor
+          </p>
+          <p className="mt-1 text-sm text-[#64736c]">
+            Lưu sẽ tăng version và yêu cầu duyệt lại câu hỏi.
+          </p>
+        </div>
+        <span className="font-mono text-xs text-[#64736c]">
+          v{question.version} → v{question.version + 1}
+        </span>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <EditorSelect
+          label="Loại câu"
+          value={type}
+          onChange={(value) => setType(value as typeof type)}
+          options={[
+            ["recall", "Recall"],
+            ["code_reasoning", "Code reasoning"],
+            ["pitfall", "Pitfall"],
+            ["scenario", "Scenario"],
+          ]}
+        />
+        <EditorSelect
+          label="Cách trả lời"
+          value={responseMode}
+          onChange={(value) => setResponseMode(value as typeof responseMode)}
+          options={[["text", "Text"], ["code", "Code"]]}
+        />
+        <EditorSelect
+          label="Độ khó"
+          value={difficulty}
+          onChange={(value) => setDifficulty(value as typeof difficulty)}
+          options={[["beginner", "Beginner"], ["intermediate", "Intermediate"], ["advanced", "Advanced"]]}
+        />
+        <label className="text-xs font-bold text-[#52645c]">
+          Thời gian (phút)
+          <input
+            type="number"
+            min={1}
+            max={15}
+            value={estimatedMinutes}
+            onChange={(event) => setEstimatedMinutes(Number(event.target.value))}
+            className="mt-1.5 w-full rounded-xl border border-[#173f35]/15 bg-white px-3 py-2.5 text-sm font-normal"
+          />
+        </label>
+      </div>
+      <EditorTextarea label="Đề bài" value={prompt} onChange={setPrompt} rows={4} />
+      <EditorTextarea label="Code mẫu (để trống nếu không có)" value={code} onChange={setCode} rows={7} mono required={false} />
+      <EditorTextarea label="Gợi ý" value={hint} onChange={setHint} rows={3} />
+      <EditorTextarea label="Đáp án ngắn" value={shortAnswer} onChange={setShortAnswer} rows={3} />
+      <EditorTextarea label="Giải thích chi tiết" value={detailedAnswer} onChange={setDetailedAnswer} rows={6} />
+      <div className="grid gap-3 lg:grid-cols-3">
+        <EditorTextarea label="Rubric bắt buộc (mỗi dòng một ý)" value={required} onChange={setRequired} rows={6} />
+        <EditorTextarea label="Điểm cộng (mỗi dòng một ý)" value={bonus} onChange={setBonus} rows={6} required={false} />
+        <EditorTextarea label="Hiểu lầm thường gặp (mỗi dòng một ý)" value={misconceptions} onChange={setMisconceptions} rows={6} required={false} />
+      </div>
+      <div className="mt-4 flex justify-end gap-2">
+        <button type="button" onClick={onCancel} disabled={saving} className="rounded-xl border border-[#173f35]/15 bg-white px-4 py-2 text-xs font-bold disabled:opacity-50">
+          Hủy
+        </button>
+        <button type="submit" disabled={saving || !required.trim()} className="rounded-xl bg-[#173f35] px-4 py-2 text-xs font-bold text-white disabled:opacity-50">
+          {saving ? "Đang lưu…" : "Lưu phiên bản mới"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function EditorTextarea({ label, value, onChange, rows, mono = false, required = true }: { label: string; value: string; onChange: (value: string) => void; rows: number; mono?: boolean; required?: boolean }) {
+  return (
+    <label className="mt-3 block text-xs font-bold text-[#52645c]">
+      {label}
+      <textarea required={required} value={value} onChange={(event) => onChange(event.target.value)} rows={rows} className={`mt-1.5 w-full resize-y rounded-xl border border-[#173f35]/15 bg-white px-3 py-2.5 text-sm font-normal leading-6 ${mono ? "font-mono" : ""}`} />
+    </label>
+  );
+}
+
+function EditorSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: Array<[string, string]> }) {
+  return (
+    <label className="text-xs font-bold text-[#52645c]">
+      {label}
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1.5 w-full rounded-xl border border-[#173f35]/15 bg-white px-3 py-2.5 text-sm font-normal">
+        {options.map(([optionValue, optionLabel]) => <option key={optionValue} value={optionValue}>{optionLabel}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function clientAdminStatus(
+  status: AdminQuestion["status"],
+  approved: boolean,
+): AdminQuestionStatus {
+  if (status === "archived") return "archived";
+  if (status === "verified" || approved) return "active";
+  if (status === "needs_review") return "stale";
+  return "pending";
 }
 
 function QuestionDetails({ question }: { question: AdminQuestion }) {

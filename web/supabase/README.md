@@ -64,6 +64,11 @@ history and question-state projection. Retention, 28-day activity, 14-day due
 forecast, deck distribution, and weak-topic ranking require no new table, RPC,
 or AI request, so this phase has no additional Supabase migration.
 
+`question_overrides` stores owner-only edits and archive flags over the generated
+question manifest. Editing increments the effective question version and
+requires a new approval; archiving hides the question without deleting review or
+coach history. RLS keeps the overlay private to the authenticated owner.
+
 The monotonic AI budget migration stores a conservative usage floor before each
 OpenAI Billing reconciliation. Billing data can lag realtime requests, but that
 lag can no longer make used cost decrease or remaining daily quota increase.

@@ -20,6 +20,8 @@ import {
 import { consumeCoachRequest } from "@/lib/ai/rate-limit";
 import { COACH_RESERVATION_USD_MICROS } from "@/lib/ai/usage";
 import { contentManifestSchema } from "@/lib/content/schema";
+import { applyQuestionOverrides } from "@/lib/content/question-overrides";
+import { loadQuestionOverrides } from "@/lib/content/question-overrides-server";
 import {
   isQuestionApproved,
   rowsToApprovals,
@@ -32,7 +34,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-const manifest = contentManifestSchema.parse(manifestJson);
+const baseManifest = contentManifestSchema.parse(manifestJson);
 
 export async function POST(request: Request) {
   const clientKey =
@@ -89,22 +91,35 @@ export async function POST(request: Request) {
   }
 
   let approvals: QuestionApproval[] = [];
+  let manifest = baseManifest;
   if (supabase) {
-    const { data: approvalRows, error: approvalError } = await supabase
-      .from("question_approvals")
-      .select("question_id, question_version, source_hash");
-    if (approvalError) {
+    const [approvalsResult, overridesResult] = await Promise.all([
+      supabase
+        .from("question_approvals")
+        .select("question_id, question_version, source_hash"),
+      loadQuestionOverrides(supabase),
+    ]);
+    if (approvalsResult.error || overridesResult.error) {
       return Response.json(
-        { error: "Không đọc được question approvals.", code: "approval_lookup_failed" },
+        { error: "Không đọc được question bank.", code: "approval_lookup_failed" },
         { status: 502 },
       );
     }
-    approvals = rowsToApprovals((approvalRows ?? []) as QuestionApprovalRow[]);
+    approvals = rowsToApprovals(
+      (approvalsResult.data ?? []) as QuestionApprovalRow[],
+    );
+    manifest = applyQuestionOverrides(
+      baseManifest,
+      overridesResult.overrides,
+    );
   }
 
   const question = manifest.questions.find((item) => {
     if (item.id !== parsed.data.questionId) return false;
-    return item.status === "verified" || isQuestionApproved(item, approvals);
+    return (
+      item.status !== "archived" &&
+      (item.status === "verified" || isQuestionApproved(item, approvals))
+    );
   });
   if (!question) {
     return Response.json(

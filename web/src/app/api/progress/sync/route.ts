@@ -1,4 +1,6 @@
 import manifestJson from "@/generated/content-manifest.json";
+import { applyQuestionOverrides } from "@/lib/content/question-overrides";
+import { loadQuestionOverrides } from "@/lib/content/question-overrides-server";
 import { contentManifestSchema } from "@/lib/content/schema";
 import {
   activeQuestionIds,
@@ -19,7 +21,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-const manifest = contentManifestSchema.parse(manifestJson);
+const baseManifest = contentManifestSchema.parse(manifestJson);
 
 export async function POST(request: Request) {
   if (!isSupabaseConfigured()) {
@@ -44,15 +46,24 @@ export async function POST(request: Request) {
     return Response.json({ error: "Progress payload không hợp lệ." }, { status: 400 });
   }
 
-  const { data: approvalRows, error: approvalError } = await supabase
-    .from("question_approvals")
-    .select("question_id, question_version, source_hash");
-  if (approvalError) {
+  const [approvalsResult, overridesResult] = await Promise.all([
+    supabase
+      .from("question_approvals")
+      .select("question_id, question_version, source_hash"),
+    loadQuestionOverrides(supabase),
+  ]);
+  if (approvalsResult.error || overridesResult.error) {
     return Response.json({ error: "Không đọc được question approvals." }, { status: 502 });
   }
+  const manifest = applyQuestionOverrides(
+    baseManifest,
+    overridesResult.overrides,
+  );
   const allowedQuestionIds = activeQuestionIds(
     manifest.questions,
-    rowsToApprovals((approvalRows ?? []) as QuestionApprovalRow[]),
+    rowsToApprovals(
+      (approvalsResult.data ?? []) as QuestionApprovalRow[],
+    ),
   );
   const questionById = new Map(
     manifest.questions.map((question) => [question.id, question]),
