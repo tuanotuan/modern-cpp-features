@@ -538,6 +538,7 @@ export function PracticeApp({
         feedback?: CoachFeedback;
         model?: string;
         aiDailyBudget?: AiDailyBudgetSnapshot | null;
+        aiUsageRecorded?: boolean;
         error?: string;
       };
 
@@ -558,6 +559,13 @@ export function PracticeApp({
         [current.id]: answer,
       }));
       if (payload.aiDailyBudget) setAiDailyBudget(payload.aiDailyBudget);
+      if (payload.aiUsageRecorded === false) {
+        setCoachErrors((errors) => ({
+          ...errors,
+          [current.id]:
+            "AI đã chấm xong nhưng bộ đếm usage chưa ghi được. Tạm dừng gọi thêm OpenAI và kiểm tra log.",
+        }));
+      }
       setFollowUpChats((chats) => ({ ...chats, [current.id]: [] }));
       setDeepDiveOpen((open) => withoutSetValue(open, current.id));
       setDeepDiveAnswers((answers) => omitRecordKey(answers, current.id));
@@ -606,6 +614,7 @@ export function PracticeApp({
         reply?: CoachFollowUpResponse;
         model?: string;
         aiDailyBudget?: AiDailyBudgetSnapshot | null;
+        aiUsageRecorded?: boolean;
         error?: string;
       };
       if (!response.ok || !payload.reply) {
@@ -628,6 +637,12 @@ export function PracticeApp({
       }));
       setFollowUpInputs((inputs) => ({ ...inputs, [current.id]: "" }));
       if (payload.aiDailyBudget) setAiDailyBudget(payload.aiDailyBudget);
+      if (payload.aiUsageRecorded === false) {
+        setFollowUpErrors((errors) => ({
+          ...errors,
+          [current.id]: "AI đã trả lời nhưng bộ đếm usage chưa ghi được.",
+        }));
+      }
     } catch (error) {
       setFollowUpErrors((errors) => ({
         ...errors,
@@ -667,6 +682,7 @@ export function PracticeApp({
         reply?: CoachFollowUpResponse;
         model?: string;
         aiDailyBudget?: AiDailyBudgetSnapshot | null;
+        aiUsageRecorded?: boolean;
         error?: string;
       };
       if (!response.ok || !payload.reply) {
@@ -681,6 +697,12 @@ export function PracticeApp({
         [current.id]: payload.model || "OpenAI",
       }));
       if (payload.aiDailyBudget) setAiDailyBudget(payload.aiDailyBudget);
+      if (payload.aiUsageRecorded === false) {
+        setDeepDiveErrors((errors) => ({
+          ...errors,
+          [current.id]: "AI đã trả lời nhưng bộ đếm usage chưa ghi được.",
+        }));
+      }
     } catch (error) {
       setDeepDiveErrors((errors) => ({
         ...errors,
@@ -1399,16 +1421,17 @@ function StatPill({ icon, value, label }: { icon: string; value: string; label: 
 
 function AiBudgetPill({ budget }: { budget: AiDailyBudgetSnapshot }) {
   const low = budget.remainingPercent <= 20;
+  const usedUsd = budget.actualUsdMicros / 1_000_000;
   const billingLabel = budget.billingSyncedAt
     ? `Billing OpenAI: $${((budget.billingUsdMicros ?? 0) / 1_000_000).toFixed(4)} · cộng phần realtime chưa quyết toán`
     : "Ước tính realtime từ token usage";
   return (
     <div
       className="min-w-32 rounded-full border border-[#173f35]/15 bg-white/55 px-3 py-2"
-      title={`${billingLabel} · quota ngày $${(budget.limitUsdMicros / 1_000_000).toFixed(3)} · reset 00:00 giờ Việt Nam`}
+      title={`${billingLabel} · realtime đã dùng $${usedUsd.toFixed(5)} · ${budget.requestCount} request · ${budget.inputTokens + budget.outputTokens} token · model cuối: ${budget.lastModel ?? "chưa có"} · quota ngày $${(budget.limitUsdMicros / 1_000_000).toFixed(3)} · reset 00:00 giờ Việt Nam`}
     >
       <div className="flex items-center justify-between gap-2 font-mono text-[10px] font-bold uppercase">
-        <span>AI hôm nay</span>
+        <span>OpenAI hôm nay</span>
         <span className={low ? "text-[#ba4b2f]" : "text-[#245748]"}>
           {budget.remainingPercent}% còn lại
         </span>

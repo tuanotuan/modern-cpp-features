@@ -25,6 +25,10 @@ export type AiDailyBudgetSnapshot = {
   actualUsdMicros: number;
   billingUsdMicros: number | null;
   billingSyncedAt: string | null;
+  requestCount: number;
+  inputTokens: number;
+  outputTokens: number;
+  lastModel: string | null;
   limitUsdMicros: number;
   remainingPercent: number;
   usageDate: string;
@@ -104,7 +108,7 @@ export async function finalizeAiBudget(
   const usageDate = reservation.usageDate ?? vietnamUsageDate();
   const { data: dailyRow, error: readError } = await reservation.client
     .from("ai_usage_daily")
-    .select("actual_usd_micros, provider_usd_micros, provider_synced_at")
+    .select("actual_usd_micros, provider_usd_micros, provider_synced_at, request_count, input_tokens, output_tokens, last_model")
     .eq("usage_date", usageDate)
     .maybeSingle();
   if (readError) {
@@ -116,17 +120,32 @@ export async function finalizeAiBudget(
     ? Number(dailyRow.provider_usd_micros ?? 0)
     : null;
   const used = Math.max(estimated, billing ?? 0);
-  return {
+  const snapshot = {
     actualUsdMicros: used,
     billingUsdMicros: billing,
     billingSyncedAt:
       typeof dailyRow?.provider_synced_at === "string"
         ? dailyRow.provider_synced_at
         : null,
+    requestCount: Number(dailyRow?.request_count ?? 0),
+    inputTokens: Number(dailyRow?.input_tokens ?? 0),
+    outputTokens: Number(dailyRow?.output_tokens ?? 0),
+    lastModel:
+      typeof dailyRow?.last_model === "string" ? dailyRow.last_model : null,
     limitUsdMicros: dailyBudgetUsdMicros(),
     remainingPercent: dailyBudgetRemainingPercent(used),
     usageDate,
   } satisfies AiDailyBudgetSnapshot;
+  console.info("AI usage finalized", {
+    model,
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
+    actualUsdMicros,
+    dailyActualUsdMicros: snapshot.actualUsdMicros,
+    requestCount: snapshot.requestCount,
+    remainingPercent: snapshot.remainingPercent,
+  });
+  return snapshot;
 }
 
 export async function releaseAiBudget(reservation: AiBudgetReservation) {

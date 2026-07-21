@@ -51,6 +51,7 @@ describe("OpenAI usage accounting", () => {
     expect(dailyBudgetUsdMicros()).toBe(166_666);
     expect(dailyBudgetRemainingPercent(0)).toBe(100);
     expect(dailyBudgetRemainingPercent(83_333)).toBe(50);
+    expect(dailyBudgetRemainingPercent(111_000)).toBe(33.4);
     expect(dailyBudgetRemainingPercent(200_000)).toBe(0);
   });
 
