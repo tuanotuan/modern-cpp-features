@@ -7,6 +7,12 @@ import {
 } from "@/lib/ai/budget";
 import { coachFollowUpRequestSchema } from "@/lib/ai/contracts";
 import {
+  AllAiQuotasExceededError,
+  GeminiFallbackProviderError,
+  runGeminiBudgetFallback,
+} from "@/lib/ai/fallback";
+import { answerCoachFollowUpWithGemini } from "@/lib/ai/gemini";
+import {
   answerCoachFollowUpWithOpenAI,
   CoachConfigurationError,
   safetyIdentifier,
@@ -117,27 +123,69 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await withAiBudget(
-      supabase,
-      COACH_RESERVATION_USD_MICROS.terra,
-      () =>
-        answerCoachFollowUpWithOpenAI({
+    let provider: "openai" | "gemini" = "openai";
+    let dailyBudget = null;
+    let result;
+    try {
+      const openAiResult = await withAiBudget(
+        supabase,
+        COACH_RESERVATION_USD_MICROS.terra,
+        () =>
+          answerCoachFollowUpWithOpenAI({
+            question,
+            lesson,
+            candidateAnswer: parsed.data.candidateAnswer,
+            feedback: parsed.data.feedback,
+            messages: parsed.data.messages,
+            safetyIdentifier: safetyIdentifier(
+              authResult?.data.user?.id || clientKey,
+            ),
+          }),
+      );
+      result = openAiResult.result;
+      dailyBudget = openAiResult.dailyBudget;
+    } catch (error) {
+      result = await runGeminiBudgetFallback(error, supabase, () =>
+        answerCoachFollowUpWithGemini({
           question,
           lesson,
           candidateAnswer: parsed.data.candidateAnswer,
           feedback: parsed.data.feedback,
           messages: parsed.data.messages,
-          safetyIdentifier: safetyIdentifier(
-            authResult?.data.user?.id || clientKey,
-          ),
         }),
-    );
+      );
+      provider = "gemini";
+    }
+    const modelLabel =
+      provider === "gemini" ? `Gemini fallback · ${result.model}` : result.model;
     return Response.json({
-      reply: result.result.data,
-      model: result.result.model,
-      aiDailyBudget: result.dailyBudget,
+      reply: result.data,
+      model: modelLabel,
+      provider,
+      aiDailyBudget: dailyBudget,
     });
   } catch (error) {
+    if (error instanceof AllAiQuotasExceededError) {
+      return Response.json(
+        {
+          error: "OpenAI đã hết quota và Gemini Free cũng đang bận hoặc hết quota. Thử lại sau nhé.",
+          code: "all_ai_quotas_exceeded",
+        },
+        { status: 429 },
+      );
+    }
+    if (error instanceof GeminiFallbackProviderError) {
+      console.error("Gemini fallback follow-up failed", {
+        name: error.cause instanceof Error ? error.cause.name : "UnknownError",
+      });
+      return Response.json(
+        {
+          error: "Gemini fallback chưa giải thích thêm được. Thử lại sau nhé.",
+          code: "fallback_provider_error",
+        },
+        { status: 502 },
+      );
+    }
     if (error instanceof CoachConfigurationError) {
       return Response.json(
         { error: "AI coach chưa được cấu hình key.", code: "not_configured" },

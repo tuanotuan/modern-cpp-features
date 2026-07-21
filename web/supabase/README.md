@@ -34,3 +34,7 @@ official OpenAI Costs API. Daily quota uses the Vietnam calendar day and the
 larger of Billing-reported cost or the realtime local estimate. Automated draft
 generation is included when it uses the same `OPENAI_PROJECT_ID`. Keep the OpenAI
 project budget at the same value as `OPENAI_MONTHLY_BUDGET_USD`.
+
+Gemini fallback requests are counted separately in `gemini_usage_daily`; they do
+not reduce the OpenAI dollar budget. `ai_provider_settings` stores the owner's
+Admin toggle for that fallback. Both tables remain private under RLS.

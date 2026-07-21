@@ -10,6 +10,7 @@ const followUpChatMessageSchema = z.object({
   content: z.string().max(2000),
   sourceSectionIds: z.array(z.string().max(120)).max(4).optional(),
   checkQuestion: z.string().max(400).optional(),
+  model: z.string().max(160).optional(),
 });
 
 const questionStudySessionSchema = z.object({
@@ -27,6 +28,7 @@ const questionStudySessionSchema = z.object({
   deepDiveOpen: z.boolean().optional(),
   deepDiveAnswer: z.string().max(6000).optional(),
   deepDiveFeedback: coachFollowUpResponseSchema.optional(),
+  deepDiveModel: z.string().max(160).optional(),
 });
 
 const studySessionSchema = z.object({

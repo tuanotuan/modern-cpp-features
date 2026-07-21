@@ -7,6 +7,12 @@ import {
 } from "@/lib/ai/budget";
 import { coachRequestSchema } from "@/lib/ai/contracts";
 import {
+  AllAiQuotasExceededError,
+  GeminiFallbackProviderError,
+  runGeminiBudgetFallback,
+} from "@/lib/ai/fallback";
+import { evaluateWithGemini } from "@/lib/ai/gemini";
+import {
   CoachConfigurationError,
   evaluateWithOpenAI,
   safetyIdentifier,
@@ -116,20 +122,38 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await withAiBudget(
-      supabase,
-      COACH_RESERVATION_USD_MICROS.luna,
-      () =>
-        evaluateWithOpenAI({
+    let provider: "openai" | "gemini" = "openai";
+    let dailyBudget = null;
+    let result;
+    try {
+      const openAiResult = await withAiBudget(
+        supabase,
+        COACH_RESERVATION_USD_MICROS.luna,
+        () =>
+          evaluateWithOpenAI({
+            question,
+            lesson,
+            candidateAnswer: parsed.data.answer,
+            safetyIdentifier: safetyIdentifier(
+              authResult?.data.user?.id || clientKey,
+            ),
+          }),
+      );
+      result = openAiResult.result;
+      dailyBudget = openAiResult.dailyBudget;
+    } catch (error) {
+      result = await runGeminiBudgetFallback(error, supabase, () =>
+        evaluateWithGemini({
           question,
           lesson,
           candidateAnswer: parsed.data.answer,
-          safetyIdentifier: safetyIdentifier(
-            authResult?.data.user?.id || clientKey,
-          ),
         }),
-    );
-    const { data: feedback, model } = result.result;
+      );
+      provider = "gemini";
+    }
+    const { data: feedback, model } = result;
+    const modelLabel =
+      provider === "gemini" ? `Gemini fallback · ${model}` : model;
 
     if (supabase && authResult?.data.user) {
       const { error: saveError } = await supabase.from("coach_attempts").insert({
@@ -142,15 +166,41 @@ export async function POST(request: Request) {
         verdict: feedback.verdict,
         suggested_rating: feedback.suggestedRating,
         feedback,
-        model,
+        model: modelLabel,
       });
       if (saveError) {
         console.error("AI coach history save failed", { code: saveError.code });
       }
     }
 
-    return Response.json({ feedback, model, aiDailyBudget: result.dailyBudget });
+    return Response.json({
+      feedback,
+      model: modelLabel,
+      provider,
+      aiDailyBudget: dailyBudget,
+    });
   } catch (error) {
+    if (error instanceof AllAiQuotasExceededError) {
+      return Response.json(
+        {
+          error: "OpenAI đã hết quota và Gemini Free cũng đang bận hoặc hết quota. Thử lại sau nhé.",
+          code: "all_ai_quotas_exceeded",
+        },
+        { status: 429 },
+      );
+    }
+    if (error instanceof GeminiFallbackProviderError) {
+      console.error("Gemini fallback coach request failed", {
+        name: error.cause instanceof Error ? error.cause.name : "UnknownError",
+      });
+      return Response.json(
+        {
+          error: "Gemini fallback chưa trả lời được. Thử lại sau nhé.",
+          code: "fallback_provider_error",
+        },
+        { status: 502 },
+      );
+    }
     if (error instanceof CoachConfigurationError) {
       return Response.json(
         { error: "AI coach chưa được cấu hình key.", code: "not_configured" },

@@ -37,6 +37,8 @@ export default async function AdminPage() {
     <AdminDashboard
       account={cloud.account}
       aiUsage={cloud.aiUsage}
+      geminiUsage={cloud.geminiUsage}
+      initialGeminiFallbackEnabled={cloud.geminiFallbackEnabled}
       initialSnapshot={snapshot}
     />
   );

@@ -30,6 +30,8 @@ export type CloudContext = {
   progress: PracticeProgress;
   approvals: QuestionApproval[];
   aiUsage: AiUsageSummary | null;
+  geminiUsage: GeminiUsageSummary | null;
+  geminiFallbackEnabled: boolean;
   aiDailyBudget: AiDailyBudgetSnapshot | null;
   error: boolean;
 };
@@ -42,6 +44,15 @@ export type AiUsageSummary = {
   lastModel: string | null;
 };
 
+export type GeminiUsageSummary = {
+  requestCount: number;
+  inputTokens: number;
+  outputTokens: number;
+  thoughtTokens: number;
+  totalTokens: number;
+  lastModel: string | null;
+};
+
 export async function loadCloudContext(): Promise<CloudContext> {
   if (!isSupabaseConfigured()) {
     return {
@@ -50,6 +61,8 @@ export async function loadCloudContext(): Promise<CloudContext> {
       progress: EMPTY_PROGRESS,
       approvals: [],
       aiUsage: null,
+      geminiUsage: null,
+      geminiFallbackEnabled: false,
       aiDailyBudget: null,
       error: false,
     };
@@ -64,13 +77,15 @@ export async function loadCloudContext(): Promise<CloudContext> {
       progress: EMPTY_PROGRESS,
       approvals: [],
       aiUsage: null,
+      geminiUsage: null,
+      geminiFallbackEnabled: false,
       aiDailyBudget: null,
       error: false,
     };
   }
 
   const usageDate = vietnamUsageDate();
-  const [reviewsResult, approvalsResult, monthlyUsageResult, dailyUsageResult] =
+  const [reviewsResult, approvalsResult, monthlyUsageResult, dailyUsageResult, geminiUsageResult, providerSettingsResult] =
     await Promise.all([
       supabase
         .from("practice_reviews")
@@ -90,11 +105,23 @@ export async function loadCloudContext(): Promise<CloudContext> {
         .select("actual_usd_micros, provider_usd_micros, provider_synced_at")
         .eq("usage_date", usageDate)
         .maybeSingle(),
+      supabase
+        .from("gemini_usage_daily")
+        .select("request_count, input_tokens, output_tokens, thought_tokens, total_tokens, last_model")
+        .eq("usage_date", usageDate)
+        .maybeSingle(),
+      supabase
+        .from("ai_provider_settings")
+        .select("gemini_fallback_enabled")
+        .maybeSingle(),
     ]);
   const { data: rows, error } = reviewsResult;
   const { data: approvalRows, error: approvalError } = approvalsResult;
   const { data: usageRow, error: usageError } = monthlyUsageResult;
   const { data: dailyUsageRow, error: dailyUsageError } = dailyUsageResult;
+  const { data: geminiUsageRow, error: geminiUsageError } = geminiUsageResult;
+  const { data: providerSettingsRow, error: providerSettingsError } =
+    providerSettingsResult;
   const dailyBillingUsdMicros = dailyUsageRow?.provider_synced_at
     ? Number(dailyUsageRow.provider_usd_micros ?? 0)
     : null;
@@ -125,6 +152,23 @@ export async function loadCloudContext(): Promise<CloudContext> {
             typeof usageRow.last_model === "string" ? usageRow.last_model : null,
         }
       : null,
+    geminiUsage: geminiUsageRow
+      ? {
+          requestCount: Number(geminiUsageRow.request_count),
+          inputTokens: Number(geminiUsageRow.input_tokens),
+          outputTokens: Number(geminiUsageRow.output_tokens),
+          thoughtTokens: Number(geminiUsageRow.thought_tokens),
+          totalTokens: Number(geminiUsageRow.total_tokens),
+          lastModel:
+            typeof geminiUsageRow.last_model === "string"
+              ? geminiUsageRow.last_model
+              : null,
+        }
+      : null,
+    geminiFallbackEnabled:
+      Boolean(process.env.GEMINI_API_KEY) &&
+      process.env.GEMINI_FALLBACK_ENABLED?.toLowerCase() !== "false" &&
+      providerSettingsRow?.gemini_fallback_enabled !== false,
     aiDailyBudget: {
       actualUsdMicros: dailyActualUsdMicros,
       billingUsdMicros: dailyBillingUsdMicros,
@@ -136,7 +180,14 @@ export async function loadCloudContext(): Promise<CloudContext> {
       remainingPercent: dailyBudgetRemainingPercent(dailyActualUsdMicros),
       usageDate,
     },
-    error: Boolean(error || approvalError || usageError || dailyUsageError),
+    error: Boolean(
+      error ||
+        approvalError ||
+        usageError ||
+        dailyUsageError ||
+        geminiUsageError ||
+        providerSettingsError,
+    ),
   };
 }
 

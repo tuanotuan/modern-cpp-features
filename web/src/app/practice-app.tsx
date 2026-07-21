@@ -46,6 +46,7 @@ type FollowUpChatMessage = {
   content: string;
   sourceSectionIds?: string[];
   checkQuestion?: string;
+  model?: string;
 };
 
 const ratingOptions: Array<{
@@ -153,6 +154,7 @@ export function PracticeApp({
   const [deepDiveFeedback, setDeepDiveFeedback] = useState<
     Record<string, CoachFollowUpResponse>
   >({});
+  const [deepDiveModels, setDeepDiveModels] = useState<Record<string, string>>({});
   const [deepDiveLoading, setDeepDiveLoading] = useState<string | null>(null);
   const [deepDiveErrors, setDeepDiveErrors] = useState<Record<string, string>>({});
   const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
@@ -197,6 +199,7 @@ export function PracticeApp({
     const restoredChats: Record<string, FollowUpChatMessage[]> = {};
     const restoredDeepDiveAnswers: Record<string, string> = {};
     const restoredDeepDiveFeedback: Record<string, CoachFollowUpResponse> = {};
+    const restoredDeepDiveModels: Record<string, string> = {};
     const restoredDeepDiveOpen = new Set<string>();
     const restoredRevealed = new Set<string>();
     const restoredHints = new Set<string>();
@@ -219,6 +222,7 @@ export function PracticeApp({
       if (saved.deepDiveFeedback) {
         restoredDeepDiveFeedback[questionId] = saved.deepDiveFeedback;
       }
+      if (saved.deepDiveModel) restoredDeepDiveModels[questionId] = saved.deepDiveModel;
     });
 
     setAnswers(restoredAnswers);
@@ -233,6 +237,7 @@ export function PracticeApp({
     setDeepDiveOpen(restoredDeepDiveOpen);
     setDeepDiveAnswers(restoredDeepDiveAnswers);
     setDeepDiveFeedback(restoredDeepDiveFeedback);
+    setDeepDiveModels(restoredDeepDiveModels);
     setSelectedQuestionId(session.activeQuestionId ?? null);
     setSessionHydrated(true);
   }, [sessionQuestions]);
@@ -254,6 +259,7 @@ export function PracticeApp({
       const followUpChat = followUpChats[question.id];
       const deepDiveAnswer = deepDiveAnswers[question.id];
       const savedDeepDiveFeedback = deepDiveFeedback[question.id];
+      const deepDiveModel = deepDiveModels[question.id];
       const isDeepDiveOpen = deepDiveOpen.has(question.id);
       const isRevealed = revealed.has(question.id);
       const hasHint = hints.has(question.id);
@@ -289,6 +295,7 @@ export function PracticeApp({
         ...(savedDeepDiveFeedback
           ? { deepDiveFeedback: savedDeepDiveFeedback }
           : {}),
+        ...(deepDiveModel ? { deepDiveModel } : {}),
       };
     });
 
@@ -310,6 +317,7 @@ export function PracticeApp({
     coachModels,
     deepDiveAnswers,
     deepDiveFeedback,
+    deepDiveModels,
     deepDiveOpen,
     followUpChats,
     followUpInputs,
@@ -533,6 +541,7 @@ export function PracticeApp({
       setDeepDiveOpen((open) => withoutSetValue(open, current.id));
       setDeepDiveAnswers((answers) => omitRecordKey(answers, current.id));
       setDeepDiveFeedback((feedback) => omitRecordKey(feedback, current.id));
+      setDeepDiveModels((models) => omitRecordKey(models, current.id));
     } catch (error) {
       setCoachErrors((errors) => ({
         ...errors,
@@ -574,6 +583,7 @@ export function PracticeApp({
       });
       const payload = (await response.json()) as {
         reply?: CoachFollowUpResponse;
+        model?: string;
         aiDailyBudget?: AiDailyBudgetSnapshot | null;
         error?: string;
       };
@@ -591,6 +601,7 @@ export function PracticeApp({
             content: payload.reply!.answer,
             sourceSectionIds: payload.reply!.sourceSectionIds,
             checkQuestion: payload.reply!.checkQuestion,
+            model: payload.model,
           },
         ],
       }));
@@ -633,6 +644,7 @@ export function PracticeApp({
       });
       const payload = (await response.json()) as {
         reply?: CoachFollowUpResponse;
+        model?: string;
         aiDailyBudget?: AiDailyBudgetSnapshot | null;
         error?: string;
       };
@@ -642,6 +654,10 @@ export function PracticeApp({
       setDeepDiveFeedback((feedback) => ({
         ...feedback,
         [current.id]: payload.reply!,
+      }));
+      setDeepDiveModels((models) => ({
+        ...models,
+        [current.id]: payload.model || "OpenAI",
       }));
       if (payload.aiDailyBudget) setAiDailyBudget(payload.aiDailyBudget);
     } catch (error) {
@@ -996,6 +1012,7 @@ export function PracticeApp({
                           prompt={coachFeedback[current.id].followUpQuestion}
                           answer={deepDiveAnswers[current.id] ?? ""}
                           feedback={deepDiveFeedback[current.id]}
+                          model={deepDiveModels[current.id]}
                           error={deepDiveErrors[current.id]}
                           loading={deepDiveLoading === current.id}
                           feedbackSaved={isSaved(
@@ -1219,7 +1236,7 @@ export function PracticeApp({
                   Chấm theo đúng rubric và note nguồn, sau đó gợi ý một câu follow-up.
                 </p>
                 <span className="mt-4 inline-block rounded-full bg-[#d7ff91] px-3 py-1 font-mono text-[11px] font-semibold text-[#356b58]">
-                  OpenAI · Luna chấm bài / Terra đào sâu
+                  OpenAI · Luna chấm bài / Terra đào sâu · Gemini khi hết quota
                 </span>
               </div>
             </aside>
@@ -1741,6 +1758,7 @@ function DeepDivePracticePanel({
   prompt,
   answer,
   feedback,
+  model,
   error,
   loading,
   feedbackSaved,
@@ -1752,6 +1770,7 @@ function DeepDivePracticePanel({
   prompt: string;
   answer: string;
   feedback?: CoachFollowUpResponse;
+  model?: string;
   error?: string;
   loading: boolean;
   feedbackSaved: boolean;
@@ -1821,7 +1840,14 @@ function DeepDivePracticePanel({
       {feedback ? (
         <div className="mt-5 rounded-2xl border border-[#356b58]/15 bg-white/75 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm font-bold text-[#245748]">Nhận xét của interviewer AI</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-bold text-[#245748]">Nhận xét của interviewer AI</p>
+              {model ? (
+                <span className="rounded-full bg-[#e8efe2] px-2 py-0.5 font-mono text-[10px] text-[#356b58]">
+                  {model}
+                </span>
+              ) : null}
+            </div>
             <button
               type="button"
               onClick={onToggleSaveFeedback}
@@ -1909,6 +1935,11 @@ function CoachFollowUpPanel({
                   text={message.content}
                   inverted={message.role === "user"}
                 />
+                {message.role === "assistant" && message.model ? (
+                  <span className="mt-3 inline-block rounded-full bg-[#e8efe2] px-2 py-0.5 font-mono text-[10px] text-[#356b58]">
+                    {message.model}
+                  </span>
+                ) : null}
                 {citedSections.length ? (
                   <div className="mt-3 flex flex-wrap gap-2 border-t border-[#173f35]/10 pt-3">
                     {citedSections.map((section) => (
