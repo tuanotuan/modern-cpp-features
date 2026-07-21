@@ -46,6 +46,10 @@ server-only variables. The app uses OpenAI's official Costs API as the source of
 truth and keeps response-token accounting as a realtime fallback while provider
 cost data is being settled.
 
+Provider reconciliation snapshots the realtime counter at each successful Costs
+API sync, then adds only newer realtime usage to that Billing total. This avoids
+both double-counting and a frozen usage pill while provider data is delayed.
+
 To enable the free fallback, keep `GEMINI_API_KEY` server-side and optionally set
 `GEMINI_FALLBACK_MODEL`. The fallback is attempted only after the app rejects an
 OpenAI request for reaching its daily or monthly budget. It can be toggled in

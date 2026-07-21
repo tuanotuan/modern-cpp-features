@@ -30,10 +30,14 @@ question back to the Review Queue.
 
 The AI budget migrations reserve a conservative amount before each web AI call,
 record the actual response-token cost afterward, and reconcile it against the
-official OpenAI Costs API. Daily quota uses the Vietnam calendar day and the
-larger of Billing-reported cost or the realtime local estimate. Automated draft
-generation is included when it uses the same `OPENAI_PROJECT_ID`. Keep the OpenAI
-project budget at the same value as `OPENAI_MONTHLY_BUDGET_USD`.
+official OpenAI Costs API. Daily quota uses the Vietnam calendar day. Automated
+draft generation is included when it uses the same `OPENAI_PROJECT_ID`. Keep the
+OpenAI project budget at the same value as `OPENAI_MONTHLY_BUDGET_USD`.
+
+The reconciliation baseline records the realtime counter at each Billing sync.
+Effective spend is the provider total plus only the realtime delta created after
+that baseline, so new requests are visible immediately without counting settled
+usage twice.
 
 Gemini fallback requests are counted separately in `gemini_usage_daily`; they do
 not reduce the OpenAI dollar budget. `ai_provider_settings` stores the owner's
