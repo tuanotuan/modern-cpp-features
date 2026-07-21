@@ -66,7 +66,8 @@ export function dailyBudgetUsdMicros() {
 
 export function dailyBudgetRemainingPercent(actualUsdMicros: number) {
   const limit = dailyBudgetUsdMicros();
-  return Math.max(0, Math.min(100, Math.floor(((limit - actualUsdMicros) / limit) * 100)));
+  const percentage = ((limit - actualUsdMicros) / limit) * 100;
+  return Math.max(0, Math.min(100, Math.round(percentage * 10) / 10));
 }
 
 export function vietnamUsageDate(now = new Date()) {

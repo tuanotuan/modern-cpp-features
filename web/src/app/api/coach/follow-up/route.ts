@@ -163,6 +163,7 @@ export async function POST(request: Request) {
       model: modelLabel,
       provider,
       aiDailyBudget: dailyBudget,
+      aiUsageRecorded: provider === "gemini" || dailyBudget !== null,
     });
   } catch (error) {
     if (error instanceof AllAiQuotasExceededError) {

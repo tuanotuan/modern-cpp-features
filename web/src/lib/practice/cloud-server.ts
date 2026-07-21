@@ -102,7 +102,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
         .maybeSingle(),
       supabase
         .from("ai_usage_daily")
-        .select("actual_usd_micros, provider_usd_micros, provider_synced_at")
+        .select("actual_usd_micros, provider_usd_micros, provider_synced_at, request_count, input_tokens, output_tokens, last_model")
         .eq("usage_date", usageDate)
         .maybeSingle(),
       supabase
@@ -175,6 +175,13 @@ export async function loadCloudContext(): Promise<CloudContext> {
       billingSyncedAt:
         typeof dailyUsageRow?.provider_synced_at === "string"
           ? dailyUsageRow.provider_synced_at
+          : null,
+      requestCount: Number(dailyUsageRow?.request_count ?? 0),
+      inputTokens: Number(dailyUsageRow?.input_tokens ?? 0),
+      outputTokens: Number(dailyUsageRow?.output_tokens ?? 0),
+      lastModel:
+        typeof dailyUsageRow?.last_model === "string"
+          ? dailyUsageRow.last_model
           : null,
       limitUsdMicros: dailyBudgetUsdMicros(),
       remainingPercent: dailyBudgetRemainingPercent(dailyActualUsdMicros),
