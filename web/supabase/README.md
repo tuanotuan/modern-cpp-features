@@ -58,3 +58,8 @@ Phase C adds owner-only scheduling operations through
 `manage_question_schedule(...)`: suspend, unsuspend, reset, and reschedule.
 Reset removes that question's review history and records a cutoff so stale
 browser storage on another device cannot silently restore the deleted progress.
+
+Phase D adds a server-rendered learning analytics page from the existing review
+history and question-state projection. Retention, 28-day activity, 14-day due
+forecast, deck distribution, and weak-topic ranking require no new table, RPC,
+or AI request, so this phase has no additional Supabase migration.

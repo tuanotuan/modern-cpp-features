@@ -288,6 +288,9 @@ export function AdminDashboard({
             </div>
           </div>
           <nav className="flex items-center gap-2">
+            <Link className="rounded-xl px-4 py-2 text-sm font-bold hover:bg-white/60" href="/stats">
+              Thống kê
+            </Link>
             <Link className="rounded-xl px-4 py-2 text-sm font-bold hover:bg-white/60" href="/">
               Luyện tập
             </Link>
