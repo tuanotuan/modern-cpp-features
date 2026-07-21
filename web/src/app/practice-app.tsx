@@ -171,6 +171,7 @@ export function PracticeApp({
   >("idle");
   const initialSyncStarted = useRef(false);
   const sessionHydrationStarted = useRef(false);
+  const scrollToAnswerAfterReveal = useRef(false);
   const [sessionHydrated, setSessionHydrated] = useState(false);
   const sessionQuestions = useMemo(() => {
     const byId = new Map<string, PracticeQuestion>();
@@ -438,6 +439,20 @@ export function PracticeApp({
     clearStudySessionState();
     setSelectedQuestionId(next.id);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function toggleReferenceAnswer() {
+    if (!current) return;
+    scrollToAnswerAfterReveal.current = !revealed.has(current.id);
+    toggleSet(setRevealed, current.id);
+  }
+
+  function handleAnswerSectionRef(node: HTMLDivElement | null) {
+    if (!node || !scrollToAnswerAfterReveal.current) return;
+    scrollToAnswerAfterReveal.current = false;
+    window.requestAnimationFrame(() =>
+      node.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
   }
 
   function clearStudySessionState() {
@@ -919,7 +934,7 @@ export function PracticeApp({
                       </button>
                       <button
                         type="button"
-                        onClick={() => toggleSet(setRevealed, current.id)}
+                        onClick={toggleReferenceAnswer}
                         className="rounded-xl bg-[#173f35] px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#245748] focus:ring-4 focus:ring-[#d7ff91] focus:outline-none"
                       >
                         {revealed.has(current.id) ? "Ẩn đáp án" : "Mở đáp án"}
@@ -1039,7 +1054,10 @@ export function PracticeApp({
                 </div>
 
                 {revealed.has(current.id) ? (
-                  <div className="border-t border-[#173f35]/12 bg-[#edf3e9] p-6 sm:p-9 lg:p-11">
+                  <div
+                    ref={handleAnswerSectionRef}
+                    className="scroll-mt-6 border-t border-[#173f35]/12 bg-[#edf3e9] p-6 sm:p-9 lg:p-11"
+                  >
                     <p className="font-mono text-xs font-bold tracking-[0.16em] text-[#356b58] uppercase">
                       Đáp án tham khảo
                     </p>
