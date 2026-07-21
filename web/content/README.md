@@ -34,6 +34,25 @@ are emitted as `needs_review` in the app manifest without rewriting past
 attempts. A question enters daily practice when it is committed as `verified` or
 the signed-in owner approves its exact version and source hash in the web queue.
 
+### Trading interview convention
+
+The target role is C++ software engineering at trading, quantitative-finance,
+and low-latency companies. Every AI-generated batch of two or more questions
+must contain at least one realistic `scenario` question when grounded by the
+lesson. A scenario should test a concrete production constraint or failure mode,
+for example market-data throughput, order-book updates, order routing, pre-trade
+risk checks, position state, exchange connectivity, latency, allocation, cache
+locality, concurrency, contention, backpressure, deterministic behavior,
+ownership, or recovery.
+
+Trading vocabulary must not be cosmetic: renaming a toy variable to `Order` or
+`Price` is not a realistic scenario. The context must materially affect the C++
+design choice, correctness argument, performance trade-off, or failure analysis.
+At the same time, questions must remain grounded in the lesson, include enough
+context to be answered in an interview, and must not invent exchange rules,
+latency numbers, market behavior, risk formulas, or other finance knowledge not
+present in the source note.
+
 ## Updating knowledge
 
 Keep notes in one of the existing source roots: `cpp98_foundation`, `cpp11`, or
