@@ -23,6 +23,7 @@ Phase 0–5 provides:
 - Luna for routine grading and Terra for deeper follow-up explanations;
 - an atomic daily/monthly AI budget guard reset at midnight Vietnam time;
 - official OpenAI Costs API reconciliation with realtime token accounting.
+- Gemini Free fallback for grading and follow-ups after the app OpenAI budget is exhausted;
 - a private web Review Queue with exact-version/hash bulk approval;
 - GitHub Actions reconciliation for note additions, edits, renames, and deletes.
 
@@ -44,6 +45,11 @@ For Billing-accurate quota reconciliation, add an organization Admin API key as
 server-only variables. The app uses OpenAI's official Costs API as the source of
 truth and keeps response-token accounting as a realtime fallback while provider
 cost data is being settled.
+
+To enable the free fallback, keep `GEMINI_API_KEY` server-side and optionally set
+`GEMINI_FALLBACK_MODEL`. The fallback is attempted only after the app rejects an
+OpenAI request for reaching its daily or monthly budget. It can be toggled in
+Admin; `GEMINI_FALLBACK_ENABLED=false` is the deployment-level kill switch.
 
 Cloud sync is optional. Add the Supabase project URL and publishable key, then
 follow [`supabase/README.md`](supabase/README.md) to apply the RLS migration and

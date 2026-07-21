@@ -10,6 +10,7 @@ import type {
 } from "@/lib/admin/dashboard";
 import type {
   AiUsageSummary,
+  GeminiUsageSummary,
   PracticeAccount,
 } from "@/lib/practice/cloud-server";
 
@@ -25,10 +26,14 @@ const standardLabels = { cpp98: "C++98", cpp11: "C++11", cpp20: "C++20" };
 export function AdminDashboard({
   account,
   aiUsage,
+  geminiUsage,
+  initialGeminiFallbackEnabled,
   initialSnapshot,
 }: {
   account: PracticeAccount;
   aiUsage: AiUsageSummary | null;
+  geminiUsage: GeminiUsageSummary | null;
+  initialGeminiFallbackEnabled: boolean;
   initialSnapshot: AdminDashboardSnapshot;
 }) {
   const [questions, setQuestions] = useState(initialSnapshot.questions);
@@ -38,6 +43,10 @@ export function AdminDashboard({
   const [type, setType] = useState("all");
   const [savingIds, setSavingIds] = useState<Set<string>>(() => new Set());
   const [notice, setNotice] = useState<string | null>(null);
+  const [geminiFallbackEnabled, setGeminiFallbackEnabled] = useState(
+    initialGeminiFallbackEnabled,
+  );
+  const [geminiSettingSaving, setGeminiSettingSaving] = useState(false);
 
   const filteredQuestions = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -116,6 +125,40 @@ export function AdminDashboard({
     }
   }
 
+  async function toggleGeminiFallback() {
+    const nextValue = !geminiFallbackEnabled;
+    setGeminiSettingSaving(true);
+    setNotice(null);
+    try {
+      const response = await fetch("/api/admin/ai-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ geminiFallbackEnabled: nextValue }),
+      });
+      const payload = (await response.json()) as {
+        geminiFallbackEnabled?: boolean;
+        error?: string;
+      };
+      if (!response.ok || payload.geminiFallbackEnabled === undefined) {
+        throw new Error(payload.error || "Không lưu được cấu hình Gemini.");
+      }
+      setGeminiFallbackEnabled(payload.geminiFallbackEnabled);
+      setNotice(
+        payload.geminiFallbackEnabled
+          ? "Đã bật Gemini Free fallback."
+          : "Đã tắt Gemini Free fallback.",
+      );
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "Không lưu được cấu hình Gemini fallback.",
+      );
+    } finally {
+      setGeminiSettingSaving(false);
+    }
+  }
+
   return (
     <main className="min-h-screen px-4 py-5 sm:px-7 lg:px-10">
       <div className="mx-auto max-w-[1500px]">
@@ -165,7 +208,7 @@ export function AdminDashboard({
           ) : null}
         </section>
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
           <MetricCard label="Nguồn tri thức" value={initialSnapshot.metrics.lessons} detail={`${uncovered.length} bài chưa có câu hiện tại`} tone="dark" />
           <MetricCard label="Ngân hàng câu hỏi" value={questions.filter((item) => item.status !== "archived").length} detail={`${activeCount} câu đang dùng`} />
           <MetricCard label="Review queue" value={reviewQueue.length} detail={`${staleCount} câu cần rà lại nguồn`} tone={reviewQueue.length ? "warning" : "default"} />
@@ -176,6 +219,38 @@ export function AdminDashboard({
             detail={`${aiUsage?.requestCount ?? 0} lượt web · OpenAI Billing + realtime`}
             tone={(aiUsage?.actualUsdMicros ?? 0) >= 4_000_000 ? "warning" : "default"}
           />
+          <MetricCard
+            label="Gemini fallback hôm nay"
+            value={geminiUsage?.requestCount ?? 0}
+            detail={`${geminiUsage?.totalTokens ?? 0} token · ${geminiUsage?.lastModel ?? "chưa dùng"}`}
+          />
+        </section>
+
+        <section className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#173f35]/15 bg-white/65 px-5 py-4">
+          <div>
+            <p className="text-sm font-bold">Gemini Free fallback</p>
+            <p className="mt-1 text-xs leading-5 text-[#64736c]">
+              Chỉ dùng khi quota ngày/tháng của OpenAI đã hết; không dùng cho lỗi OpenAI thông thường.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={geminiFallbackEnabled}
+            disabled={geminiSettingSaving}
+            onClick={() => void toggleGeminiFallback()}
+            className={`rounded-full px-4 py-2 text-xs font-bold transition disabled:cursor-wait disabled:opacity-60 ${
+              geminiFallbackEnabled
+                ? "bg-[#173f35] text-white"
+                : "border border-[#173f35]/20 bg-white text-[#52645c]"
+            }`}
+          >
+            {geminiSettingSaving
+              ? "Đang lưu…"
+              : geminiFallbackEnabled
+                ? "Đang bật"
+                : "Đang tắt"}
+          </button>
         </section>
 
         <details className="group mt-8 overflow-hidden rounded-[2rem] border border-[#ba4b2f]/20 bg-[#fff7e8]">
