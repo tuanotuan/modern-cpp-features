@@ -63,3 +63,7 @@ Phase D adds a server-rendered learning analytics page from the existing review
 history and question-state projection. Retention, 28-day activity, 14-day due
 forecast, deck distribution, and weak-topic ranking require no new table, RPC,
 or AI request, so this phase has no additional Supabase migration.
+
+The monotonic AI budget migration stores a conservative usage floor before each
+OpenAI Billing reconciliation. Billing data can lag realtime requests, but that
+lag can no longer make used cost decrease or remaining daily quota increase.

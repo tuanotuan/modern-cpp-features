@@ -82,4 +82,28 @@ describe("OpenAI usage accounting", () => {
       }),
     ).toBe(12_345);
   });
+
+  it("never decreases usage when provider billing is behind realtime", () => {
+    expect(
+      reconciledUsageUsdMicros({
+        realtimeUsdMicros: 115_000,
+        providerUsdMicros: 110_065,
+        realtimeBaselineUsdMicros: 110_065,
+        usageFloorUsdMicros: 115_448,
+        providerSynced: true,
+      }),
+    ).toBe(115_448);
+  });
+
+  it("still advances above the floor when a new request costs more", () => {
+    expect(
+      reconciledUsageUsdMicros({
+        realtimeUsdMicros: 120_000,
+        providerUsdMicros: 110_065,
+        realtimeBaselineUsdMicros: 110_065,
+        usageFloorUsdMicros: 115_448,
+        providerSynced: true,
+      }),
+    ).toBe(120_000);
+  });
 });
