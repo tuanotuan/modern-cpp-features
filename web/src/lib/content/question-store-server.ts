@@ -46,6 +46,7 @@ const lessonRowSchema = z.object({
     }),
   ),
   checklist_items: z.array(z.string()),
+  manifest_order: z.coerce.number().int().positive().nullable(),
 });
 
 const questionRowSchema = z.object({
@@ -69,6 +70,11 @@ const questionRowSchema = z.object({
   taxonomy: questionTaxonomySchema,
   source_hash: z.string(),
   status: z.enum(["draft", "verified", "needs_review", "archived"]),
+  manifest_order: z.coerce.number().int().positive().nullable(),
+});
+
+const storeStateSchema = z.object({
+  source_revision: z.string().regex(/^[a-f0-9]{64}$/),
 });
 
 export type LessonRow = z.infer<typeof lessonRowSchema>;
@@ -76,6 +82,7 @@ export type QuestionRow = z.infer<typeof questionRowSchema>;
 
 export type ContentParityReport = {
   ok: boolean;
+  readyForCutover: boolean;
   repo: { lessons: number; questions: number };
   db: { lessons: number; questions: number };
   missingLessonIds: string[];
@@ -101,11 +108,11 @@ export async function loadQuestionStoreManifest({
   overrides?: QuestionOverride[];
 } = {}): Promise<ContentManifest> {
   const mode = getQuestionStoreMode();
-  const repository = getRepoContentManifest(overrides);
-  if (mode === "repo") return repository;
+  const repository = getRepoContentManifest();
+  if (mode === "repo") return applyQuestionOverrides(repository, overrides);
 
   if (!isSupabaseConfigured() && !supabase) {
-    if (mode === "shadow") return repository;
+    if (mode === "shadow") return applyQuestionOverrides(repository, overrides);
     throw new ContentQuestionStoreError("Supabase is not configured for DB mode");
   }
 
@@ -115,15 +122,15 @@ export async function loadQuestionStoreManifest({
     if (mode === "shadow") {
       const parity = compareContentManifests(repository, database);
       if (!parity.ok) console.warn("Content question-bank shadow mismatch", parity);
-      return repository;
+      return applyQuestionOverrides(repository, overrides);
     }
-    return database;
+    return applyQuestionOverrides(database, overrides);
   } catch (error) {
     if (mode === "shadow") {
       console.warn("Content question-bank shadow read failed", {
         name: error instanceof Error ? error.name : "UnknownError",
       });
-      return repository;
+      return applyQuestionOverrides(repository, overrides);
     }
     throw error;
   }
@@ -132,7 +139,7 @@ export async function loadQuestionStoreManifest({
 export async function loadSupabaseContentManifest(
   supabase: SupabaseClient,
 ): Promise<ContentManifest> {
-  const [lessonRows, questionRows] = await Promise.all([
+  const [lessonRows, questionRows, stateResult] = await Promise.all([
     readAllPages<unknown>(supabase, "content_current_lessons", [
       "id",
       "lifecycle_status",
@@ -147,6 +154,7 @@ export async function loadSupabaseContentManifest(
       "code",
       "sections",
       "checklist_items",
+      "manifest_order",
     ].join(", ")),
     readAllPages<unknown>(supabase, "content_current_questions", [
       "id",
@@ -165,26 +173,45 @@ export async function loadSupabaseContentManifest(
       "taxonomy",
       "source_hash",
       "status",
+      "manifest_order",
     ].join(", ")),
+    supabase
+      .from("content_store_state")
+      .select("source_revision")
+      .eq("singleton", true)
+      .maybeSingle(),
   ]);
+
+  if (stateResult.error) {
+    throw new ContentQuestionStoreError(
+      `content_store_state: ${stateResult.error.code}`,
+    );
+  }
+  if (!stateResult.data) {
+    throw new ContentQuestionStoreError("content_store_state: missing snapshot");
+  }
+  const state = storeStateSchema.parse(stateResult.data);
 
   return rowsToContentManifest(
     z.array(lessonRowSchema).parse(lessonRows),
     z.array(questionRowSchema).parse(questionRows),
+    state.source_revision,
   );
 }
 
 export function rowsToContentManifest(
   lessonRows: LessonRow[],
   questionRows: QuestionRow[],
+  sourceRevision: string,
 ): ContentManifest {
-  const standardRank = { cpp98: 0, cpp11: 1, cpp20: 2 } as const;
   const activeLessons = lessonRows
-    .filter((row) => row.lifecycle_status === "active")
+    .filter(
+      (row): row is LessonRow & { manifest_order: number } =>
+        row.lifecycle_status === "active" && row.manifest_order !== null,
+    )
     .sort(
       (left, right) =>
-        standardRank[left.standard] - standardRank[right.standard] ||
-        left.lesson_order - right.lesson_order ||
+        left.manifest_order - right.manifest_order ||
         left.id.localeCompare(right.id),
     )
     .map((row) => ({
@@ -204,8 +231,15 @@ export function rowsToContentManifest(
     }));
   const activeLessonIds = new Set(activeLessons.map((lesson) => lesson.id));
   const questions = questionRows
-    .filter((row) => activeLessonIds.has(row.lesson_id))
-    .sort((left, right) => left.id.localeCompare(right.id))
+    .filter(
+      (row): row is QuestionRow & { manifest_order: number } =>
+        row.manifest_order !== null && activeLessonIds.has(row.lesson_id),
+    )
+    .sort(
+      (left, right) =>
+        left.manifest_order - right.manifest_order ||
+        left.id.localeCompare(right.id),
+    )
     .map((row) => ({
       id: row.id,
       lessonId: row.lesson_id,
@@ -227,9 +261,7 @@ export function rowsToContentManifest(
 
   return contentManifestSchema.parse({
     schemaVersion: 1,
-    sourceRevision: sha256(
-      ...activeLessons.map((lesson) => `${lesson.id}:${lesson.sourceHash}`),
-    ),
+    sourceRevision,
     lessons: activeLessons,
     questions,
   });
@@ -268,9 +300,12 @@ export function compareContentManifests(
     extraQuestionIds,
     mismatchedQuestionIds,
   ].every((items) => items.length === 0);
+  const sourceRevisionMatches =
+    repository.sourceRevision === database.sourceRevision;
 
   return {
     ok,
+    readyForCutover: ok && sourceRevisionMatches,
     repo: { lessons: repository.lessons.length, questions: repository.questions.length },
     db: { lessons: database.lessons.length, questions: database.questions.length },
     missingLessonIds,
@@ -279,7 +314,7 @@ export function compareContentManifests(
     missingQuestionIds,
     extraQuestionIds,
     mismatchedQuestionIds,
-    sourceRevisionMatches: repository.sourceRevision === database.sourceRevision,
+    sourceRevisionMatches,
   };
 }
 

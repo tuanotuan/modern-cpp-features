@@ -62,7 +62,10 @@ export function buildContentBackfillPayload({
     if (knowledgeMarkdown === undefined) {
       throw new Error(`Missing knowledge markdown for lesson ${lesson.id}`);
     }
-    return { ...lesson, knowledgeMarkdown };
+    return {
+      ...lesson,
+      knowledgeMarkdown: normalizeSourceText(knowledgeMarkdown),
+    };
   });
   const questions = parsedManifest.questions.map((question) => {
     const metadata = rawQuestionMetadataById.get(question.id);
@@ -145,4 +148,8 @@ function stableJson(value: unknown): string {
     .sort()
     .map((key) => `${JSON.stringify(key)}:${stableJson(record[key])}`)
     .join(",")}}`;
+}
+
+function normalizeSourceText(value: string): string {
+  return value.replace(/\r\n?/g, "\n").replace(/\n/g, "\r\n");
 }
