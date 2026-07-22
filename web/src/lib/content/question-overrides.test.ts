@@ -15,6 +15,8 @@ const manifest = {
     {
       id: "cpp11-move",
       sourcePath: "cpp11/move",
+      language: "cpp",
+      track: "cpp11",
       standard: "cpp11",
       order: 1,
       tags: ["move-semantics"],

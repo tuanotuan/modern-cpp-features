@@ -86,6 +86,7 @@ const standardLabels = {
   cpp98: "C++98",
   cpp11: "C++11",
   cpp20: "C++20",
+  python3: "Python 3",
 } as const;
 
 const learningStateLabels = {

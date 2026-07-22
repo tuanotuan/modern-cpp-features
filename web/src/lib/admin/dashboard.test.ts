@@ -13,6 +13,8 @@ const manifest: ContentManifest = {
     {
       id: "cpp11-example",
       sourcePath: "cpp11/example",
+      language: "cpp",
+      track: "cpp11",
       standard: "cpp11",
       order: 1,
       tags: ["example"],
@@ -30,6 +32,8 @@ const manifest: ContentManifest = {
     {
       id: "cpp20-empty",
       sourcePath: "cpp20/empty",
+      language: "cpp",
+      track: "cpp20",
       standard: "cpp20",
       order: 1,
       tags: ["empty"],

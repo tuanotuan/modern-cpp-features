@@ -14,9 +14,9 @@ import type {
 import { questionFileSchema } from "./schema";
 
 const SOURCE_ROOTS = {
-  cpp98_foundation: "cpp98",
-  cpp11: "cpp11",
-  cpp20: "cpp20",
+  cpp98_foundation: { language: "cpp", track: "cpp98", idPrefix: "cpp98" },
+  cpp11: { language: "cpp", track: "cpp11", idPrefix: "cpp11" },
+  cpp20: { language: "cpp", track: "cpp20", idPrefix: "cpp20" },
 } as const;
 
 export async function discoverKnowledgeDirectories(repoRoot: string) {
@@ -53,14 +53,14 @@ export function mergeDiscoveredLessons(
   );
   const nextOrder = new Map<string, number>();
 
-  for (const standard of Object.values(SOURCE_ROOTS)) {
+  for (const source of Object.values(SOURCE_ROOTS)) {
     const highest = Math.max(
       0,
       ...registry.lessons
-        .filter((lesson) => lesson.standard === standard)
+        .filter((lesson) => lesson.track === source.track)
         .map((lesson) => lesson.order),
     );
-    nextOrder.set(standard, highest + 1);
+    nextOrder.set(source.track, highest + 1);
   }
 
   const additions: LessonRegistryEntry[] = [];
@@ -69,8 +69,8 @@ export function mergeDiscoveredLessons(
     if (knownPaths.has(rawSourcePath)) continue;
 
     const [root, ...relativeParts] = rawSourcePath.split("/");
-    const standard = SOURCE_ROOTS[root as keyof typeof SOURCE_ROOTS];
-    if (!standard || relativeParts.length === 0) continue;
+    const source = SOURCE_ROOTS[root as keyof typeof SOURCE_ROOTS];
+    if (!source || relativeParts.length === 0) continue;
 
     const topic = relativeParts
       .join("-")
@@ -78,7 +78,7 @@ export function mergeDiscoveredLessons(
     const slug = sectionIdFromHeading(topic);
     if (!slug) throw new Error(`Cannot derive lesson ID from ${rawSourcePath}`);
 
-    const id = `${standard}-${slug}`;
+    const id = `${source.idPrefix}-${slug}`;
     if (knownIds.has(id)) {
       const movedLesson = missing.get(id);
       if (movedLesson) {
@@ -95,12 +95,14 @@ export function mergeDiscoveredLessons(
     const entry: LessonRegistryEntry = {
       id,
       sourcePath: rawSourcePath,
-      standard,
-      order: nextOrder.get(standard) ?? 1,
+      language: source.language,
+      track: source.track,
+      standard: source.track,
+      order: nextOrder.get(source.track) ?? 1,
       tags: slug.split("-").filter(Boolean),
       prerequisites: [],
     };
-    nextOrder.set(standard, entry.order + 1);
+    nextOrder.set(source.track, entry.order + 1);
     additions.push(entry);
     knownPaths.add(rawSourcePath);
     knownIds.add(id);
@@ -166,7 +168,17 @@ export async function writeLessonRegistry(
   webRoot: string,
   registry: LessonRegistry,
 ) {
-  const output = stringifyYaml(registry, { lineWidth: 100 });
+  const output = stringifyYaml(
+    {
+      ...registry,
+      lessons: registry.lessons.map((lesson) =>
+        Object.fromEntries(
+          Object.entries(lesson).filter(([key]) => key !== "standard"),
+        )
+      ),
+    },
+    { lineWidth: 100 },
+  );
   await writeFile(path.join(webRoot, "content", "lesson-registry.yaml"), output);
 }
 

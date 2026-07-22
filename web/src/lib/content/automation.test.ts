@@ -9,6 +9,8 @@ const registry: LessonRegistry = {
     {
       id: "cpp11-auto",
       sourcePath: "cpp11/1_auto",
+      language: "cpp",
+      track: "cpp11",
       standard: "cpp11",
       order: 1,
       tags: ["auto"],
@@ -29,6 +31,8 @@ describe("content automation", () => {
       {
         id: "cpp11-nullptr",
         sourcePath: "cpp11/2_nullptr",
+        language: "cpp",
+        track: "cpp11",
         standard: "cpp11",
         order: 2,
         tags: ["nullptr"],
@@ -37,6 +41,8 @@ describe("content automation", () => {
       {
         id: "cpp20-designated-initializer",
         sourcePath: "cpp20/01_designated initializer",
+        language: "cpp",
+        track: "cpp20",
         standard: "cpp20",
         order: 1,
         tags: ["designated", "initializer"],
