@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "sourceRevision": "799e170881ff3f408ab5bc0f956e8237dc58ce24744056f442932b1d0c8a0c95",
+  "sourceRevision": "ef30ec2a699058e1adb6f1cabea42d3ac274bc5a4ce4dd4b46a3cd3d410aaa62",
   "lessons": [
     {
       "id": "cpp98-object-variable-memory",
@@ -2057,6 +2057,40 @@
       ],
       "checklistItems": [],
       "code": "#include <cassert>\r\n#include <iostream>\r\n\r\nstruct Position {\r\n    int quantity;\r\n};\r\n\r\nvoid apply_trade(Position& position, int traded_quantity) {\r\n    position.quantity += traded_quantity;\r\n}\r\n\r\nint main() {\r\n    Position btc{100};\r\n\r\n    apply_trade(btc, 50);\r\n\r\n    std::cout << \"BTC position: \" << btc.quantity << '\\n';\r\n}"
+    },
+    {
+      "id": "cpp11-moved-from-object",
+      "sourcePath": "cpp11/24_moved-from object",
+      "order": 20,
+      "tags": [
+        "moved",
+        "from",
+        "object"
+      ],
+      "prerequisites": [],
+      "language": "cpp",
+      "track": "cpp11",
+      "standard": "cpp11",
+      "title": "Day 24 — Moved-From Objects",
+      "knowledgePath": "cpp11/24_moved-from object/knowledge.md",
+      "codePath": "cpp11/24_moved-from object/main.cpp",
+      "sourceHash": "b0714b45a61e04b6115e18a985f770d614aad817d482181503f0487d5e7bbe85",
+      "sections": [
+        {
+          "id": "core-idea",
+          "heading": "Core Idea",
+          "bodyMarkdown": "A moved-from object is an object whose resources may have been transferred to another object.\r\n\r\nThe moved-from object still exists, but its previous value should not be assumed.",
+          "bodyText": "A moved-from object is an object whose resources may have been transferred to another object.The moved-from object still exists, but its previous value should not be assumed."
+        },
+        {
+          "id": "example",
+          "heading": "Example",
+          "bodyMarkdown": "```cpp\r\nT target = std::move(source);\r\n\r\nAfter the move:\r\n\r\ntarget may own the transferred resources.\r\nsource remains valid.\r\nThe old value of source is unspecified.\r\nSafe Operations\r\n\r\nA moved-from object may safely be:\r\n\r\nAssigned a new value\r\nDestroyed\r\nReinitialized\r\nUsed only when the operation does not depend on its previous value\r\nCommon Mistakes\r\nAssuming the old value is unchanged\r\nUsing the moved-from value in program logic\r\nMoving an object before its value is no longer needed\r\nTreating a moved-from object as destroyed\r\nPractical Rule\r\n\r\nAfter moving from an object, either assign it a new value or stop depending on its stored data.\r\n\r\nKey Takeaway\r\n\r\nA moved-from object remains valid, but its previous value should not be trusted.",
+          "bodyText": "T target = std::move(source);\r\n\r\nAfter the move:\r\n\r\ntarget may own the transferred resources.\r\nsource remains valid.\r\nThe old value of source is unspecified.\r\nSafe Operations\r\n\r\nA moved-from object may safely be:\r\n\r\nAssigned a new value\r\nDestroyed\r\nReinitialized\r\nUsed only when the operation does not depend on its previous value\r\nCommon Mistakes\r\nAssuming the old value is unchanged\r\nUsing the moved-from value in program logic\r\nMoving an object before its value is no longer needed\r\nTreating a moved-from object as destroyed\r\nPractical Rule\r\n\r\nAfter moving from an object, either assign it a new value or stop depending on its stored data.\r\n\r\nKey Takeaway\r\n\r\nA moved-from object remains valid, but its previous value should not be trusted."
+        }
+      ],
+      "checklistItems": [],
+      "code": "#include <iostream>\r\n#include <string>\r\n#include <utility>\r\n\r\nint main()\r\n{\r\n    std::string source = \"BTCUSD\";\r\n    std::string target = std::move(source);\r\n\r\n    std::cout << target << '\\n';\r\n\r\n    source = \"ETHUSD\";\r\n    std::cout << source << '\\n';\r\n}"
     }
   ],
   "questions": [
