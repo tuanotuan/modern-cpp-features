@@ -65,14 +65,16 @@ added, edited, renamed, or deleted. It:
 - registers new lessons and preserves stable IDs across detectable renames;
 - archives questions whose lesson was deleted;
 - marks questions grounded in an older hash as `needs_review`;
-- asks OpenAI Luna for two new drafts when a changed lesson has no question grounded
-  in its current hash;
-- validates and commits the refreshed registry/question bank/manifest.
+- validates and commits only the deterministic lesson registry and Git manifest;
 - transactionally syncs that committed snapshot into Supabase before the Vercel
-  deployment reads it in `db` mode.
+  deployment reads it in `db` mode;
+- enqueues every uncovered lesson revision, then asks OpenAI Luna for two drafts
+  (Gemini is the 429/quota fallback) and writes immutable question revisions
+  directly to Supabase.
 
-The repository needs a GitHub Actions secret named `OPENAI_API_KEY`. For a local
-preview of the same deterministic reconciliation, run:
+The workflow needs GitHub Actions secrets `SUPABASE_URL`,
+`SUPABASE_SERVICE_ROLE_KEY`, and `OPENAI_API_KEY`. Add `GEMINI_API_KEY` to enable
+the free fallback. For a local preview of deterministic Git reconciliation, run:
 
 ```bash
 npm run content:refresh
@@ -80,7 +82,8 @@ npm run content:status
 ```
 
 `content:refresh` performs discovery/archive/manifest refresh without calling
-OpenAI. `content:auto` is the full CI command including safe draft generation.
+AI. CI no longer writes AI drafts to Git. `content:auto` and `content:draft` are
+legacy/manual repository tools; do not use them for normal Phase E automation.
 
 The database sync additionally requires GitHub Actions secrets `SUPABASE_URL`
 and `SUPABASE_SERVICE_ROLE_KEY`. The service-role key is server-only and must
@@ -90,15 +93,16 @@ while lesson/question revision rows remain immutable for audit history.
 
 ## Drafting and approving questions
 
-Generate one to five grounded drafts for a lesson with OpenAI Luna:
+For a legacy local repository draft, this command still works:
 
 ```bash
 npm run content:draft -- --lesson cpp11-range-based-for --count 2
 ```
 
-Drafts are appended to `questions/generated.yaml` with `status: draft`. They
-appear in the signed-in owner's Review Queue but do not enter daily practice
-until the owner presses **Duyệt tất cả**. Approval is private in Supabase and is
+The production pipeline does not append to `questions/generated.yaml`. It stores
+new drafts as DB-owned rows with IDs such as `cpp11-move-semantics-ai-001` and
+`status: draft`. They appear in the signed-in owner's Review Queue but do not
+enter daily practice until approved. Approval remains private in Supabase and is
 invalidated automatically when the question version or source hash changes.
 
 Maintainers can alternatively approve a single question in the repository:

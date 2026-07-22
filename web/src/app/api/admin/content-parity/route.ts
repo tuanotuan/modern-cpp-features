@@ -21,7 +21,9 @@ export async function GET() {
   try {
     const [repository, database] = await Promise.all([
       Promise.resolve(getRepoContentManifest()),
-      loadSupabaseContentManifest(supabase),
+      loadSupabaseContentManifest(supabase, {
+        repositoryQuestionsOnly: true,
+      }),
     ]);
     return Response.json(compareContentManifests(repository, database), {
       headers: { "Cache-Control": "private, no-store" },

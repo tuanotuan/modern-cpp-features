@@ -5,6 +5,7 @@ import {
   isProviderRateLimitError,
   nextQuestionIds,
   retryProviderRateLimit,
+  validateDraftSources,
 } from "./drafts";
 import type { GeneratedLesson } from "./schema";
 
@@ -95,5 +96,35 @@ describe("question draft conventions", () => {
     expect(prompt.rules.join("\n")).toContain(
       "Prefer type scenario when the lesson can support",
     );
+  });
+
+  it("rejects citations outside the exact lesson revision", () => {
+    expect(() =>
+      validateDraftSources(
+        lesson,
+        [
+          {
+            type: "recall",
+            responseMode: "text",
+            difficulty: "beginner",
+            estimatedMinutes: 2,
+            prompt: "Move semantics thay đổi ownership như thế nào?",
+            code: null,
+            hint: "Theo dõi resource owner.",
+            answer: {
+              short: "Ownership được chuyển sang object đích.",
+              detailed: "Object đích nhận resource còn object nguồn vẫn hợp lệ nhưng ở trạng thái xác định bởi type.",
+            },
+            rubric: {
+              required: ["Nêu được ownership transfer"],
+              bonus: [],
+              misconceptions: [],
+            },
+            sources: [{ sectionId: "not-in-the-note" }],
+          },
+        ],
+        "test-provider",
+      ),
+    ).toThrow("unknown section not-in-the-note");
   });
 });

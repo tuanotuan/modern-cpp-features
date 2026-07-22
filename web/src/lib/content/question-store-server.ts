@@ -138,6 +138,7 @@ export async function loadQuestionStoreManifest({
 
 export async function loadSupabaseContentManifest(
   supabase: SupabaseClient,
+  { repositoryQuestionsOnly = false }: { repositoryQuestionsOnly?: boolean } = {},
 ): Promise<ContentManifest> {
   const [lessonRows, questionRows, stateResult] = await Promise.all([
     readAllPages<unknown>(supabase, "content_current_lessons", [
@@ -156,7 +157,12 @@ export async function loadSupabaseContentManifest(
       "checklist_items",
       "manifest_order",
     ].join(", ")),
-    readAllPages<unknown>(supabase, "content_current_questions", [
+    readAllPages<unknown>(
+      supabase,
+      repositoryQuestionsOnly
+        ? "content_current_repository_questions"
+        : "content_current_questions",
+      [
       "id",
       "lesson_id",
       "version",
@@ -174,7 +180,8 @@ export async function loadSupabaseContentManifest(
       "source_hash",
       "status",
       "manifest_order",
-    ].join(", ")),
+      ].join(", "),
+    ),
     supabase
       .from("content_store_state")
       .select("source_revision")
@@ -328,6 +335,8 @@ async function readAllPages<T>(
     const { data, error } = await supabase
       .from(relation)
       .select(columns)
+      .order("manifest_order", { ascending: true, nullsFirst: false })
+      .order("id", { ascending: true })
       .range(from, from + PAGE_SIZE - 1);
     if (error) throw new ContentQuestionStoreError(`${relation}: ${error.code}`);
     const page = (data ?? []) as T[];

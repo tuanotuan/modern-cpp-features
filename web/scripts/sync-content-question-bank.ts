@@ -28,6 +28,12 @@ const syncResultSchema = z.object({
   sourceRevision: z.string(),
   payloadChecksum: z.string(),
 });
+const enqueueResultSchema = z.object({
+  ok: z.literal(true),
+  enqueued: z.number().int().nonnegative(),
+});
+
+const GENERATOR_VERSION = "trading-grounded-v1";
 
 async function main() {
   const webRoot = path.resolve(import.meta.dirname, "..");
@@ -122,7 +128,23 @@ async function main() {
   ) {
     throw new Error("Supabase content sync returned a mismatched snapshot");
   }
-  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  const { data: enqueueData, error: enqueueError } = await supabase.rpc(
+    "enqueue_content_generation_jobs",
+    {
+      p_generator_version: GENERATOR_VERSION,
+      p_provider: "openai",
+      p_model: process.env.OPENAI_LUNA_MODEL || "gpt-5.6-luna",
+      p_requested_count: 2,
+      p_github_run_id: process.env.CONTENT_GITHUB_RUN_ID?.trim() || null,
+    },
+  );
+  if (enqueueError) {
+    throw new Error(
+      `Supabase generation enqueue failed: ${enqueueError.code} ${enqueueError.message}`,
+    );
+  }
+  const enqueue = enqueueResultSchema.parse(enqueueData);
+  process.stdout.write(`${JSON.stringify({ ...result, enqueued: enqueue.enqueued }, null, 2)}\n`);
 }
 
 function requiredEnvironment(name: string, value: string | undefined): string {

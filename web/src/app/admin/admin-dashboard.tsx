@@ -12,6 +12,7 @@ import { displayQuestionPrompt } from "@/lib/content/question-prompt";
 import type { EditableQuestionContent } from "@/lib/content/question-overrides";
 import type {
   AiUsageSummary,
+  ContentGenerationJobSummary,
   GeminiUsageSummary,
   PracticeAccount,
 } from "@/lib/practice/cloud-server";
@@ -40,12 +41,14 @@ export function AdminDashboard({
   aiUsage,
   geminiUsage,
   initialGeminiFallbackEnabled,
+  initialGenerationJobs,
   initialSnapshot,
 }: {
   account: PracticeAccount;
   aiUsage: AiUsageSummary | null;
   geminiUsage: GeminiUsageSummary | null;
   initialGeminiFallbackEnabled: boolean;
+  initialGenerationJobs: ContentGenerationJobSummary[];
   initialSnapshot: AdminDashboardSnapshot;
 }) {
   const [questions, setQuestions] = useState(initialSnapshot.questions);
@@ -61,6 +64,8 @@ export function AdminDashboard({
     initialGeminiFallbackEnabled,
   );
   const [geminiSettingSaving, setGeminiSettingSaving] = useState(false);
+  const [generationJobs, setGenerationJobs] = useState(initialGenerationJobs);
+  const [retryingJobId, setRetryingJobId] = useState<number | null>(null);
   const topics = useMemo(
     () =>
       [...new Set(questions.flatMap((question) => question.taxonomy.topics))].sort(),
@@ -214,6 +219,36 @@ export function AdminDashboard({
       );
     } finally {
       setGeminiSettingSaving(false);
+    }
+  }
+
+  async function retryGenerationJob(jobId: number) {
+    setRetryingJobId(jobId);
+    setNotice(null);
+    try {
+      const response = await fetch("/api/admin/generation-jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId }),
+      });
+      const payload = (await response.json()) as { status?: string; error?: string };
+      if (!response.ok || payload.status !== "pending") {
+        throw new Error(payload.error || "Không retry được generation job.");
+      }
+      setGenerationJobs((current) =>
+        current.map((job) =>
+          job.id === jobId
+            ? { ...job, status: "pending", attemptCount: 0, lastError: null }
+            : job,
+        ),
+      );
+      setNotice("Đã đưa job về pending; workflow kế tiếp sẽ chạy lại.");
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : "Không retry được generation job.",
+      );
+    } finally {
+      setRetryingJobId(null);
     }
   }
 
@@ -468,6 +503,57 @@ export function AdminDashboard({
                 : "Đang tắt"}
           </button>
         </section>
+
+        <details className="group mt-4 overflow-hidden rounded-2xl border border-[#173f35]/15 bg-white/65">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4">
+            <div>
+              <p className="text-sm font-bold">DB-native generation pipeline</p>
+              <p className="mt-1 text-xs text-[#64736c]">
+                {generationJobs.filter((job) => ["pending", "running", "deferred"].includes(job.status)).length} job đang chờ/chạy · {generationJobs.filter((job) => ["failed", "dead_letter"].includes(job.status)).length} job cần xử lý
+              </p>
+            </div>
+            <span className="text-xs font-bold text-[#356b58]">
+              <span className="group-open:hidden">Xem pipeline ↓</span>
+              <span className="hidden group-open:inline">Thu gọn ↑</span>
+            </span>
+          </summary>
+          <div className="border-t border-[#173f35]/10 px-5 py-4">
+            <div className="space-y-2">
+              {generationJobs.slice(0, 20).map((job) => {
+                const retryable = ["deferred", "failed", "dead_letter"].includes(job.status);
+                const errorCode = typeof job.lastError?.code === "string"
+                  ? job.lastError.code
+                  : null;
+                return (
+                  <div key={job.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#173f35]/10 bg-white/70 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-mono text-xs font-bold">#{job.id} · {job.lessonId}</p>
+                      <p className="mt-1 text-xs text-[#64736c]">
+                        {job.status} · lần {job.attemptCount}/5 · {job.provider}/{job.model}
+                        {errorCode ? ` · ${errorCode}` : ""}
+                      </p>
+                    </div>
+                    {retryable ? (
+                      <button
+                        type="button"
+                        disabled={retryingJobId !== null}
+                        onClick={() => void retryGenerationJob(job.id)}
+                        className="rounded-xl border border-[#ba4b2f]/25 bg-white px-3 py-2 text-xs font-bold text-[#8e3825] disabled:opacity-50"
+                      >
+                        {retryingJobId === job.id ? "Đang retry…" : "Retry"}
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              })}
+              {!generationJobs.length ? (
+                <p className="rounded-xl border border-dashed border-[#173f35]/15 px-4 py-6 text-center text-sm text-[#64736c]">
+                  Chưa có generation job; lesson mới hoặc đổi nguồn sẽ tự tạo job.
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </details>
 
         <details className="group mt-8 overflow-hidden rounded-[2rem] border border-[#ba4b2f]/20 bg-[#fff7e8]">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 sm:px-7 sm:py-6">

@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminPage() {
-  const cloud = await loadCloudContext();
+  const cloud = await loadCloudContext({ includeGenerationJobs: true });
 
   if (!cloud.enabled) {
     return <AdminGate mode="not-configured" />;
@@ -39,6 +39,7 @@ export default async function AdminPage() {
       aiUsage={cloud.aiUsage}
       geminiUsage={cloud.geminiUsage}
       initialGeminiFallbackEnabled={cloud.geminiFallbackEnabled}
+      initialGenerationJobs={cloud.generationJobs}
       initialSnapshot={snapshot}
     />
   );
