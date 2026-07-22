@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { AiTokenUsage } from "./usage";
 import { syncOpenAiBilling } from "./billing";
+import { readAiUsageRow } from "./usage-store";
 import {
   dailyBudgetRemainingPercent,
   dailyBudgetUsdMicros,
@@ -35,11 +36,26 @@ export type AiDailyBudgetSnapshot = {
   usageDate: string;
 };
 
+export type AiDailyUsageRow = {
+  actual_usd_micros?: unknown;
+  provider_usd_micros?: unknown;
+  provider_actual_baseline_usd_micros?: unknown;
+  usage_floor_usd_micros?: unknown;
+  provider_synced_at?: unknown;
+  request_count?: unknown;
+  input_tokens?: unknown;
+  output_tokens?: unknown;
+  last_model?: unknown;
+};
+
 export function mergeAiDailyBudgetSnapshot(
   current: AiDailyBudgetSnapshot | null,
   incoming: AiDailyBudgetSnapshot,
 ): AiDailyBudgetSnapshot {
-  if (!current || current.usageDate !== incoming.usageDate) return incoming;
+  if (!current) return incoming;
+  if (current.usageDate !== incoming.usageDate) {
+    return incoming.usageDate > current.usageDate ? incoming : current;
+  }
   return {
     ...incoming,
     actualUsdMicros: Math.max(
@@ -53,6 +69,52 @@ export function mergeAiDailyBudgetSnapshot(
       current.remainingPercent,
       incoming.remainingPercent,
     ),
+  };
+}
+
+export function aiDailyBudgetSnapshotFromUsageRead({
+  row,
+  readError,
+  usageDate,
+  fallbackActualUsdMicros = 0,
+}: {
+  row: AiDailyUsageRow | null;
+  readError?: unknown;
+  usageDate: string;
+  fallbackActualUsdMicros?: number;
+}): AiDailyBudgetSnapshot | null {
+  if (readError) return null;
+
+  const estimated = Number(
+    row?.actual_usd_micros ?? fallbackActualUsdMicros,
+  );
+  const billing = typeof row?.provider_synced_at === "string"
+    ? Number(row.provider_usd_micros ?? 0)
+    : null;
+  const used = reconciledUsageUsdMicros({
+    realtimeUsdMicros: estimated,
+    providerUsdMicros: billing ?? 0,
+    realtimeBaselineUsdMicros: Number(
+      row?.provider_actual_baseline_usd_micros ?? 0,
+    ),
+    usageFloorUsdMicros: Number(row?.usage_floor_usd_micros ?? 0),
+    providerSynced: billing !== null,
+  });
+
+  return {
+    actualUsdMicros: used,
+    billingUsdMicros: billing,
+    billingSyncedAt:
+      typeof row?.provider_synced_at === "string"
+        ? row.provider_synced_at
+        : null,
+    requestCount: Number(row?.request_count ?? 0),
+    inputTokens: Number(row?.input_tokens ?? 0),
+    outputTokens: Number(row?.output_tokens ?? 0),
+    lastModel: typeof row?.last_model === "string" ? row.last_model : null,
+    limitUsdMicros: dailyBudgetUsdMicros(),
+    remainingPercent: dailyBudgetRemainingPercent(used),
+    usageDate,
   };
 }
 
@@ -128,44 +190,22 @@ export async function finalizeAiBudget(
     return null;
   }
   const usageDate = reservation.usageDate ?? vietnamUsageDate();
-  const { data: dailyRow, error: readError } = await reservation.client
-    .from("ai_usage_daily")
-    .select("actual_usd_micros, provider_usd_micros, provider_actual_baseline_usd_micros, usage_floor_usd_micros, provider_synced_at, request_count, input_tokens, output_tokens, last_model")
-    .eq("usage_date", usageDate)
-    .maybeSingle();
+  const { data: dailyRow, error: readError } = await readAiUsageRow(
+    reservation.client,
+    "ai_usage_daily",
+    "usage_date",
+    usageDate,
+  );
   if (readError) {
     console.error("Daily AI budget read failed", { code: readError.code });
     return null;
   }
-  const estimated = Number(dailyRow?.actual_usd_micros ?? actualUsdMicros);
-  const billing = dailyRow?.provider_synced_at
-    ? Number(dailyRow.provider_usd_micros ?? 0)
-    : null;
-  const used = reconciledUsageUsdMicros({
-    realtimeUsdMicros: estimated,
-    providerUsdMicros: billing ?? 0,
-    realtimeBaselineUsdMicros: Number(
-      dailyRow?.provider_actual_baseline_usd_micros ?? 0,
-    ),
-    usageFloorUsdMicros: Number(dailyRow?.usage_floor_usd_micros ?? 0),
-    providerSynced: billing !== null,
-  });
-  const snapshot = {
-    actualUsdMicros: used,
-    billingUsdMicros: billing,
-    billingSyncedAt:
-      typeof dailyRow?.provider_synced_at === "string"
-        ? dailyRow.provider_synced_at
-        : null,
-    requestCount: Number(dailyRow?.request_count ?? 0),
-    inputTokens: Number(dailyRow?.input_tokens ?? 0),
-    outputTokens: Number(dailyRow?.output_tokens ?? 0),
-    lastModel:
-      typeof dailyRow?.last_model === "string" ? dailyRow.last_model : null,
-    limitUsdMicros: dailyBudgetUsdMicros(),
-    remainingPercent: dailyBudgetRemainingPercent(used),
+  const snapshot = aiDailyBudgetSnapshotFromUsageRead({
+    row: dailyRow,
     usageDate,
-  } satisfies AiDailyBudgetSnapshot;
+    fallbackActualUsdMicros: actualUsdMicros,
+  });
+  if (!snapshot) return null;
   console.info("AI usage finalized", {
     model,
     inputTokens: usage.inputTokens,
