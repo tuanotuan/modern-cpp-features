@@ -18,8 +18,13 @@ describe("practice decks", () => {
     expect(parsePracticeDeck(undefined)).toBe("cpp-interview");
     expect(parsePracticeDeck("unknown")).toBe("cpp-interview");
     expect(parsePracticeDeck("python-interview")).toBe("python-interview");
+    expect(parsePracticeDeck("cmake-build-systems")).toBe("cmake-build-systems");
     expect(PRACTICE_DECKS["python-interview"].badge).toBe("Py");
-    expect(PRACTICE_DECKS["cmake-build-systems"].enabled).toBe(false);
-    expect(ENABLED_PRACTICE_DECK_IDS).not.toContain("cmake-build-systems");
+    expect(PRACTICE_DECKS["cmake-build-systems"].enabled).toBe(true);
+    expect(ENABLED_PRACTICE_DECK_IDS).toEqual([
+      "cpp-interview",
+      "python-interview",
+      "cmake-build-systems",
+    ]);
   });
 });

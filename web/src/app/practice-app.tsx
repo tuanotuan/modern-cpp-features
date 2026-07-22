@@ -32,6 +32,7 @@ import {
   buildCustomStudyQueue,
   type CustomStudyFilters,
 } from "@/lib/practice/custom-study";
+import { scenarioEditorConfig } from "@/lib/practice/scenario-editor";
 import {
   parseSavedItems,
   removeSavedItem,
@@ -1688,13 +1689,24 @@ function CustomStudyPanel({
           ]}
         />
         <StudySelect
-          label={language === "python" ? "Python" : "C++"}
+          label={
+            language === "python"
+              ? "Python"
+              : language === "cmake"
+                ? "CMake"
+                : "C++"
+          }
           value={standard}
           onChange={(value) =>
             setStandard(value as CustomStudyFilters["standard"])
           }
           options={
-            language === "python"
+            language === "cmake"
+              ? [
+                  ["all", "Mọi version"],
+                  ["cmake", "CMake"],
+                ]
+              : language === "python"
               ? [
                   ["all", "Mọi version"],
                   ["python3", "Python 3"],
@@ -1828,7 +1840,9 @@ function DeckEmptyState({
         <p className="mt-4 leading-7 text-[#64736c]">
           {pendingCount
             ? `${pendingCount} câu đang nằm trong Review Queue. Duyệt chúng để bắt đầu luyện.`
-            : deck === "python-interview"
+            : deck === "cmake-build-systems"
+              ? "Thêm bài vào cmake/<tên-bài>/knowledge.md; pipeline sẽ tạo draft và đưa vào Review Queue."
+              : deck === "python-interview"
               ? "Thêm bài vào python/<tên-bài>/knowledge.md; pipeline sẽ tạo draft và đưa vào Review Queue."
               : "Thêm hoặc duyệt câu hỏi trong Admin để bắt đầu luyện."}
         </p>
@@ -2026,8 +2040,7 @@ function ScenarioCodeEditor({
   const [expanded, setExpanded] = useState(false);
   const lineNumbersRef = useRef<HTMLPreElement>(null);
   const lineCount = Math.max(16, value.split("\n").length);
-  const isPython = language === "python";
-  const languageLabel = isPython ? "Python" : "C++";
+  const editor = scenarioEditorConfig(language);
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key !== "Tab") return;
@@ -2057,10 +2070,10 @@ function ScenarioCodeEditor({
               <i className="size-2.5 rounded-full bg-[#75aa52]" />
             </span>
             <span className="font-mono text-xs font-bold text-[#d7ff91]">
-              {isPython ? "main.py" : "main.cpp"}
+              {editor.fileName}
             </span>
             <span className="rounded-full bg-white/8 px-2 py-0.5 font-mono text-[10px] text-white/55">
-              {languageLabel} design
+              {editor.languageLabel} design
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -2068,11 +2081,11 @@ function ScenarioCodeEditor({
               <button
                 type="button"
                 onClick={() =>
-                  onChange(isPython ? PYTHON_DESIGN_TEMPLATE : CPLUSPLUS_DESIGN_TEMPLATE)
+                  onChange(editor.template)
                 }
                 className="rounded-lg px-2.5 py-1.5 font-mono text-[10px] font-bold text-white/65 transition hover:bg-white/10 hover:text-white"
               >
-                Chèn khung {languageLabel}
+                Chèn khung {editor.languageLabel}
               </button>
             ) : null}
             <button
@@ -2103,13 +2116,9 @@ function ScenarioCodeEditor({
             }}
             maxLength={SCENARIO_CODE_MAX}
             spellCheck={false}
-            aria-label={`Code ${languageLabel} cho câu hỏi thiết kế`}
+            aria-label={`Code ${editor.languageLabel} cho câu hỏi thiết kế`}
             className={`${expanded ? "h-[calc(100vh-9rem)]" : "h-96"} w-full resize-none overflow-auto bg-transparent p-4 font-mono text-[13px] leading-6 text-[#e8f4ec] caret-[#d7ff91] outline-none placeholder:text-white/25`}
-            placeholder={
-              isPython
-                ? "# Thiết kế class/API của mày ở đây…\n\nclass Solution:\n    pass"
-                : "// Thiết kế class/API của mày ở đây…\n\nclass Solution {\npublic:\n    // ...\n};"
-            }
+            placeholder={editor.placeholder}
           />
         </div>
         <div className="flex items-center justify-between border-t border-white/8 bg-[#102f27] px-4 py-2 font-mono text-[10px] text-white/40">
@@ -2120,22 +2129,6 @@ function ScenarioCodeEditor({
     </section>
   );
 }
-
-const CPLUSPLUS_DESIGN_TEMPLATE = `#include <utility>
-
-class Solution {
-public:
-    // Thiết kế public API ở đây.
-
-private:
-    // Khai báo state và ownership ở đây.
-};`;
-
-const PYTHON_DESIGN_TEMPLATE = `class Solution:
-    """Thiết kế public API và state ở đây."""
-
-    def __init__(self) -> None:
-        pass`;
 
 function InlineCode({ text, inverted = false }: { text: string; inverted?: boolean }) {
   return text.split(/(`[^`]+`)/g).map((part, index) =>

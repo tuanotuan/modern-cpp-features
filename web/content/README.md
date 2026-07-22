@@ -17,9 +17,22 @@ queues, random practice, streaks, Custom Study, and analytics are calculated
 inside the selected deck.
 
 CMake uses the code filename `CMakeLists.txt` and deck ID
-`cmake-build-systems`. Phase B enables repository discovery, Supabase sync, and
-grounded AI draft generation for `cmake/**`; the production deck selector stays
-disabled until the UI rollout phase.
+`cmake-build-systems`. Repository discovery, Supabase sync, grounded AI draft
+generation, and the production practice/Admin/Stats selectors are enabled for
+`cmake/**`.
+
+## First CMake lesson rollout
+
+1. Create `cmake/<number>_<topic>/knowledge.md` with one `#` title and at least
+   one `##` source section.
+2. Add an optional sibling `CMakeLists.txt` when build code helps explain the
+   note.
+3. Merge the source files into `main` and wait for the `Validate Recall`
+   workflow to finish discovery, Supabase sync, and DB-native AI drafting.
+4. Open Admin, select `CMake / Build Systems`, inspect each draft, and approve
+   only grounded revisions.
+5. Select `CM` on the home page. Daily scheduling, random practice, Custom
+   Study, saved sessions, and Stats stay scoped to the CMake deck.
 
 ## First Python lesson rollout
 

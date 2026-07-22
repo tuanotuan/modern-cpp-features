@@ -20,7 +20,7 @@ export const PRACTICE_DECKS = {
     language: "cmake",
     badge: "CM",
     label: "CMake / Build Systems",
-    enabled: false,
+    enabled: true,
   },
 } as const satisfies Record<
   PracticeDeckId,
@@ -38,7 +38,10 @@ export const ENABLED_PRACTICE_DECK_IDS = (
 ).filter((deckId) => PRACTICE_DECKS[deckId].enabled);
 
 export function parsePracticeDeck(value: string | undefined): PracticeDeckId {
-  return value === "python-interview" ? value : "cpp-interview";
+  if (value === "python-interview" || value === "cmake-build-systems") {
+    return value;
+  }
+  return "cpp-interview";
 }
 
 export function deckForLanguage(language: ContentLanguage): PracticeDeckId {
