@@ -81,6 +81,7 @@ describe("content bank backfill", () => {
 
     expect(first).toEqual(second);
     expect(first.expected).toMatchObject({ lessons: 1, questions: 1 });
+    expect(first.lessons[0].knowledgeMarkdown).toBe("# Example\r\n");
     expect(first.questions[0].contentChecksum).toBe(
       questionRevisionChecksum(manifest.questions[0]),
     );

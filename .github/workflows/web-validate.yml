@@ -24,7 +24,7 @@ permissions:
 
 concurrency:
   group: web-validate-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   refresh-content:
@@ -66,6 +66,13 @@ jobs:
           git add web/content web/src/generated
           git commit -m "chore(content): refresh interview question queue"
           git push
+      - name: Sync current content snapshot to Supabase
+        run: npm run content:sync
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CONTENT_REPOSITORY: ${{ github.repository }}
+          CONTENT_GITHUB_RUN_ID: ${{ github.run_id }}
 
   validate:
     if: github.event_name == 'pull_request' || github.ref != 'refs/heads/main'

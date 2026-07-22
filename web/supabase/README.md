@@ -130,6 +130,36 @@ practice bank.
 `20260724120000_fix_content_shadow_parity.sql` aligns stale-draft status handling
 with the Git manifest. Apply it immediately after the shadow-view migration.
 
+## Phase D automated sync and cutover
+
+`20260725100000_sync_content_question_bank.sql` installs the transactional,
+service-role-only `sync_content_question_bank(...)` RPC. It also stores the exact
+manifest order and source revision, so DB reads reproduce the committed Git
+snapshot rather than merely containing equivalent rows. The RPC is idempotent by
+repository commit, rejects question ID/version checksum conflicts, archives rows
+missing from the new snapshot, and advances all current pointers atomically.
+
+Add `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` as GitHub Actions secrets. Do
+not add the service-role key to Vercel or any `NEXT_PUBLIC_` variable. After each
+safe content refresh on `main`, the workflow runs:
+
+```bash
+npm run content:sync
+```
+
+For a local payload/checksum dry run that never contacts Supabase:
+
+```bash
+npm run content:sync:check
+```
+
+Cut over only after the main-branch sync succeeds and
+`/api/admin/content-parity` returns `readyForCutover: true` (which requires both
+content parity and an exact source revision). Set Vercel `QUESTION_STORE=db` and redeploy. DB
+mode applies the same private Admin overrides after loading the base snapshot and
+fails closed on missing/invalid state. Rollback is a Vercel-only change back to
+`QUESTION_STORE=shadow`; immutable revisions and sync history remain intact.
+
 While signed in as the configured owner, open `/api/admin/content-parity`. The
 response must contain `"ok": true` and empty missing/extra/mismatched ID arrays
 before a later phase changes `QUESTION_STORE` to `db`. Database mode fails closed

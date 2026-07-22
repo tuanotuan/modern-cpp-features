@@ -68,6 +68,8 @@ added, edited, renamed, or deleted. It:
 - asks OpenAI Luna for two new drafts when a changed lesson has no question grounded
   in its current hash;
 - validates and commits the refreshed registry/question bank/manifest.
+- transactionally syncs that committed snapshot into Supabase before the Vercel
+  deployment reads it in `db` mode.
 
 The repository needs a GitHub Actions secret named `OPENAI_API_KEY`. For a local
 preview of the same deterministic reconciliation, run:
@@ -79,6 +81,12 @@ npm run content:status
 
 `content:refresh` performs discovery/archive/manifest refresh without calling
 OpenAI. `content:auto` is the full CI command including safe draft generation.
+
+The database sync additionally requires GitHub Actions secrets `SUPABASE_URL`
+and `SUPABASE_SERVICE_ROLE_KEY`. The service-role key is server-only and must
+never be added to a `NEXT_PUBLIC_` variable or committed. Each sync is an atomic,
+idempotent full snapshot: current pointers and ordering move forward together,
+while lesson/question revision rows remain immutable for audit history.
 
 ## Drafting and approving questions
 

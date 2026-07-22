@@ -1,4 +1,3 @@
-import { loadQuestionOverrides } from "@/lib/content/question-overrides-server";
 import {
   compareContentManifests,
   getRepoContentManifest,
@@ -19,14 +18,9 @@ export async function GET() {
   if (authError || !authData.user || !isAllowedPracticeUser(authData.user)) {
     return Response.json({ error: "Cần đăng nhập owner." }, { status: 401 });
   }
-  const overrides = await loadQuestionOverrides(supabase);
-  if (overrides.error) {
-    return Response.json({ error: "Không đọc được question overrides." }, { status: 502 });
-  }
-
   try {
     const [repository, database] = await Promise.all([
-      Promise.resolve(getRepoContentManifest(overrides.overrides)),
+      Promise.resolve(getRepoContentManifest()),
       loadSupabaseContentManifest(supabase),
     ]);
     return Response.json(compareContentManifests(repository, database), {

@@ -39,6 +39,7 @@ function buildDatabaseManifest(): ContentManifest {
           },
         ],
         checklist_items: ["Know the rule"],
+        manifest_order: 1,
       },
       {
         id: "cpp98-archived",
@@ -61,6 +62,7 @@ function buildDatabaseManifest(): ContentManifest {
           },
         ],
         checklist_items: [],
+        manifest_order: 2,
       },
     ],
     [
@@ -105,6 +107,7 @@ function buildDatabaseManifest(): ContentManifest {
         },
         source_hash: hash,
         status: "verified",
+        manifest_order: 1,
       },
       {
         id: "cpp98-archived-001",
@@ -147,8 +150,10 @@ function buildDatabaseManifest(): ContentManifest {
         },
         source_hash: hash,
         status: "archived",
+        manifest_order: 2,
       },
     ],
+    "c".repeat(64),
   );
 }
 
@@ -157,6 +162,7 @@ describe("Supabase question store", () => {
     const manifest = buildDatabaseManifest();
 
     expect(manifest.lessons).toHaveLength(1);
+    expect(manifest.sourceRevision).toBe("c".repeat(64));
     expect(manifest.lessons[0]).toMatchObject({
       id: "cpp11-example",
       knowledgePath: "cpp11/01_example/knowledge.md",
@@ -175,12 +181,14 @@ describe("Supabase question store", () => {
     const repository = buildDatabaseManifest();
     const matching = compareContentManifests(repository, structuredClone(repository));
     expect(matching.ok).toBe(true);
+    expect(matching.readyForCutover).toBe(true);
 
     const database = structuredClone(repository);
     database.questions[0].prompt = "A changed prompt that is still long enough.";
     const mismatch = compareContentManifests(repository, database);
 
     expect(mismatch.ok).toBe(false);
+    expect(mismatch.readyForCutover).toBe(false);
     expect(mismatch.mismatchedQuestionIds).toEqual(["cpp11-example-001"]);
   });
 });
