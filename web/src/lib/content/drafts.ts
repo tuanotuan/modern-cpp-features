@@ -46,7 +46,7 @@ export type GeneratedQuestionDraftBatch = {
   model: string;
 };
 
-export const QUESTION_GENERATOR_PROMPT_VERSION = "multilanguage-trading-v2";
+export const QUESTION_GENERATOR_PROMPT_VERSION = "multilanguage-trading-v3";
 
 export async function generateQuestionDraftsWithOpenAI({
   lesson,
@@ -242,10 +242,12 @@ export function nextQuestionIds(
 }
 
 export function buildDraftPrompt(lesson: GeneratedLesson, count: number) {
-  const language = lesson.language === "python" ? "Python" : "C++";
+  const language = languageDisplayName(lesson);
   const scenarioScope = lesson.language === "python"
     ? "a production trading, quantitative-research, data, or automation system"
-    : "a production trading system";
+    : lesson.language === "cmake"
+      ? "a production build, CI, packaging, deployment, or developer workflow for a trading system"
+      : "a production trading system";
   const sections = lesson.sections.map((section) => ({
     sectionId: section.id,
     heading: section.heading,
@@ -264,10 +266,12 @@ export function buildDraftPrompt(lesson: GeneratedLesson, count: number) {
           : `Prefer type scenario when the lesson can support a realistic situation in ${scenarioScope} without forcing the context.`,
         lesson.language === "python"
           ? "A Python scenario must involve a concrete engineering constraint or failure mode, such as market-data ingestion, research pipelines, data validation, batch processing, risk tooling, service integration, concurrency, memory use, backpressure, deterministic behavior, testing, or recovery."
-          : "A trading scenario must involve a concrete engineering constraint or failure mode, such as market-data throughput, order-book updates, order routing, pre-trade risk checks, position state, exchange connectivity, latency, allocation, cache locality, concurrency, contention, backpressure, deterministic behavior, ownership, or recovery.",
+          : lesson.language === "cmake"
+            ? "A CMake scenario must involve a concrete build-system constraint or failure mode, such as target dependency modeling, transitive usage requirements, incremental builds, reproducibility, dependency discovery, generated sources, configuration-specific behavior, compile or link options, test integration, packaging, CI portability, or diagnosing build and link failures."
+            : "A trading scenario must involve a concrete engineering constraint or failure mode, such as market-data throughput, order-book updates, order routing, pre-trade risk checks, position state, exchange connectivity, latency, allocation, cache locality, concurrency, contention, backpressure, deterministic behavior, ownership, or recovery.",
         "Do not merely rename a toy variable to Order or Price. The trading context must materially affect the design choice, correctness argument, performance trade-off, or failure analysis being tested.",
         "Keep scenarios plausible and answerable in an interview. State enough context and constraints for the candidate; do not assume undocumented infrastructure.",
-        `Do not require finance-domain knowledge that is absent from the lesson. Never invent exchange rules, latency numbers, market behavior, or risk formulas; the assessed ${language} facts must remain grounded in the supplied sections.`,
+        `Do not require finance-domain knowledge that is absent from the lesson. Never invent exchange rules, latency numbers, market behavior, risk formulas, toolchain behavior, or CMake features; the assessed ${language} facts must remain grounded in the supplied sections.`,
         "Keep the canonical short answer concise and make the detailed answer interview-ready.",
         "Use code only when it materially improves the question; otherwise return null.",
         "Never put fenced code or a code snippet inside prompt. When a snippet is needed, store it only in the separate code field and let prompt refer to it as the code below.",
@@ -290,6 +294,12 @@ export function buildDraftPrompt(lesson: GeneratedLesson, count: number) {
 }
 
 export function buildGeneratorSystemInstruction(lesson: GeneratedLesson) {
-  const language = lesson.language === "python" ? "Python" : "C++";
+  const language = languageDisplayName(lesson);
   return `You create grounded ${language} interview questions for software-engineering interviews at trading and quantitative-finance companies. Return Vietnamese questions and answers. Never introduce facts not supported by the supplied private study note.`;
+}
+
+function languageDisplayName(lesson: GeneratedLesson) {
+  if (lesson.language === "python") return "Python";
+  if (lesson.language === "cmake") return "CMake/build systems";
+  return "C++";
 }
