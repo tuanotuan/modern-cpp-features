@@ -1,7 +1,5 @@
-import manifestJson from "@/generated/content-manifest.json";
-import { applyQuestionOverrides } from "@/lib/content/question-overrides";
 import { loadQuestionOverrides } from "@/lib/content/question-overrides-server";
-import { contentManifestSchema } from "@/lib/content/schema";
+import { loadQuestionStoreManifest } from "@/lib/content/question-store-server";
 import {
   activeQuestionIds,
   rowsToApprovals,
@@ -20,8 +18,6 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
-
-const baseManifest = contentManifestSchema.parse(manifestJson);
 
 export async function POST(request: Request) {
   if (!isSupabaseConfigured()) {
@@ -55,10 +51,10 @@ export async function POST(request: Request) {
   if (approvalsResult.error || overridesResult.error) {
     return Response.json({ error: "Không đọc được question approvals." }, { status: 502 });
   }
-  const manifest = applyQuestionOverrides(
-    baseManifest,
-    overridesResult.overrides,
-  );
+  const manifest = await loadQuestionStoreManifest({
+    supabase,
+    overrides: overridesResult.overrides,
+  });
   const allowedQuestionIds = activeQuestionIds(
     manifest.questions,
     rowsToApprovals(

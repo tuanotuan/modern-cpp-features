@@ -1,4 +1,3 @@
-import manifestJson from "@/generated/content-manifest.json";
 import {
   AiBudgetConfigurationError,
   AiDailyBudgetExceededError,
@@ -19,9 +18,11 @@ import {
 } from "@/lib/ai/openai";
 import { consumeCoachRequest } from "@/lib/ai/rate-limit";
 import { COACH_RESERVATION_USD_MICROS } from "@/lib/ai/usage";
-import { contentManifestSchema } from "@/lib/content/schema";
-import { applyQuestionOverrides } from "@/lib/content/question-overrides";
 import { loadQuestionOverrides } from "@/lib/content/question-overrides-server";
+import {
+  getRepoContentManifest,
+  loadQuestionStoreManifest,
+} from "@/lib/content/question-store-server";
 import {
   isQuestionApproved,
   rowsToApprovals,
@@ -33,8 +34,6 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
-
-const baseManifest = contentManifestSchema.parse(manifestJson);
 
 export async function POST(request: Request) {
   const clientKey =
@@ -91,7 +90,7 @@ export async function POST(request: Request) {
   }
 
   let approvals: QuestionApproval[] = [];
-  let manifest = baseManifest;
+  let manifest = getRepoContentManifest();
   if (supabase) {
     const [approvalsResult, overridesResult] = await Promise.all([
       supabase
@@ -108,10 +107,10 @@ export async function POST(request: Request) {
     approvals = rowsToApprovals(
       (approvalsResult.data ?? []) as QuestionApprovalRow[],
     );
-    manifest = applyQuestionOverrides(
-      baseManifest,
-      overridesResult.overrides,
-    );
+    manifest = await loadQuestionStoreManifest({
+      supabase,
+      overrides: overridesResult.overrides,
+    });
   }
 
   const question = manifest.questions.find((item) => {

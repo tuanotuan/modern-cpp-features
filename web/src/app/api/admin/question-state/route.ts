@@ -1,9 +1,7 @@
 import { z } from "zod";
 
-import manifestJson from "@/generated/content-manifest.json";
-import { applyQuestionOverrides } from "@/lib/content/question-overrides";
 import { loadQuestionOverrides } from "@/lib/content/question-overrides-server";
-import { contentManifestSchema } from "@/lib/content/schema";
+import { loadQuestionStoreManifest } from "@/lib/content/question-store-server";
 import {
   rowsToLearningStates,
   rowsToProgress,
@@ -16,7 +14,6 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-const baseManifest = contentManifestSchema.parse(manifestJson);
 const requestSchema = z
   .object({
     questionId: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
@@ -58,7 +55,10 @@ export async function POST(request: Request) {
       { status: 502 },
     );
   }
-  const manifest = applyQuestionOverrides(baseManifest, loaded.overrides);
+  const manifest = await loadQuestionStoreManifest({
+    supabase,
+    overrides: loaded.overrides,
+  });
 
   const question = manifest.questions.find(
     (item) => item.id === parsed.data.questionId && item.status !== "archived",

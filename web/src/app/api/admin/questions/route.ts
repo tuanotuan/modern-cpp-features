@@ -1,4 +1,3 @@
-import manifestJson from "@/generated/content-manifest.json";
 import {
   applyQuestionOverrides,
   editableQuestionContent,
@@ -7,15 +6,13 @@ import {
   type QuestionOverrideRow,
 } from "@/lib/content/question-overrides";
 import { loadQuestionOverrides } from "@/lib/content/question-overrides-server";
-import { contentManifestSchema } from "@/lib/content/schema";
+import { loadQuestionStoreManifest } from "@/lib/content/question-store-server";
 import { isQuestionApproved } from "@/lib/practice/approvals";
 import { isAllowedPracticeUser } from "@/lib/supabase/authorization";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
-
-const baseManifest = contentManifestSchema.parse(manifestJson);
 
 export async function POST(request: Request) {
   if (!isSupabaseConfigured()) {
@@ -41,6 +38,15 @@ export async function POST(request: Request) {
     );
   }
 
+  const loaded = await loadQuestionOverrides(supabase);
+  if (loaded.error) {
+    return Response.json({ error: "Không đọc được question overrides." }, { status: 502 });
+  }
+  const baseManifest = await loadQuestionStoreManifest({ supabase });
+  const currentManifest = applyQuestionOverrides(
+    baseManifest,
+    loaded.overrides,
+  );
   const baseQuestion = baseManifest.questions.find(
     (question) => question.id === parsed.data.questionId,
   );
@@ -60,11 +66,6 @@ export async function POST(request: Request) {
     return Response.json({ error: "Không tìm thấy lesson nguồn." }, { status: 500 });
   }
 
-  const loaded = await loadQuestionOverrides(supabase);
-  if (loaded.error) {
-    return Response.json({ error: "Không đọc được question overrides." }, { status: 502 });
-  }
-  const currentManifest = applyQuestionOverrides(baseManifest, loaded.overrides);
   const currentQuestion = currentManifest.questions.find(
     (question) => question.id === baseQuestion.id,
   )!;
