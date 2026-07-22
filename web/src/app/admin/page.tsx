@@ -9,8 +9,8 @@ import { AdminDashboard } from "./admin-dashboard";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Admin — C++ Recall",
-  description: "Quản lý ngân hàng câu hỏi và độ phủ nội dung C++ Recall.",
+  title: "Admin — Recall",
+  description: "Quản lý ngân hàng câu hỏi và độ phủ nội dung Recall.",
 };
 
 export default async function AdminPage() {
@@ -50,7 +50,7 @@ function AdminGate({ mode }: { mode: "login" | "not-configured" }) {
     <main className="grid min-h-screen place-items-center px-5 py-12">
       <section className="w-full max-w-lg rounded-[2rem] border border-[#173f35]/15 bg-white/70 p-8 shadow-[0_24px_80px_rgb(23_63_53_/_10%)] backdrop-blur sm:p-10">
         <div className="grid size-12 place-items-center rounded-2xl bg-[#173f35] font-mono font-bold text-[#d7ff91]">
-          C++
+          R
         </div>
         <p className="mt-8 font-mono text-xs font-bold tracking-[0.18em] text-[#ba4b2f] uppercase">
           Admin access

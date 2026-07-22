@@ -13,7 +13,11 @@ import {
   type CoachFollowUpMessage,
   type CoachFollowUpResponse,
 } from "./contracts";
-import { buildCoachFollowUpPrompt, buildCoachPrompt } from "./prompt";
+import {
+  buildCoachFollowUpPrompt,
+  buildCoachPrompt,
+  buildCoachSystemInstruction,
+} from "./prompt";
 import type { AiTokenUsage } from "./usage";
 
 export const DEFAULT_LUNA_MODEL = "gpt-5.6-luna";
@@ -41,8 +45,7 @@ export async function evaluateWithOpenAI({
     model,
     store: false,
     safety_identifier: safetyIdentifier,
-    instructions:
-      "Bạn là senior C++ interviewer. Chấm công bằng, grounded vào rubric và notes; chỉ trả structured response được yêu cầu.",
+    instructions: buildCoachSystemInstruction(lesson, "evaluate"),
     input: buildCoachPrompt({ question, lesson, candidateAnswer }),
     reasoning: { effort: "low" },
     max_output_tokens: 3000,
@@ -80,8 +83,7 @@ export async function answerCoachFollowUpWithOpenAI({
     model,
     store: false,
     safety_identifier: safetyIdentifier,
-    instructions:
-      "Bạn là senior C++ interviewer đang giải thích lại feedback. Trả lời grounded, dễ hiểu và chỉ trả structured response được yêu cầu.",
+    instructions: buildCoachSystemInstruction(lesson, "follow-up"),
     input: buildCoachFollowUpPrompt({
       question,
       lesson,

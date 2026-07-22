@@ -418,7 +418,7 @@ export function AdminDashboard({
         <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#173f35]/15 pb-5">
           <div className="flex items-center gap-3">
             <div className="grid size-11 place-items-center rounded-2xl bg-[#173f35] font-mono text-sm font-bold text-[#d7ff91]">
-              C++
+              R
             </div>
             <div>
               <p className="text-lg font-bold">Recall Admin</p>
@@ -450,7 +450,7 @@ export function AdminDashboard({
           <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
             <div>
               <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
-                Quản lý C++ Recall
+                Quản lý Recall
               </h1>
               <p className="mt-3 text-[#64736c]">
                 Revision <span className="font-mono">{initialSnapshot.sourceRevision.slice(0, 10)}</span>
@@ -637,7 +637,7 @@ export function AdminDashboard({
                 placeholder="Tìm câu hỏi, bài học…"
                 className="rounded-xl border border-[#173f35]/15 bg-white px-4 py-2.5 text-sm outline-none focus:ring-3 focus:ring-[#d7ff91] md:col-span-2 xl:col-span-1"
               />
-              <Filter value={standard} onChange={setStandard} label="C++ version" options={[['all', 'Mọi version'], ['cpp98', 'C++98'], ['cpp11', 'C++11'], ['cpp20', 'C++20']]} />
+              <Filter value={standard} onChange={setStandard} label="Track" options={[['all', 'Mọi track'], ['cpp98', 'C++98'], ['cpp11', 'C++11'], ['cpp20', 'C++20'], ['python3', 'Python 3']]} />
               <Filter value={status} onChange={setStatus} label="Trạng thái" options={[['current', 'Chưa archive'], ['all', 'Mọi trạng thái'], ['active', 'Đang dùng'], ['pending', 'Chờ duyệt'], ['stale', 'Nguồn đã đổi'], ['archived', 'Đã lưu trữ']]} />
               <Filter value={type} onChange={setType} label="Loại câu" options={[['all', 'Mọi loại'], ['recall', 'Recall'], ['code_reasoning', 'Code reasoning'], ['pitfall', 'Pitfall'], ['scenario', 'Scenario']]} />
               <Filter value={learningFilter} onChange={setLearningFilter} label="Trạng thái học" options={[['all', 'Mọi trạng thái học'], ['new', 'Mới'], ['learning', 'Đang học'], ['review', 'Ôn tập'], ['relearning', 'Học lại'], ['due', 'Đến hạn'], ['suspended', 'Tạm dừng'], ['leech', 'Leech']]} />

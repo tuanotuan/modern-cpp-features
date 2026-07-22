@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "C++ Recall — Daily interview practice",
-  description: "Ôn phỏng vấn C++ mỗi ngày từ chính repository ghi chú của bạn.",
+  title: "Recall — Daily interview practice",
+  description: "Ôn phỏng vấn C++ và Python từ chính repository ghi chú của bạn.",
 };
 
 export default function RootLayout({
