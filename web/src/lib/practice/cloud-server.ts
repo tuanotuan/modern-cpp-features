@@ -1,6 +1,10 @@
 import type { User } from "@supabase/supabase-js";
 
-import type { AiDailyBudgetSnapshot } from "@/lib/ai/budget";
+import {
+  aiDailyBudgetSnapshotFromUsageRead,
+  type AiDailyBudgetSnapshot,
+} from "@/lib/ai/budget";
+import { readAiUsageRow } from "@/lib/ai/usage-store";
 import {
   getRepoContentManifest,
   loadQuestionStoreManifest,
@@ -13,8 +17,6 @@ import {
   type QuestionOverrideRow,
 } from "@/lib/content/question-overrides";
 import {
-  dailyBudgetRemainingPercent,
-  dailyBudgetUsdMicros,
   reconciledUsageUsdMicros,
   vietnamUsageDate,
 } from "@/lib/ai/usage";
@@ -147,16 +149,18 @@ export async function loadCloudContext(
       supabase
         .from("question_overrides")
         .select(questionOverrideSelect),
-      supabase
-        .from("ai_usage_monthly")
-        .select("actual_usd_micros, provider_usd_micros, provider_actual_baseline_usd_micros, usage_floor_usd_micros, provider_synced_at, request_count, input_tokens, output_tokens, last_model")
-        .eq("month_start", `${usageDate.slice(0, 7)}-01`)
-        .maybeSingle(),
-      supabase
-        .from("ai_usage_daily")
-        .select("actual_usd_micros, provider_usd_micros, provider_actual_baseline_usd_micros, usage_floor_usd_micros, provider_synced_at, request_count, input_tokens, output_tokens, last_model")
-        .eq("usage_date", usageDate)
-        .maybeSingle(),
+      readAiUsageRow(
+        supabase,
+        "ai_usage_monthly",
+        "month_start",
+        `${usageDate.slice(0, 7)}-01`,
+      ),
+      readAiUsageRow(
+        supabase,
+        "ai_usage_daily",
+        "usage_date",
+        usageDate,
+      ),
       supabase
         .from("gemini_usage_daily")
         .select("request_count, input_tokens, output_tokens, thought_tokens, total_tokens, last_model")
@@ -187,18 +191,16 @@ export async function loadCloudContext(
     : { data: [], error: null };
   const { data: generationJobRows, error: generationJobsError } =
     generationJobsResult;
-  const dailyBillingUsdMicros = dailyUsageRow?.provider_synced_at
-    ? Number(dailyUsageRow.provider_usd_micros ?? 0)
-    : null;
-  const dailyActualUsdMicros = reconciledUsageUsdMicros({
-    realtimeUsdMicros: Number(dailyUsageRow?.actual_usd_micros ?? 0),
-    providerUsdMicros: dailyBillingUsdMicros ?? 0,
-    realtimeBaselineUsdMicros: Number(
-      dailyUsageRow?.provider_actual_baseline_usd_micros ?? 0,
-    ),
-    usageFloorUsdMicros: Number(dailyUsageRow?.usage_floor_usd_micros ?? 0),
-    providerSynced: dailyBillingUsdMicros !== null,
+  const aiDailyBudget = aiDailyBudgetSnapshotFromUsageRead({
+    row: dailyUsageRow,
+    readError: dailyUsageError,
+    usageDate,
   });
+  if (dailyUsageError) {
+    console.error("Daily AI usage read failed", {
+      code: dailyUsageError.code ?? "unknown",
+    });
+  }
   const questionOverrides = overridesError
     ? []
     : rowsToQuestionOverrides((overrideRows ?? []) as QuestionOverrideRow[]);
@@ -261,24 +263,7 @@ export async function loadCloudContext(
       Boolean(process.env.GEMINI_API_KEY) &&
       process.env.GEMINI_FALLBACK_ENABLED?.toLowerCase() !== "false" &&
       providerSettingsRow?.gemini_fallback_enabled !== false,
-    aiDailyBudget: {
-      actualUsdMicros: dailyActualUsdMicros,
-      billingUsdMicros: dailyBillingUsdMicros,
-      billingSyncedAt:
-        typeof dailyUsageRow?.provider_synced_at === "string"
-          ? dailyUsageRow.provider_synced_at
-          : null,
-      requestCount: Number(dailyUsageRow?.request_count ?? 0),
-      inputTokens: Number(dailyUsageRow?.input_tokens ?? 0),
-      outputTokens: Number(dailyUsageRow?.output_tokens ?? 0),
-      lastModel:
-        typeof dailyUsageRow?.last_model === "string"
-          ? dailyUsageRow.last_model
-          : null,
-      limitUsdMicros: dailyBudgetUsdMicros(),
-      remainingPercent: dailyBudgetRemainingPercent(dailyActualUsdMicros),
-      usageDate,
-    },
+    aiDailyBudget,
     generationJobs: generationJobsError
       ? []
       : (generationJobRows ?? []).flatMap((row) => {

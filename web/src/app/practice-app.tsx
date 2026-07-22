@@ -12,6 +12,10 @@ import {
   type AiDailyBudgetSnapshot,
 } from "@/lib/ai/budget";
 import {
+  aiDailyBudgetStorageKey,
+  parseCurrentAiDailyBudgetSnapshot,
+} from "@/lib/ai/budget-cache";
+import {
   ENABLED_PRACTICE_DECK_IDS,
   PRACTICE_DECKS,
 } from "@/lib/content/decks";
@@ -206,6 +210,7 @@ export function PracticeApp({
   const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
   const [savedLibraryOpen, setSavedLibraryOpen] = useState(false);
   const [aiDailyBudget, setAiDailyBudget] = useState(initialAiDailyBudget);
+  const [aiBudgetCacheHydrated, setAiBudgetCacheHydrated] = useState(false);
   const [cloudQuestionStates, setCloudQuestionStates] = useState(
     initialQuestionStates,
   );
@@ -234,6 +239,50 @@ export function PracticeApp({
     );
     return [...byId.values()];
   }, [availableQuestions, pendingReview]);
+  const accountId = account?.id ?? null;
+
+  useEffect(() => {
+    if (initialAiDailyBudget) {
+      setAiDailyBudget((current) =>
+        mergeAiDailyBudgetSnapshot(current, initialAiDailyBudget),
+      );
+    }
+  }, [initialAiDailyBudget]);
+
+  useEffect(() => {
+    if (!accountId) {
+      setAiBudgetCacheHydrated(true);
+      return;
+    }
+    let cached: AiDailyBudgetSnapshot | null = null;
+    try {
+      cached = parseCurrentAiDailyBudgetSnapshot(
+        window.localStorage.getItem(aiDailyBudgetStorageKey(accountId)),
+      );
+    } catch {
+      // A failed cache read must not affect server-side budget enforcement.
+    }
+    if (cached) {
+      setAiDailyBudget((current) =>
+        mergeAiDailyBudgetSnapshot(current, cached),
+      );
+    }
+    setAiBudgetCacheHydrated(true);
+  }, [accountId]);
+
+  useEffect(() => {
+    if (!accountId || !aiBudgetCacheHydrated || !aiDailyBudget) return;
+    const serialized = JSON.stringify(aiDailyBudget);
+    if (!parseCurrentAiDailyBudgetSnapshot(serialized)) return;
+    try {
+      window.localStorage.setItem(
+        aiDailyBudgetStorageKey(accountId),
+        serialized,
+      );
+    } catch {
+      // Budget enforcement remains server-side if browser storage is unavailable.
+    }
+  }, [accountId, aiBudgetCacheHydrated, aiDailyBudget]);
 
   useEffect(() => {
     if (sessionHydrationStarted.current) return;
@@ -1005,7 +1054,7 @@ export function PracticeApp({
               value={`${completedToday}/${dailyTotal || 1}`}
               label="hôm nay"
             />
-            {account && aiDailyBudget ? (
+            {account && aiBudgetCacheHydrated && aiDailyBudget ? (
               <AiBudgetPill budget={aiDailyBudget} />
             ) : null}
             <button
