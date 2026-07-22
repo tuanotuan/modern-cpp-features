@@ -261,11 +261,19 @@ lessons:
     track: cpp11
   - id: cpp11-moved-from-object
     sourcePath: cpp11/24_moved-from object
-    language: cpp
-    track: cpp11
     order: 20
     tags:
       - moved
       - from
       - object
+    prerequisites: []
+    language: cpp
+    track: cpp11
+  - id: cpp11-rvalue
+    sourcePath: cpp11/20_22_rvalue
+    language: cpp
+    track: cpp11
+    order: 21
+    tags:
+      - rvalue
     prerequisites: []

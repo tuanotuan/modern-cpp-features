@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "sourceRevision": "ef30ec2a699058e1adb6f1cabea42d3ac274bc5a4ce4dd4b46a3cd3d410aaa62",
+  "sourceRevision": "1fcf7bd4d55015d64023db02b78dadc8d88c22bb61b7bf03938c605ad6978afd",
   "lessons": [
     {
       "id": "cpp98-object-variable-memory",
@@ -2091,6 +2091,56 @@
       ],
       "checklistItems": [],
       "code": "#include <iostream>\r\n#include <string>\r\n#include <utility>\r\n\r\nint main()\r\n{\r\n    std::string source = \"BTCUSD\";\r\n    std::string target = std::move(source);\r\n\r\n    std::cout << target << '\\n';\r\n\r\n    source = \"ETHUSD\";\r\n    std::cout << source << '\\n';\r\n}"
+    },
+    {
+      "id": "cpp11-rvalue",
+      "sourcePath": "cpp11/20_22_rvalue",
+      "order": 21,
+      "tags": [
+        "rvalue"
+      ],
+      "prerequisites": [],
+      "language": "cpp",
+      "track": "cpp11",
+      "standard": "cpp11",
+      "title": "Rvalue and Rvalue Reference",
+      "knowledgePath": "cpp11/20_22_rvalue/knowledge.md",
+      "codePath": "cpp11/20_22_rvalue/main.cpp",
+      "sourceHash": "127baa3c426e0f0fc90f0c970178ba25ef4d3408cdaae035a48675d66f8f24fd",
+      "sections": [
+        {
+          "id": "rvalue",
+          "heading": "Rvalue",
+          "bodyMarkdown": "An rvalue usually represents a temporary value.\r\n\r\n```cpp\r\n100\r\nx + 1\r\nstd::string(\"EURUSD\")\r\n```",
+          "bodyText": "An rvalue usually represents a temporary value.100\r\nx + 1\r\nstd::string(\"EURUSD\")"
+        },
+        {
+          "id": "rvalue-reference",
+          "heading": "Rvalue Reference",
+          "bodyMarkdown": "An rvalue reference binds to an rvalue.\r\n\r\n```cpp\r\nstd::string&& ref = std::string(\"EURUSD\");\r\n```",
+          "bodyText": "An rvalue reference binds to an rvalue.std::string&& ref = std::string(\"EURUSD\");"
+        },
+        {
+          "id": "function-parameter",
+          "heading": "Function Parameter",
+          "bodyMarkdown": "```cpp\r\nvoid process(std::string&& value);\r\n```\r\n\r\nThis parameter accepts temporary `std::string` values.\r\n\r\n```cpp\r\nprocess(std::string(\"EURUSD\"));\r\n```\r\n\r\nA named variable cannot be passed directly because it is an lvalue.",
+          "bodyText": "void process(std::string&& value);This parameter accepts temporary std::string values.process(std::string(\"EURUSD\"));A named variable cannot be passed directly because it is an lvalue."
+        },
+        {
+          "id": "named-rvalue-references",
+          "heading": "Named Rvalue References",
+          "bodyMarkdown": "A variable may have type T&&, but using its name produces an lvalue expression.\r\n\r\n```cpp\r\nint&& ref = 100;\r\n```\r\n\r\n`100` is an rvalue, while `ref` is an lvalue expression.",
+          "bodyText": "A variable may have type T&&, but using its name produces an lvalue expression.int&& ref = 100;100 is an rvalue, while ref is an lvalue expression."
+        },
+        {
+          "id": "key-rules",
+          "heading": "Key Rules",
+          "bodyMarkdown": "- Literals are usually rvalues.\r\n- Temporary objects are rvalues.\r\n- Arithmetic results are usually rvalues.\r\n- Named variables are lvalues.\r\n- `T&&` binds to rvalues when `T` is a concrete, non-deduced type.",
+          "bodyText": "Literals are usually rvalues.Temporary objects are rvalues.Arithmetic results are usually rvalues.Named variables are lvalues.T&& binds to rvalues when T is a concrete, non-deduced type."
+        }
+      ],
+      "checklistItems": [],
+      "code": "#include <iostream>\r\n#include <string>\r\n\r\nvoid publish(std::string&& symbol)\r\n{\r\n    std::cout << symbol << '\\n';\r\n}\r\n\r\nint main()\r\n{\r\n    publish(\"EURUSD\");\r\n    publish(std::string(\"BTCUSD\"));\r\n}"
     }
   ],
   "questions": [
