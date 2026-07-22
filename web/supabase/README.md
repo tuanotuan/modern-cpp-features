@@ -212,3 +212,16 @@ The current-lessons view appends `language` and `track`; existing columns retain
 their names and order. Apply this migration before deploying the matching app
 code. Phase A does not add Python lessons, change the selected practice deck, or
 alter C++ question taxonomy, approvals, scheduling, and history.
+
+## CMake Phase A foundation
+
+`20260728100000_add_cmake_content_foundation.sql` widens the same compatibility
+contract to `language = cmake`, `track = cmake`. Because PostgreSQL does not
+allow changing a generated-column expression in place, the migration briefly
+drops the current-lessons view and rebuilds only the derived `language`/`track`
+columns before recreating the view. Immutable lesson revisions, source hashes,
+questions, approvals, and learning history are not rewritten or deleted.
+
+Apply it before deploying the matching app code. The migration is transactional;
+an error rolls the whole change back. CMake discovery and the visible deck remain
+disabled in this phase.

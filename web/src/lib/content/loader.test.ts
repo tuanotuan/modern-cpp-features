@@ -27,6 +27,7 @@ describe("content loader", () => {
   it("selects the source-code filename from the lesson language", () => {
     expect(codeFileNameForLanguage("cpp")).toBe("main.cpp");
     expect(codeFileNameForLanguage("python")).toBe("main.py");
+    expect(codeFileNameForLanguage("cmake")).toBe("CMakeLists.txt");
   });
 
   it("marks a verified question for review when its source changes", () => {

@@ -4,12 +4,13 @@ const idSchema = z
   .string()
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use a lowercase kebab-case ID");
 
-export const contentLanguageSchema = z.enum(["cpp", "python"]);
+export const contentLanguageSchema = z.enum(["cpp", "python", "cmake"]);
 export type ContentLanguage = z.infer<typeof contentLanguageSchema>;
 
 export const practiceDeckSchema = z.enum([
   "cpp-interview",
   "python-interview",
+  "cmake-build-systems",
 ]);
 export type PracticeDeckId = z.infer<typeof practiceDeckSchema>;
 
@@ -18,6 +19,7 @@ export const contentTrackSchema = z.enum([
   "cpp11",
   "cpp20",
   "python3",
+  "cmake",
 ]);
 
 // Compatibility export while the UI still calls a language track "standard".
@@ -60,14 +62,13 @@ export const questionTaxonomySchema = z
     const expectedLanguage = languageForTrack(
       taxonomy.track ?? taxonomy.standard,
     );
-    const deckLanguage = taxonomy.deckId === "python-interview"
-      ? "python"
-      : "cpp";
+    const deckLanguage = languageForDeck(taxonomy.deckId);
     if (
       expectedLanguage !== deckLanguage ||
       (taxonomy.language !== undefined && taxonomy.language !== deckLanguage) ||
-      (deckLanguage === "python" &&
-        (taxonomy.language !== "python" || taxonomy.track !== "python3"))
+      (deckLanguage !== "cpp" &&
+        (taxonomy.language !== deckLanguage ||
+          taxonomy.track !== trackForLanguage(deckLanguage)))
     ) {
       context.addIssue({
         code: "custom",
@@ -201,5 +202,23 @@ export type LessonRegistryEntry = z.infer<typeof lessonRegistryEntrySchema>;
 export function languageForTrack(
   track: z.infer<typeof contentTrackSchema>,
 ): z.infer<typeof contentLanguageSchema> {
-  return track === "python3" ? "python" : "cpp";
+  if (track === "python3") return "python";
+  if (track === "cmake") return "cmake";
+  return "cpp";
+}
+
+function languageForDeck(
+  deck: z.infer<typeof practiceDeckSchema>,
+): z.infer<typeof contentLanguageSchema> {
+  if (deck === "python-interview") return "python";
+  if (deck === "cmake-build-systems") return "cmake";
+  return "cpp";
+}
+
+function trackForLanguage(
+  language: z.infer<typeof contentLanguageSchema>,
+): z.infer<typeof contentTrackSchema> | null {
+  if (language === "python") return "python3";
+  if (language === "cmake") return "cmake";
+  return null;
 }

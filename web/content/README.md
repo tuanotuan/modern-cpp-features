@@ -5,9 +5,9 @@
 Lessons have a normalized `language` and `track`. Existing registry entries that
 use `standard: cpp98|cpp11|cpp20` remain valid and normalize to `language: cpp`;
 new language integrations use the explicit pair, for example
-`language: python` with `track: python3`. Generated manifests retain `standard`
-as a compatibility alias for `track` until the multi-deck UI migration is
-complete.
+`language: python` with `track: python3`, or `language: cmake` with
+`track: cmake`. Generated manifests retain `standard` as a compatibility alias
+for `track`.
 
 Code filenames are language-aware: C++ lessons use optional `main.cpp`, while
 Python lessons use optional `main.py`. Python directory discovery is enabled;
@@ -15,6 +15,11 @@ the practice and analytics UI select either the `cpp-interview` or
 `python-interview` deck. Reviews remain keyed by stable question ID, while daily
 queues, random practice, streaks, Custom Study, and analytics are calculated
 inside the selected deck.
+
+CMake foundation is registered with the code filename `CMakeLists.txt` and the
+deck ID `cmake-build-systems`, but that deck remains disabled in Phase A.
+Discovery, AI drafting, and production deck selection are enabled only in later
+CMake phases.
 
 ## First Python lesson rollout
 
@@ -34,9 +39,9 @@ The enqueue job and the stored prompt metadata share
 `QUESTION_GENERATOR_PROMPT_VERSION`; changing the multilingual prompt therefore
 creates an auditable generator revision instead of silently reusing an old one.
 
-The C++ and Python notes in the repository root remain the source of truth. The
-web app adds stable metadata and interview questions without requiring existing
-notes to be reformatted.
+The C++, Python, and future CMake notes in the repository root remain the source
+of truth. The web app adds stable metadata and interview questions without
+requiring existing notes to be reformatted.
 
 ## Lesson registry
 

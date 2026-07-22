@@ -93,6 +93,31 @@ function buildDatabaseManifest(): ContentManifest {
         checklist_items: [],
         manifest_order: 3,
       },
+      {
+        id: "cmake-targets",
+        lifecycle_status: "active",
+        source_hash: hash,
+        source_commit_sha: "b".repeat(40),
+        source_path: "cmake/01_targets",
+        language: "cmake",
+        track: "cmake",
+        standard: "cmake",
+        lesson_order: 1,
+        title: "Targets",
+        tags: ["targets"],
+        prerequisites: [],
+        code: "add_executable(app main.cpp)",
+        sections: [
+          {
+            id: "overview",
+            heading: "Overview",
+            bodyMarkdown: "Body",
+            bodyText: "Body",
+          },
+        ],
+        checklist_items: [],
+        manifest_order: 4,
+      },
     ],
     [
       {
@@ -190,7 +215,7 @@ describe("Supabase question store", () => {
   it("materializes active lesson and question rows into the app manifest", () => {
     const manifest = buildDatabaseManifest();
 
-    expect(manifest.lessons).toHaveLength(2);
+    expect(manifest.lessons).toHaveLength(3);
     expect(manifest.sourceRevision).toBe("c".repeat(64));
     expect(manifest.lessons[0]).toMatchObject({
       id: "cpp11-example",
@@ -204,6 +229,13 @@ describe("Supabase question store", () => {
       codePath: "python/01_generators/main.py",
       language: "python",
       track: "python3",
+    });
+    expect(manifest.lessons[2]).toMatchObject({
+      id: "cmake-targets",
+      knowledgePath: "cmake/01_targets/knowledge.md",
+      codePath: "cmake/01_targets/CMakeLists.txt",
+      language: "cmake",
+      track: "cmake",
     });
     expect(manifest.questions[0]).toMatchObject({
       id: "cpp11-example-001",
