@@ -2,6 +2,11 @@ import type { User } from "@supabase/supabase-js";
 
 import type { AiDailyBudgetSnapshot } from "@/lib/ai/budget";
 import {
+  getRepoContentManifest,
+  loadQuestionStoreManifest,
+} from "@/lib/content/question-store-server";
+import type { ContentManifest } from "@/lib/content/schema";
+import {
   questionOverrideSelect,
   rowsToQuestionOverrides,
   type QuestionOverride,
@@ -44,6 +49,7 @@ export type CloudContext = {
   questionStates: QuestionLearningState[];
   approvals: QuestionApproval[];
   questionOverrides: QuestionOverride[];
+  manifest: ContentManifest;
   aiUsage: AiUsageSummary | null;
   geminiUsage: GeminiUsageSummary | null;
   geminiFallbackEnabled: boolean;
@@ -77,6 +83,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
       questionStates: [],
       approvals: [],
       questionOverrides: [],
+      manifest: getRepoContentManifest(),
       aiUsage: null,
       geminiUsage: null,
       geminiFallbackEnabled: false,
@@ -95,6 +102,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
       questionStates: [],
       approvals: [],
       questionOverrides: [],
+      manifest: getRepoContentManifest(),
       aiUsage: null,
       geminiUsage: null,
       geminiFallbackEnabled: false,
@@ -161,6 +169,13 @@ export async function loadCloudContext(): Promise<CloudContext> {
     usageFloorUsdMicros: Number(dailyUsageRow?.usage_floor_usd_micros ?? 0),
     providerSynced: dailyBillingUsdMicros !== null,
   });
+  const questionOverrides = overridesError
+    ? []
+    : rowsToQuestionOverrides((overrideRows ?? []) as QuestionOverrideRow[]);
+  const manifest = await loadQuestionStoreManifest({
+    supabase,
+    overrides: questionOverrides,
+  });
 
   return {
     enabled: true,
@@ -176,11 +191,8 @@ export async function loadCloudContext(): Promise<CloudContext> {
     approvals: approvalError
       ? []
       : rowsToApprovals((approvalRows ?? []) as QuestionApprovalRow[]),
-    questionOverrides: overridesError
-      ? []
-      : rowsToQuestionOverrides(
-          (overrideRows ?? []) as QuestionOverrideRow[],
-        ),
+    questionOverrides,
+    manifest,
     aiUsage: usageRow
       ? {
           actualUsdMicros: reconciledUsageUsdMicros({

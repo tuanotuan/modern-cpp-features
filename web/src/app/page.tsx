@@ -1,6 +1,3 @@
-import manifestJson from "@/generated/content-manifest.json";
-import { contentManifestSchema } from "@/lib/content/schema";
-import { applyQuestionOverrides } from "@/lib/content/question-overrides";
 import { isQuestionApproved } from "@/lib/practice/approvals";
 import { loadCloudContext } from "@/lib/practice/cloud-server";
 
@@ -14,10 +11,7 @@ export default async function Home({
   searchParams: Promise<{ auth?: string | string[] }>;
 }) {
   const cloud = await loadCloudContext();
-  const manifest = applyQuestionOverrides(
-    contentManifestSchema.parse(manifestJson),
-    cloud.questionOverrides,
-  );
+  const manifest = cloud.manifest;
   const params = await searchParams;
   const authCode = Array.isArray(params.auth) ? params.auth[0] : params.auth;
   const lessons = new Map(manifest.lessons.map((lesson) => [lesson.id, lesson]));

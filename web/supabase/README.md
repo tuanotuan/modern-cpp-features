@@ -118,3 +118,16 @@ npm.cmd run --silent content:backfill:check
 The monotonic AI budget migration stores a conservative usage floor before each
 OpenAI Billing reconciliation. Billing data can lag realtime requests, but that
 lag can no longer make used cost decrease or remaining daily quota increase.
+
+## Content bank shadow reads
+
+`20260724100000_create_content_shadow_views.sql` adds the current-lesson view used
+by Phase C. Apply it after the Phase B backfill, then set `QUESTION_STORE=shadow`
+in Vercel Production. Shadow mode reads both stores and logs any mismatch, but it
+continues serving the Git manifest, so a database problem cannot change the live
+practice bank.
+
+While signed in as the configured owner, open `/api/admin/content-parity`. The
+response must contain `"ok": true` and empty missing/extra/mismatched ID arrays
+before a later phase changes `QUESTION_STORE` to `db`. Database mode fails closed
+when the Supabase read or schema validation fails; do not enable it in Phase C.

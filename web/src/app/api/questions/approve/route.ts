@@ -1,15 +1,11 @@
-import manifestJson from "@/generated/content-manifest.json";
-import { applyQuestionOverrides } from "@/lib/content/question-overrides";
 import { loadQuestionOverrides } from "@/lib/content/question-overrides-server";
-import { contentManifestSchema } from "@/lib/content/schema";
+import { loadQuestionStoreManifest } from "@/lib/content/question-store-server";
 import { approveQuestionsSchema } from "@/lib/practice/approvals";
 import { isAllowedPracticeUser } from "@/lib/supabase/authorization";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
-
-const baseManifest = contentManifestSchema.parse(manifestJson);
 
 export async function POST(request: Request) {
   if (!isSupabaseConfigured()) {
@@ -41,7 +37,10 @@ export async function POST(request: Request) {
       { status: 502 },
     );
   }
-  const manifest = applyQuestionOverrides(baseManifest, loaded.overrides);
+  const manifest = await loadQuestionStoreManifest({
+    supabase,
+    overrides: loaded.overrides,
+  });
 
   const pendingById = new Map(
     manifest.questions
