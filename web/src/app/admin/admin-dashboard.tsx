@@ -58,6 +58,7 @@ export function AdminDashboard({
 }) {
   const [questions, setQuestions] = useState(initialSnapshot.questions);
   const [query, setQuery] = useState("");
+  const [deck, setDeck] = useState("all");
   const [standard, setStandard] = useState("all");
   const [status, setStatus] = useState("current");
   const [type, setType] = useState("all");
@@ -73,8 +74,17 @@ export function AdminDashboard({
   const [retryingJobId, setRetryingJobId] = useState<number | null>(null);
   const topics = useMemo(
     () =>
-      [...new Set(questions.flatMap((question) => question.taxonomy.topics))].sort(),
-    [questions],
+      [
+        ...new Set(
+          questions
+            .filter(
+              (question) =>
+                deck === "all" || question.taxonomy.deckId === deck,
+            )
+            .flatMap((question) => question.taxonomy.topics),
+        ),
+      ].sort(),
+    [deck, questions],
   );
 
   const filteredQuestions = useMemo(() => {
@@ -102,6 +112,7 @@ export function AdminDashboard({
                 !question.learning.suspended);
       return (
         matchesQuery &&
+        (deck === "all" || question.taxonomy.deckId === deck) &&
         (standard === "all" || question.standard === standard) &&
         (status === "all" ||
           (status === "current"
@@ -112,10 +123,12 @@ export function AdminDashboard({
         matchesLearning
       );
     });
-  }, [initialSnapshot.today, learningFilter, query, questions, standard, status, topic, type]);
+  }, [deck, initialSnapshot.today, learningFilter, query, questions, standard, status, topic, type]);
 
   const reviewQueue = questions.filter(
-    (question) => question.adminStatus === "pending" || question.adminStatus === "stale",
+    (question) =>
+      (deck === "all" || question.taxonomy.deckId === deck) &&
+      (question.adminStatus === "pending" || question.adminStatus === "stale"),
   );
   const activeCount = questions.filter(
     (question) => question.adminStatus === "active",
@@ -637,6 +650,11 @@ export function AdminDashboard({
                 placeholder="Tìm câu hỏi, bài học…"
                 className="rounded-xl border border-[#173f35]/15 bg-white px-4 py-2.5 text-sm outline-none focus:ring-3 focus:ring-[#d7ff91] md:col-span-2 xl:col-span-1"
               />
+              <Filter value={deck} onChange={(value) => {
+                setDeck(value);
+                setStandard("all");
+                setTopic("all");
+              }} label="Deck" options={[["all", "Mọi deck"], ["cpp-interview", "C++ Interview"], ["python-interview", "Python Interview"]]} />
               <Filter value={standard} onChange={setStandard} label="Track" options={[['all', 'Mọi track'], ['cpp98', 'C++98'], ['cpp11', 'C++11'], ['cpp20', 'C++20'], ['python3', 'Python 3']]} />
               <Filter value={status} onChange={setStatus} label="Trạng thái" options={[['current', 'Chưa archive'], ['all', 'Mọi trạng thái'], ['active', 'Đang dùng'], ['pending', 'Chờ duyệt'], ['stale', 'Nguồn đã đổi'], ['archived', 'Đã lưu trữ']]} />
               <Filter value={type} onChange={setType} label="Loại câu" options={[['all', 'Mọi loại'], ['recall', 'Recall'], ['code_reasoning', 'Code reasoning'], ['pitfall', 'Pitfall'], ['scenario', 'Scenario']]} />
