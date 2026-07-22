@@ -127,6 +127,9 @@ in Vercel Production. Shadow mode reads both stores and logs any mismatch, but i
 continues serving the Git manifest, so a database problem cannot change the live
 practice bank.
 
+`20260724120000_fix_content_shadow_parity.sql` aligns stale-draft status handling
+with the Git manifest. Apply it immediately after the shadow-view migration.
+
 While signed in as the configured owner, open `/api/admin/content-parity`. The
 response must contain `"ok": true` and empty missing/extra/mismatched ID arrays
 before a later phase changes `QUESTION_STORE` to `db`. Database mode fails closed

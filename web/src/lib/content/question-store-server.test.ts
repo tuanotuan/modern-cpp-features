@@ -29,7 +29,7 @@ function buildDatabaseManifest(): ContentManifest {
         title: "Example",
         tags: ["example"],
         prerequisites: [],
-        code: null,
+        code: "",
         sections: [
           {
             id: "overview",
@@ -161,6 +161,7 @@ describe("Supabase question store", () => {
       id: "cpp11-example",
       knowledgePath: "cpp11/01_example/knowledge.md",
       codePath: null,
+      code: "",
     });
     expect(manifest.questions[0]).toMatchObject({
       id: "cpp11-example-001",

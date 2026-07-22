@@ -196,7 +196,7 @@ export function rowsToContentManifest(
       prerequisites: row.prerequisites,
       title: row.title,
       knowledgePath: `${row.source_path}/knowledge.md`,
-      codePath: row.code === null ? null : `${row.source_path}/main.cpp`,
+      codePath: row.code ? `${row.source_path}/main.cpp` : null,
       sourceHash: row.source_hash,
       sections: row.sections,
       checklistItems: row.checklist_items,
