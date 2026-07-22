@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "sourceRevision": "1fcf7bd4d55015d64023db02b78dadc8d88c22bb61b7bf03938c605ad6978afd",
+  "sourceRevision": "e18d4b689262da7e33f82db012cd031c6cd3595a54d0d7222c22d017b432c3c9",
   "lessons": [
     {
       "id": "cpp98-object-variable-memory",
@@ -2141,6 +2141,56 @@
       ],
       "checklistItems": [],
       "code": "#include <iostream>\r\n#include <string>\r\n\r\nvoid publish(std::string&& symbol)\r\n{\r\n    std::cout << symbol << '\\n';\r\n}\r\n\r\nint main()\r\n{\r\n    publish(\"EURUSD\");\r\n    publish(std::string(\"BTCUSD\"));\r\n}"
+    },
+    {
+      "id": "cpp11-lvalue",
+      "sourcePath": "cpp11/19_21_lvalue",
+      "order": 22,
+      "tags": [
+        "lvalue"
+      ],
+      "prerequisites": [],
+      "language": "cpp",
+      "track": "cpp11",
+      "standard": "cpp11",
+      "title": "Lvalue and Lvalue Reference",
+      "knowledgePath": "cpp11/19_21_lvalue/knowledge.md",
+      "codePath": "cpp11/19_21_lvalue/main.cpp",
+      "sourceHash": "266406d06c21be04bb3c37df939dee62083eaa9596eb43b5a26fff89f626b7ae",
+      "sections": [
+        {
+          "id": "lvalue",
+          "heading": "Lvalue",
+          "bodyMarkdown": "An lvalue identifies an existing object.\r\n\r\n```cpp\r\nint price = 100;\r\nprice = 101;\r\n```\r\n\r\n`price` is an lvalue because it identifies an existing object.",
+          "bodyText": "An lvalue identifies an existing object.int price = 100;\r\nprice = 101;price is an lvalue because it identifies an existing object."
+        },
+        {
+          "id": "lvalue-reference",
+          "heading": "Lvalue Reference",
+          "bodyMarkdown": "An lvalue reference is another name for an existing object.\r\n\r\n```cpp\r\nint& ref = price;\r\nref = 102;\r\n```\r\n\r\nChanging `ref` changes `price` because both names refer to the same object.",
+          "bodyText": "An lvalue reference is another name for an existing object.int& ref = price;\r\nref = 102;Changing ref changes price because both names refer to the same object."
+        },
+        {
+          "id": "function-parameter",
+          "heading": "Function Parameter",
+          "bodyMarkdown": "```cpp\r\nvoid update(double& value);\r\n```\r\n\r\nA non-const lvalue-reference parameter allows a function to modify the original\r\nobject supplied by the caller.",
+          "bodyText": "void update(double& value);A non-const lvalue-reference parameter allows a function to modify the original\r\nobject supplied by the caller."
+        },
+        {
+          "id": "const-reference",
+          "heading": "Const Reference",
+          "bodyMarkdown": "```cpp\r\nvoid inspect(const double& value);\r\n```\r\n\r\nUse a const lvalue reference to read an object without copying it and without\r\nallowing the function to modify it through that reference.",
+          "bodyText": "void inspect(const double& value);Use a const lvalue reference to read an object without copying it and without\r\nallowing the function to modify it through that reference."
+        },
+        {
+          "id": "key-rules",
+          "heading": "Key Rules",
+          "bodyMarkdown": "- Passing a parameter by value creates a separate parameter object.\r\n- A non-const `T&` refers to the original object and can modify it.\r\n- A `const T&` reads the original object without copying or modifying it through\r\n  that reference.",
+          "bodyText": "Passing a parameter by value creates a separate parameter object.A non-const T& refers to the original object and can modify it.A const T& reads the original object without copying or modifying it through\r\nthat reference."
+        }
+      ],
+      "checklistItems": [],
+      "code": "#include <iostream>\r\n\r\nvoid update(double& price)\r\n{\r\n    price += 0.5;\r\n}\r\n\r\nint main()\r\n{\r\n    double bid = 100.0;\r\n    double& ref = bid;\r\n\r\n    update(ref);\r\n\r\n    std::cout << bid << '\\n';\r\n}"
     }
   ],
   "questions": [

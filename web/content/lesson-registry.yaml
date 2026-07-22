@@ -271,9 +271,17 @@ lessons:
     track: cpp11
   - id: cpp11-rvalue
     sourcePath: cpp11/20_22_rvalue
-    language: cpp
-    track: cpp11
     order: 21
     tags:
       - rvalue
+    prerequisites: []
+    language: cpp
+    track: cpp11
+  - id: cpp11-lvalue
+    sourcePath: cpp11/19_21_lvalue
+    language: cpp
+    track: cpp11
+    order: 22
+    tags:
+      - lvalue
     prerequisites: []
