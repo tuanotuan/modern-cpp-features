@@ -15,6 +15,8 @@ const manifest = {
     {
       id: "cpp11-example",
       sourcePath: "cpp11/01_example",
+      language: "cpp",
+      track: "cpp11",
       standard: "cpp11",
       order: 1,
       tags: ["example"],

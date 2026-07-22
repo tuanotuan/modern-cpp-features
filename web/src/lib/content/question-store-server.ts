@@ -14,6 +14,8 @@ import { applyQuestionOverrides, type QuestionOverride } from "./question-overri
 import { getQuestionStoreMode } from "./question-store-config";
 import {
   contentManifestSchema,
+  contentLanguageSchema,
+  contentTrackSchema,
   cppStandardSchema,
   questionDifficultySchema,
   questionResponseModeSchema,
@@ -32,6 +34,8 @@ const lessonRowSchema = z.object({
   source_commit_sha: z.string().nullable(),
   source_path: z.string(),
   standard: cppStandardSchema,
+  language: contentLanguageSchema,
+  track: contentTrackSchema,
   lesson_order: z.coerce.number().int().positive(),
   title: z.string(),
   tags: z.array(z.string()),
@@ -156,6 +160,8 @@ export async function loadSupabaseContentManifest(
       "sections",
       "checklist_items",
       "manifest_order",
+      "language",
+      "track",
     ].join(", ")),
     readAllPages<unknown>(
       supabase,
@@ -223,6 +229,8 @@ export function rowsToContentManifest(
     )
     .map((row) => ({
       id: row.id,
+      language: row.language,
+      track: row.track,
       sourcePath: row.source_path,
       standard: row.standard,
       order: row.lesson_order,
@@ -353,6 +361,8 @@ function lessonChecksum(lesson: ContentManifest["lessons"][number]): string {
   return sha256(
     JSON.stringify({
       sourcePath: lesson.sourcePath,
+      language: lesson.language,
+      track: lesson.track,
       standard: lesson.standard,
       order: lesson.order,
       tags: lesson.tags,

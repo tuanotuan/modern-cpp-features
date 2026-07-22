@@ -17,7 +17,7 @@ export type AdminQuestionStatus = "active" | "pending" | "stale" | "archived";
 
 export type AdminQuestion = ContentQuestion & {
   lessonTitle: string;
-  standard: "cpp98" | "cpp11" | "cpp20";
+  standard: "cpp98" | "cpp11" | "cpp20" | "python3";
   knowledgePath: string;
   sourceHeadings: string[];
   approved: boolean;
@@ -30,7 +30,7 @@ export type AdminQuestion = ContentQuestion & {
 export type AdminLessonCoverage = {
   id: string;
   title: string;
-  standard: "cpp98" | "cpp11" | "cpp20";
+  standard: "cpp98" | "cpp11" | "cpp20" | "python3";
   knowledgePath: string;
   currentQuestions: number;
   activeQuestions: number;

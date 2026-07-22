@@ -8,6 +8,8 @@ const lesson = {
   id: "cpp11-move-semantics",
   sourcePath: "cpp11/01_move",
   title: "Move semantics",
+  language: "cpp",
+  track: "cpp11",
   standard: "cpp11",
   order: 1,
   tags: ["move-semantics", "ownership"],

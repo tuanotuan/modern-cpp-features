@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  codeFileNameForLanguage,
   normalizeSourceText,
   findRepoRoot,
   loadContentManifest,
@@ -21,6 +22,11 @@ describe("content loader", () => {
     expect(sectionIdFromHeading("4. `const` vs `constexpr`")).toBe(
       "const-vs-constexpr",
     );
+  });
+
+  it("selects the source-code filename from the lesson language", () => {
+    expect(codeFileNameForLanguage("cpp")).toBe("main.cpp");
+    expect(codeFileNameForLanguage("python")).toBe("main.py");
   });
 
   it("marks a verified question for review when its source changes", () => {

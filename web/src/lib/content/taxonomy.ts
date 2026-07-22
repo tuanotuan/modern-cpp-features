@@ -5,10 +5,14 @@ import type {
 } from "./schema";
 
 export const HOME_DECK_ID = "cpp-interview" as const;
+export const PYTHON_DECK_ID = "python-interview" as const;
 
 export function buildQuestionTaxonomy(
   question: Question,
-  lesson: Pick<GeneratedLesson, "id" | "standard" | "tags">,
+  lesson: Pick<
+    GeneratedLesson,
+    "id" | "language" | "track" | "standard" | "tags"
+  >,
 ): QuestionTaxonomy {
   if (question.lessonId !== lesson.id) {
     throw new Error(
@@ -18,8 +22,11 @@ export function buildQuestionTaxonomy(
 
   const topics = [...new Set(lesson.tags)].sort();
   const responseMode = question.responseMode ?? "text";
+  const deckId = lesson.language === "python"
+    ? PYTHON_DECK_ID
+    : HOME_DECK_ID;
   const tags = [
-    `deck::${HOME_DECK_ID}`,
+    `deck::${deckId}`,
     `standard::${lesson.standard}`,
     ...topics.map((topic) => `topic::${topic}`),
     `skill::${canonicalTagValue(question.type)}`,
@@ -28,8 +35,8 @@ export function buildQuestionTaxonomy(
     `source::${lesson.id}`,
   ];
 
-  return {
-    deckId: HOME_DECK_ID,
+  const shared = {
+    deckId,
     standard: lesson.standard,
     topics,
     skill: question.type,
@@ -37,6 +44,20 @@ export function buildQuestionTaxonomy(
     responseMode,
     sourceLessonId: lesson.id,
     tags: [...new Set(tags)],
+  };
+  if (lesson.language === "cpp") return shared;
+
+  return {
+    ...shared,
+    language: lesson.language,
+    track: lesson.track,
+    tags: [
+      ...new Set([
+        ...shared.tags,
+        `language::${lesson.language}`,
+        `track::${lesson.track}`,
+      ]),
+    ],
   };
 }
 

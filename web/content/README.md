@@ -1,5 +1,18 @@
 # Content contract
 
+## Multi-language identity
+
+Lessons have a normalized `language` and `track`. Existing registry entries that
+use `standard: cpp98|cpp11|cpp20` remain valid and normalize to `language: cpp`;
+new language integrations use the explicit pair, for example
+`language: python` with `track: python3`. Generated manifests retain `standard`
+as a compatibility alias for `track` until the multi-deck UI migration is
+complete.
+
+Code filenames are language-aware: C++ lessons use optional `main.cpp`, while
+Python lessons will use optional `main.py`. Phase A only establishes this
+contract; Python directory discovery and production deck selection remain off.
+
 The C++ notes in the repository root remain the source of truth. The web app
 adds stable metadata and interview questions without requiring the existing
 notes to be reformatted.

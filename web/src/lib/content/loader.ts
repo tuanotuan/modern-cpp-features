@@ -20,7 +20,16 @@ import {
 import { buildQuestionTaxonomy } from "./taxonomy";
 
 const KNOWLEDGE_FILE = "knowledge.md";
-const CODE_FILE = "main.cpp";
+const CODE_FILE_BY_LANGUAGE = {
+  cpp: "main.cpp",
+  python: "main.py",
+} as const;
+
+export function codeFileNameForLanguage(
+  language: keyof typeof CODE_FILE_BY_LANGUAGE,
+) {
+  return CODE_FILE_BY_LANGUAGE[language];
+}
 
 export function normalizeSourceText(value: string) {
   return value.replace(/\r\n?/g, "\n").replace(/\n/g, "\r\n");
@@ -78,7 +87,7 @@ export async function findRepoRoot(startDirectory = process.cwd()) {
   while (true) {
     if (
       (await exists(path.join(candidate, ".git"))) &&
-      (await exists(path.join(candidate, "cpp11")))
+      (await exists(path.join(candidate, "web")))
     ) {
       return candidate;
     }
@@ -194,7 +203,7 @@ export async function loadContentManifest(
     "lesson IDs",
   );
   assertUnique(
-    registry.lessons.map((lesson) => `${lesson.standard}:${lesson.order}`),
+    registry.lessons.map((lesson) => `${lesson.track}:${lesson.order}`),
     "lesson order values",
   );
 
@@ -215,7 +224,10 @@ export async function loadContentManifest(
     assertInsideRepo(repoRoot, sourceDirectory);
 
     const knowledgeFile = path.join(sourceDirectory, KNOWLEDGE_FILE);
-    const codeFile = path.join(sourceDirectory, CODE_FILE);
+    const codeFile = path.join(
+      sourceDirectory,
+      codeFileNameForLanguage(entry.language),
+    );
     if (!(await exists(knowledgeFile))) {
       throw new Error(`Missing ${KNOWLEDGE_FILE} for ${entry.id}`);
     }

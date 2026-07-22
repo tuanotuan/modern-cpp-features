@@ -13,6 +13,8 @@ const question = {
 
 const lesson = {
   id: "cpp11-auto",
+  language: "cpp",
+  track: "cpp11",
   standard: "cpp11",
   tags: ["type-deduction", "reference", "reference"],
 } as GeneratedLesson;
@@ -33,6 +35,8 @@ describe("question taxonomy", () => {
     expect(taxonomy.tags).toContain("topic::type-deduction");
     expect(taxonomy.tags).toContain("skill::code-reasoning");
     expect(new Set(taxonomy.tags).size).toBe(taxonomy.tags.length);
+    expect(taxonomy).not.toHaveProperty("language");
+    expect(taxonomy).not.toHaveProperty("track");
   });
 
   it("defaults legacy questions to a text response and rejects mismatched lessons", () => {
@@ -43,5 +47,28 @@ describe("question taxonomy", () => {
     expect(() =>
       buildQuestionTaxonomy(question, { ...lesson, id: "cpp11-nullptr" }),
     ).toThrow(/belongs to cpp11-auto/);
+  });
+
+  it("adds explicit language and track tags for a Python deck", () => {
+    const taxonomy = buildQuestionTaxonomy(
+      { ...question, id: "py3-generator-001", lessonId: "py3-generator" },
+      {
+        ...lesson,
+        id: "py3-generator",
+        language: "python",
+        track: "python3",
+        standard: "python3",
+        tags: ["generator", "iteration"],
+      },
+    );
+
+    expect(taxonomy).toMatchObject({
+      deckId: "python-interview",
+      language: "python",
+      track: "python3",
+      standard: "python3",
+    });
+    expect(taxonomy.tags).toContain("language::python");
+    expect(taxonomy.tags).toContain("track::python3");
   });
 });

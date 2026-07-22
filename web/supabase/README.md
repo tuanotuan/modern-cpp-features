@@ -199,3 +199,16 @@ manually dispatched workflow.
 Rollback is non-destructive: disable the generation step in the workflow. DB
 drafts, immutable revisions, jobs, and events remain available for audit, while
 the existing DB reader continues serving already synchronized content.
+
+## Multi-language Phase A foundation
+
+`20260727100000_add_multilanguage_content_foundation.sql` adds language and track
+metadata without rewriting immutable lesson or question revisions. Both values
+are generated from the existing compatible `standard` column, whose constraint
+is widened to include `python3`. Existing C++ rows therefore materialize as
+`language = cpp` with their original track and checksum.
+
+The current-lessons view appends `language` and `track`; existing columns retain
+their names and order. Apply this migration before deploying the matching app
+code. Phase A does not add Python lessons, change the selected practice deck, or
+alter C++ question taxonomy, approvals, scheduling, and history.
