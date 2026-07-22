@@ -1,6 +1,14 @@
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
-import { approveQuestion, mergeDiscoveredLessons } from "./automation";
+import {
+  approveQuestion,
+  discoverKnowledgeDirectories,
+  mergeDiscoveredLessons,
+} from "./automation";
 import type { LessonRegistry, Question } from "./schema";
 
 const registry: LessonRegistry = {
@@ -20,6 +28,29 @@ const registry: LessonRegistry = {
 };
 
 describe("content automation", () => {
+  it("discovers knowledge files under both C++ and Python source roots", async () => {
+    const repoRoot = await mkdtemp(path.join(tmpdir(), "recall-discovery-"));
+    try {
+      await Promise.all([
+        mkdir(path.join(repoRoot, "cpp11", "01_auto"), { recursive: true }),
+        mkdir(path.join(repoRoot, "python", "01_generators"), { recursive: true }),
+        mkdir(path.join(repoRoot, "notes", "ignored"), { recursive: true }),
+      ]);
+      await Promise.all([
+        writeFile(path.join(repoRoot, "cpp11", "01_auto", "knowledge.md"), "# Auto"),
+        writeFile(path.join(repoRoot, "python", "01_generators", "knowledge.md"), "# Generators"),
+        writeFile(path.join(repoRoot, "notes", "ignored", "knowledge.md"), "# Ignored"),
+      ]);
+
+      expect(await discoverKnowledgeDirectories(repoRoot)).toEqual([
+        "cpp11/01_auto",
+        "python/01_generators",
+      ]);
+    } finally {
+      await rm(repoRoot, { recursive: true, force: true });
+    }
+  });
+
   it("registers new knowledge directories deterministically", () => {
     const result = mergeDiscoveredLessons(registry, [
       "cpp11/2_nullptr",
@@ -46,6 +77,37 @@ describe("content automation", () => {
         standard: "cpp20",
         order: 1,
         tags: ["designated", "initializer"],
+        prerequisites: [],
+      },
+    ]);
+  });
+
+  it("registers Python lessons in the Python 3 interview deck", () => {
+    const result = mergeDiscoveredLessons(registry, [
+      "cpp11/1_auto",
+      "python/02_data-model",
+      "python/01_iterators-generators",
+    ]);
+
+    expect(result.additions).toEqual([
+      {
+        id: "python-iterators-generators",
+        sourcePath: "python/01_iterators-generators",
+        language: "python",
+        track: "python3",
+        standard: "python3",
+        order: 1,
+        tags: ["iterators", "generators"],
+        prerequisites: [],
+      },
+      {
+        id: "python-data-model",
+        sourcePath: "python/02_data-model",
+        language: "python",
+        track: "python3",
+        standard: "python3",
+        order: 2,
+        tags: ["data", "model"],
         prerequisites: [],
       },
     ]);

@@ -68,6 +68,31 @@ function buildDatabaseManifest(): ContentManifest {
         checklist_items: [],
         manifest_order: 2,
       },
+      {
+        id: "python-generators",
+        lifecycle_status: "active",
+        source_hash: hash,
+        source_commit_sha: "b".repeat(40),
+        source_path: "python/01_generators",
+        language: "python",
+        track: "python3",
+        standard: "python3",
+        lesson_order: 1,
+        title: "Generators",
+        tags: ["generators"],
+        prerequisites: [],
+        code: "def values():\n    yield 1",
+        sections: [
+          {
+            id: "overview",
+            heading: "Overview",
+            bodyMarkdown: "Body",
+            bodyText: "Body",
+          },
+        ],
+        checklist_items: [],
+        manifest_order: 3,
+      },
     ],
     [
       {
@@ -165,13 +190,20 @@ describe("Supabase question store", () => {
   it("materializes active lesson and question rows into the app manifest", () => {
     const manifest = buildDatabaseManifest();
 
-    expect(manifest.lessons).toHaveLength(1);
+    expect(manifest.lessons).toHaveLength(2);
     expect(manifest.sourceRevision).toBe("c".repeat(64));
     expect(manifest.lessons[0]).toMatchObject({
       id: "cpp11-example",
       knowledgePath: "cpp11/01_example/knowledge.md",
       codePath: null,
       code: "",
+    });
+    expect(manifest.lessons[1]).toMatchObject({
+      id: "python-generators",
+      knowledgePath: "python/01_generators/knowledge.md",
+      codePath: "python/01_generators/main.py",
+      language: "python",
+      track: "python3",
     });
     expect(manifest.questions[0]).toMatchObject({
       id: "cpp11-example-001",

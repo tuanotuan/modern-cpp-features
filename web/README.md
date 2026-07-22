@@ -1,7 +1,7 @@
-# C++ Recall
+# Recall
 
-Personal interview-practice app generated from the C++ notes in the repository
-root.
+Personal interview-practice app generated from the C++ and Python notes in the
+repository root.
 
 ## Current phase
 
@@ -67,6 +67,7 @@ npm run validate
 ```
 
 The app expects to remain in `/web` so the content generator can locate the Git
-repository root and the `cpp98_foundation`, `cpp11`, and `cpp20` directories.
+repository root and the `cpp98_foundation`, `cpp11`, `cpp20`, and `python`
+directories.
 
 See [`content/README.md`](content/README.md) for the lesson and question contract.
