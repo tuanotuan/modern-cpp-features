@@ -11,6 +11,7 @@ type AnswerableQuestion = {
   id?: string;
   type: string;
   responseMode?: "text" | "code";
+  language?: "cpp" | "python";
 };
 
 export function requiresCodeAnswer(question: AnswerableQuestion) {
@@ -32,9 +33,11 @@ export function buildCandidateAnswer(
   const trimmedExplanation = explanation
     .trim()
     .slice(0, SCENARIO_EXPLANATION_MAX);
+  const language = question.language === "python" ? "Python" : "C++";
+  const fence = question.language === "python" ? "python" : "cpp";
   return [
-    "Thiết kế C++ của ứng viên:",
-    "```cpp",
+    `Thiết kế ${language} của ứng viên:`,
+    `\`\`\`${fence}`,
     trimmedCode,
     "```",
     trimmedExplanation

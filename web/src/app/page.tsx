@@ -1,5 +1,6 @@
 import { isQuestionApproved } from "@/lib/practice/approvals";
 import { loadCloudContext } from "@/lib/practice/cloud-server";
+import { parsePracticeDeck } from "@/lib/content/decks";
 
 import { PracticeApp, type PracticeQuestion } from "./practice-app";
 
@@ -8,12 +9,16 @@ export const dynamic = "force-dynamic";
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ auth?: string | string[] }>;
+  searchParams: Promise<{
+    auth?: string | string[];
+    deck?: string | string[];
+  }>;
 }) {
   const cloud = await loadCloudContext();
   const manifest = cloud.manifest;
   const params = await searchParams;
   const authCode = Array.isArray(params.auth) ? params.auth[0] : params.auth;
+  const deckParam = Array.isArray(params.deck) ? params.deck[0] : params.deck;
   const lessons = new Map(manifest.lessons.map((lesson) => [lesson.id, lesson]));
 
   const mappedQuestions: PracticeQuestion[] = manifest.questions
@@ -25,6 +30,8 @@ export default async function Home({
       return {
         ...question,
         lessonTitle: lesson.title,
+        language: lesson.language,
+        track: lesson.track,
         standard: lesson.standard,
         sourcePath: lesson.knowledgePath,
         sourceSections: question.sources.map(({ sectionId }) => {
@@ -65,6 +72,7 @@ export default async function Home({
       cloudSetupError={cloud.error}
       initialAiDailyBudget={cloud.aiDailyBudget}
       authNotice={authNotice(authCode)}
+      initialDeck={parsePracticeDeck(deckParam)}
     />
   );
 }

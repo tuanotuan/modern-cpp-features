@@ -26,6 +26,7 @@ Phase 0–5 provides:
 - Gemini Free fallback for grading and follow-ups after the app OpenAI budget is exhausted;
 - a private web Review Queue with exact-version/hash bulk approval;
 - GitHub Actions reconciliation for note additions, edits, renames, and deletes.
+- separate C++ and Python practice decks with per-deck queues and analytics.
 
 ## Local commands
 

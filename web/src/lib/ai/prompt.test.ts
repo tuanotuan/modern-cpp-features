@@ -10,7 +10,11 @@ import {
   normalizeCoachFeedback,
   type CoachFeedback,
 } from "./contracts";
-import { buildCoachFollowUpPrompt, buildCoachPrompt } from "./prompt";
+import {
+  buildCoachFollowUpPrompt,
+  buildCoachPrompt,
+  buildCoachSystemInstruction,
+} from "./prompt";
 
 const manifest = contentManifestSchema.parse(manifestJson);
 
@@ -103,6 +107,37 @@ describe("AI coach contract", () => {
     expect(prompt).toContain("Giải thích bằng ví dụ nhỏ nhé");
     expect(prompt).toContain(`<source id="${question.sources[0].sectionId}"`);
     expect(prompt).toContain("<grading_feedback>");
+  });
+
+  it("uses the lesson language for Python grading and follow-ups", () => {
+    const question = manifest.questions[0];
+    const sourceLesson = manifest.lessons.find(
+      (item) => item.id === question.lessonId,
+    )!;
+    const lesson = {
+      ...sourceLesson,
+      language: "python" as const,
+      track: "python3" as const,
+      standard: "python3" as const,
+    };
+    const grading = buildCoachPrompt({
+      question,
+      lesson,
+      candidateAnswer: "A sufficiently detailed Python answer.",
+    });
+    const followUp = buildCoachFollowUpPrompt({
+      question,
+      lesson,
+      candidateAnswer: "A sufficiently detailed Python answer.",
+      feedback: sampleFeedback(),
+      messages: [{ role: "user", content: "Cho tôi một ví dụ nhỏ." }],
+    });
+
+    expect(grading).toContain("phỏng vấn Python");
+    expect(followUp).toContain("ví dụ Python ngắn");
+    expect(buildCoachSystemInstruction(lesson, "evaluate")).toContain(
+      "senior Python interviewer",
+    );
   });
 });
 

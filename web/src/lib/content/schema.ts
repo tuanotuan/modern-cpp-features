@@ -5,6 +5,13 @@ const idSchema = z
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use a lowercase kebab-case ID");
 
 export const contentLanguageSchema = z.enum(["cpp", "python"]);
+export type ContentLanguage = z.infer<typeof contentLanguageSchema>;
+
+export const practiceDeckSchema = z.enum([
+  "cpp-interview",
+  "python-interview",
+]);
+export type PracticeDeckId = z.infer<typeof practiceDeckSchema>;
 
 export const contentTrackSchema = z.enum([
   "cpp98",
@@ -38,7 +45,7 @@ export const taxonomyTagSchema = z.string().regex(
 
 export const questionTaxonomySchema = z
   .object({
-    deckId: z.enum(["cpp-interview", "python-interview"]),
+    deckId: practiceDeckSchema,
     language: contentLanguageSchema.optional(),
     track: contentTrackSchema.optional(),
     standard: contentTrackSchema,

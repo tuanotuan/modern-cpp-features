@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { PRACTICE_DECKS, parsePracticeDeck } from "@/lib/content/decks";
+import type { PracticeDeckId } from "@/lib/content/schema";
 import { isQuestionApproved } from "@/lib/practice/approvals";
 import { buildPracticeAnalytics } from "@/lib/practice/analytics";
 import { loadCloudContext } from "@/lib/practice/cloud-server";
@@ -10,7 +12,7 @@ import type { Rating } from "@/lib/practice/scheduler";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Thống kê học tập — C++ Recall",
+  title: "Thống kê học tập — Recall",
   description: "Theo dõi retention, lịch sử ôn và dự báo lịch Anki.",
 };
 
@@ -28,18 +30,36 @@ const ratingColors: Record<Rating, string> = {
   easy: "bg-[#8ebf3f]",
 };
 
-export default async function StatsPage() {
+export default async function StatsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ deck?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const deckParam = Array.isArray(params.deck) ? params.deck[0] : params.deck;
+  const selectedDeck = parsePracticeDeck(deckParam);
   const cloud = await loadCloudContext();
-  if (!cloud.enabled) return <StatsGate mode="not-configured" />;
-  if (!cloud.account) return <StatsGate mode="login" />;
+  if (!cloud.enabled) {
+    return <StatsGate mode="not-configured" deck={selectedDeck} />;
+  }
+  if (!cloud.account) return <StatsGate mode="login" deck={selectedDeck} />;
 
+  const activeDeck = PRACTICE_DECKS[selectedDeck];
   const manifest = cloud.manifest;
   const questions = manifest.questions.filter(
     (question) =>
+      question.taxonomy.deckId === selectedDeck &&
       question.status !== "archived" &&
       (question.status === "verified" ||
         isQuestionApproved(question, cloud.approvals)),
   );
+  const questionIds = new Set(questions.map((question) => question.id));
+  const deckProgress = {
+    ...cloud.progress,
+    reviews: cloud.progress.reviews.filter((review) =>
+      questionIds.has(review.questionId),
+    ),
+  };
   const today = vietnamDateKey();
   const learningStates = buildLearningStates(
     questions.map((question) => ({
@@ -47,12 +67,12 @@ export default async function StatsPage() {
       version: question.version,
       sourceHash: question.sourceHash,
     })),
-    cloud.progress.reviews,
-    cloud.questionStates,
+    deckProgress.reviews,
+    cloud.questionStates.filter((state) => questionIds.has(state.questionId)),
   );
   const analytics = buildPracticeAnalytics(
     questions,
-    cloud.progress,
+    deckProgress,
     [...learningStates.values()],
     today,
   );
@@ -65,7 +85,7 @@ export default async function StatsPage() {
         <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#173f35]/15 pb-5">
           <div className="flex items-center gap-3">
             <div className="grid size-11 place-items-center rounded-2xl bg-[#173f35] font-mono text-sm font-bold text-[#d7ff91]">
-              C++
+              {activeDeck.badge}
             </div>
             <div>
               <p className="text-lg font-bold">Recall Analytics</p>
@@ -73,7 +93,8 @@ export default async function StatsPage() {
             </div>
           </div>
           <nav className="flex flex-wrap items-center gap-2">
-            <Link className="rounded-xl px-4 py-2 text-sm font-bold hover:bg-white/60" href="/">
+            <StatsDeckSwitcher selected={selectedDeck} />
+            <Link className="rounded-xl px-4 py-2 text-sm font-bold hover:bg-white/60" href={`/?deck=${selectedDeck}`}>
               Luyện tập
             </Link>
             <Link className="rounded-xl px-4 py-2 text-sm font-bold hover:bg-white/60" href="/admin">
@@ -221,6 +242,29 @@ export default async function StatsPage() {
   );
 }
 
+function StatsDeckSwitcher({ selected }: { selected: PracticeDeckId }) {
+  return (
+    <div className="flex rounded-xl border border-[#173f35]/15 bg-white/55 p-1">
+      {(Object.keys(PRACTICE_DECKS) as PracticeDeckId[]).map((deckId) => {
+        const deck = PRACTICE_DECKS[deckId];
+        return (
+          <Link
+            key={deckId}
+            href={`/stats?deck=${deckId}`}
+            className={`rounded-lg px-3 py-1.5 text-xs font-bold ${
+              selected === deckId
+                ? "bg-[#173f35] text-white"
+                : "text-[#52645c] hover:bg-white"
+            }`}
+          >
+            {deck.badge}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 function Panel({ eyebrow, title, children }: { eyebrow: string; title: string; children: React.ReactNode }) {
   return (
     <section className="rounded-[2rem] border border-[#173f35]/12 bg-white/58 p-5 shadow-[0_18px_70px_rgb(23_63_53_/_7%)] sm:p-7">
@@ -255,11 +299,17 @@ function EmptyState({ children }: { children: React.ReactNode }) {
   return <p className="mt-6 rounded-2xl border border-dashed border-[#173f35]/20 p-6 text-sm text-[#64736c]">{children}</p>;
 }
 
-function StatsGate({ mode }: { mode: "login" | "not-configured" }) {
+function StatsGate({
+  mode,
+  deck,
+}: {
+  mode: "login" | "not-configured";
+  deck: PracticeDeckId;
+}) {
   return (
     <main className="grid min-h-screen place-items-center px-5 py-12">
       <section className="w-full max-w-lg rounded-[2rem] border border-[#173f35]/15 bg-white/70 p-8 shadow-[0_24px_80px_rgb(23_63_53_/_10%)] sm:p-10">
-        <div className="grid size-12 place-items-center rounded-2xl bg-[#173f35] font-mono font-bold text-[#d7ff91]">C++</div>
+        <div className="grid size-12 place-items-center rounded-2xl bg-[#173f35] font-mono font-bold text-[#d7ff91]">R</div>
         <p className="mt-8 font-mono text-xs font-bold tracking-[0.18em] text-[#ba4b2f] uppercase">Learning analytics</p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight">Thống kê riêng của mày</h1>
         <p className="mt-4 leading-7 text-[#64736c]">
@@ -267,11 +317,14 @@ function StatsGate({ mode }: { mode: "login" | "not-configured" }) {
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           {mode === "login" ? (
-            <form action="/auth/login?next=/stats" method="post">
+            <form
+              action={`/auth/login?next=${encodeURIComponent(`/stats?deck=${deck}`)}`}
+              method="post"
+            >
               <button className="rounded-2xl bg-[#173f35] px-5 py-3 text-sm font-bold text-white">Đăng nhập GitHub</button>
             </form>
           ) : null}
-          <Link href="/" className="rounded-2xl border border-[#173f35]/15 bg-white px-5 py-3 text-sm font-bold">Về trang luyện tập</Link>
+          <Link href={`/?deck=${deck}`} className="rounded-2xl border border-[#173f35]/15 bg-white px-5 py-3 text-sm font-bold">Về trang luyện tập</Link>
         </div>
       </section>
     </main>

@@ -119,4 +119,18 @@ describe("practice analytics", () => {
     expect(result.forecast[0].count).toBe(0);
     expect(result.stateCounts.suspended).toBe(1);
   });
+
+  it("does not mix reviews from another language deck", () => {
+    const result = buildPracticeAnalytics(
+      [questions[0]],
+      progress,
+      [state("q-one", "2026-07-23", 3)],
+      "2026-07-21",
+    );
+
+    expect(result.summary.totalReviews).toBe(2);
+    expect(result.summary.reviewedToday).toBe(1);
+    expect(result.ratingCounts.easy).toBe(0);
+    expect(result.weakTopics.map((topic) => topic.topic)).toEqual(["lambda"]);
+  });
 });

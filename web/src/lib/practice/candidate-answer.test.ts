@@ -52,6 +52,17 @@ describe("buildCandidateAnswer", () => {
     expect(result).toContain("unique ownership");
   });
 
+  it("labels and fences Python code with the lesson language", () => {
+    const result = buildCandidateAnswer(
+      { type: "scenario", responseMode: "code", language: "python" },
+      "The generator streams values lazily.",
+      "def values():\n    yield 1",
+    );
+
+    expect(result).toContain("Thiết kế Python");
+    expect(result).toContain("```python\ndef values():\n    yield 1\n```");
+  });
+
   it("requires code and stays below the API/database answer limit", () => {
     expect(
       buildCandidateAnswer(

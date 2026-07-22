@@ -12,7 +12,11 @@ import {
   type CoachFollowUpMessage,
   type CoachFollowUpResponse,
 } from "./contracts";
-import { buildCoachFollowUpPrompt, buildCoachPrompt } from "./prompt";
+import {
+  buildCoachFollowUpPrompt,
+  buildCoachPrompt,
+  buildCoachSystemInstruction,
+} from "./prompt";
 
 const DEFAULT_GEMINI_FALLBACK_MODEL = "gemini-3.5-flash";
 
@@ -56,8 +60,7 @@ export async function evaluateWithGemini({
     {
       model: geminiFallbackModel(),
       store: false,
-      system_instruction:
-        "Bạn là senior C++ interviewer. Chấm công bằng, grounded vào rubric và notes; chỉ trả structured response được yêu cầu.",
+      system_instruction: buildCoachSystemInstruction(lesson, "evaluate"),
       input: buildCoachPrompt({ question, lesson, candidateAnswer }),
       generation_config: {
         thinking_level: "high",
@@ -103,8 +106,7 @@ export async function answerCoachFollowUpWithGemini({
     {
       model: geminiFallbackModel(),
       store: false,
-      system_instruction:
-        "Bạn là senior C++ interviewer đang giải thích lại feedback. Trả lời grounded, dễ hiểu và chỉ trả structured response được yêu cầu.",
+      system_instruction: buildCoachSystemInstruction(lesson, "follow-up"),
       input: buildCoachFollowUpPrompt({
         question,
         lesson,

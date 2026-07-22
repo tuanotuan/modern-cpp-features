@@ -11,7 +11,10 @@ complete.
 
 Code filenames are language-aware: C++ lessons use optional `main.cpp`, while
 Python lessons use optional `main.py`. Python directory discovery is enabled;
-production deck selection remains off until the multi-deck UI phase.
+the practice and analytics UI select either the `cpp-interview` or
+`python-interview` deck. Reviews remain keyed by stable question ID, while daily
+queues, random practice, streaks, Custom Study, and analytics are calculated
+inside the selected deck.
 
 The C++ and Python notes in the repository root remain the source of truth. The
 web app adds stable metadata and interview questions without requiring existing

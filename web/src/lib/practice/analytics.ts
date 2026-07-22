@@ -51,9 +51,16 @@ export function buildPracticeAnalytics(
   states: QuestionLearningState[],
   today: string,
 ): PracticeAnalytics {
+  const questionIds = new Set(questions.map((question) => question.id));
+  const deckProgress: PracticeProgress = {
+    ...progress,
+    reviews: progress.reviews.filter((review) =>
+      questionIds.has(review.questionId),
+    ),
+  };
   const ratingCounts = emptyRatingCounts();
   const reviewsByDate = new Map<string, Record<Rating, number>>();
-  for (const review of progress.reviews) {
+  for (const review of deckProgress.reviews) {
     ratingCounts[review.rating] += 1;
     const daily = reviewsByDate.get(review.reviewedOn) ?? emptyRatingCounts();
     daily[review.rating] += 1;
@@ -105,7 +112,7 @@ export function buildPracticeAnalytics(
   const activeIntervals = states
     .filter((state) => !state.suspended && state.state === "review")
     .map((state) => state.intervalDays);
-  const totalReviews = progress.reviews.length;
+  const totalReviews = deckProgress.reviews.length;
   const retainedReviews = totalReviews - ratingCounts.again;
 
   return {
@@ -113,7 +120,7 @@ export function buildPracticeAnalytics(
       totalReviews,
       reviewedToday: activity.at(-1)?.count ?? 0,
       studiedDays: reviewsByDate.size,
-      streak: calculateStreak(progress.reviews, today),
+      streak: calculateStreak(deckProgress.reviews, today),
       retentionPercent: percent(retainedReviews, totalReviews),
       learnedQuestions: states.filter((state) => state.state !== "new").length,
       matureQuestions: states.filter(
@@ -137,7 +144,7 @@ export function buildPracticeAnalytics(
       count: forecastCounts.get(date) ?? 0,
     })),
     overdueCount,
-    weakTopics: buildWeakTopics(questions, progress),
+    weakTopics: buildWeakTopics(questions, deckProgress),
   };
 }
 

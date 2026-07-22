@@ -11,7 +11,12 @@ import {
   mergeAiDailyBudgetSnapshot,
   type AiDailyBudgetSnapshot,
 } from "@/lib/ai/budget";
-import type { ContentQuestion } from "@/lib/content/schema";
+import { PRACTICE_DECKS } from "@/lib/content/decks";
+import type {
+  ContentLanguage,
+  ContentQuestion,
+  PracticeDeckId,
+} from "@/lib/content/schema";
 import { displayQuestionPrompt } from "@/lib/content/question-prompt";
 import type { PracticeAccount } from "@/lib/practice/cloud-server";
 import {
@@ -98,6 +103,8 @@ const learningStateLabels = {
 
 export type PracticeQuestion = ContentQuestion & {
   lessonTitle: string;
+  language: ContentLanguage;
+  track: keyof typeof standardLabels;
   standard: keyof typeof standardLabels;
   sourcePath: string;
   sourceSections: Array<{
@@ -140,6 +147,7 @@ export function PracticeApp({
   cloudSetupError,
   initialAiDailyBudget,
   authNotice,
+  initialDeck,
 }: {
   questions: PracticeQuestion[];
   reviewQueue: PracticeQuestion[];
@@ -151,6 +159,7 @@ export function PracticeApp({
   cloudSetupError: boolean;
   initialAiDailyBudget: AiDailyBudgetSnapshot | null;
   authNotice: string | null;
+  initialDeck: PracticeDeckId;
 }) {
   const snapshot = useSyncExternalStore(
     subscribeToProgress,
@@ -205,6 +214,7 @@ export function PracticeApp({
   );
   const [availableQuestions, setAvailableQuestions] = useState(questions);
   const [pendingReview, setPendingReview] = useState(reviewQueue);
+  const [selectedDeck, setSelectedDeck] = useState(initialDeck);
   const [approvalStatus, setApprovalStatus] = useState<
     "idle" | "saving" | "error"
   >("idle");
@@ -435,26 +445,45 @@ export function PracticeApp({
   }
 
   const today = localDateKey();
+  const activeDeck = PRACTICE_DECKS[selectedDeck];
+  const deckCounts = {
+    "cpp-interview": availableQuestions.filter(
+      (question) => question.taxonomy.deckId === "cpp-interview",
+    ).length,
+    "python-interview": availableQuestions.filter(
+      (question) => question.taxonomy.deckId === "python-interview",
+    ).length,
+  } satisfies Record<PracticeDeckId, number>;
+  const deckQuestions = availableQuestions.filter(
+    (question) => question.taxonomy.deckId === selectedDeck,
+  );
+  const deckQuestionIds = new Set(deckQuestions.map((question) => question.id));
+  const deckReviews = progress.reviews.filter((review) =>
+    deckQuestionIds.has(review.questionId),
+  );
+  const selectedPendingReview = pendingReview.filter(
+    (question) => question.taxonomy.deckId === selectedDeck,
+  );
   const questionById = new Map(
-    availableQuestions.map((question) => [question.id, question]),
+    deckQuestions.map((question) => [question.id, question]),
   );
   const learningStates = buildLearningStates(
-    availableQuestions.map((question) => ({
+    deckQuestions.map((question) => ({
       id: question.id,
       version: question.version,
       sourceHash: question.sourceHash,
     })),
-    progress.reviews,
-    cloudQuestionStates,
+    deckReviews,
+    cloudQuestionStates.filter((state) => deckQuestionIds.has(state.questionId)),
   );
   const queue = buildAnkiDailyQueue(learningStates, today);
   const learningCounts = countLearningStates(learningStates.values());
-  const latest = latestReviews(progress.reviews);
+  const latest = latestReviews(deckReviews);
   const remainingIds = queue.filter(
     (questionId) => latest.get(questionId)?.reviewedOn !== today,
   );
   const completedToday = new Set(
-    progress.reviews
+    deckReviews
       .filter((review) => review.reviewedOn === today)
       .map((review) => review.questionId),
   ).size;
@@ -481,7 +510,7 @@ export function PracticeApp({
   const isCustomStudyQuestion = Boolean(
     current && customStudyIds?.includes(current.id),
   );
-  const randomCandidates = availableQuestions.filter(
+  const randomCandidates = deckQuestions.filter(
     (question) =>
       question.id !== current?.id && latest.get(question.id)?.reviewedOn !== today,
   );
@@ -489,22 +518,22 @@ export function PracticeApp({
     current && (coachFeedback[current.id] || revealed.has(current.id)),
   );
   const dailyTotal = completedToday + remainingIds.length;
-  const streak = calculateStreak(progress.reviews, today);
+  const streak = calculateStreak(deckReviews, today);
   const customStudyTopics = [
     ...new Set(
-      availableQuestions.flatMap((question) => question.taxonomy.topics),
+      deckQuestions.flatMap((question) => question.taxonomy.topics),
     ),
   ].sort();
 
   async function approveAllPending() {
-    if (!pendingReview.length || approvalStatus === "saving") return;
+    if (!selectedPendingReview.length || approvalStatus === "saving") return;
     setApprovalStatus("saving");
     try {
       const response = await fetch("/api/questions/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          questions: pendingReview.map((question) => ({
+          questions: selectedPendingReview.map((question) => ({
             questionId: question.id,
             questionVersion: question.version,
             sourceHash: question.sourceHash,
@@ -516,10 +545,15 @@ export function PracticeApp({
         const known = new Set(currentQuestions.map((question) => question.id));
         return [
           ...currentQuestions,
-          ...pendingReview.filter((question) => !known.has(question.id)),
+          ...selectedPendingReview.filter((question) => !known.has(question.id)),
         ];
       });
-      setPendingReview([]);
+      const approvedIds = new Set(
+        selectedPendingReview.map((question) => question.id),
+      );
+      setPendingReview((current) =>
+        current.filter((question) => !approvedIds.has(question.id)),
+      );
       setApprovalStatus("idle");
     } catch {
       setApprovalStatus("error");
@@ -548,7 +582,7 @@ export function PracticeApp({
 
   function startCustomStudy(filters: CustomStudyFilters) {
     const ids = buildCustomStudyQueue(
-      availableQuestions,
+      deckQuestions,
       learningStates,
       today,
       filters,
@@ -570,6 +604,19 @@ export function PracticeApp({
     clearStudySessionState();
     setCustomStudyIds(null);
     setSelectedQuestionId(next.id);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function selectDeck(deck: PracticeDeckId) {
+    if (deck === selectedDeck) return;
+    clearStudySessionState();
+    setSelectedQuestionId(null);
+    setCustomStudyIds(null);
+    setCustomStudyNotice(null);
+    setSelectedDeck(deck);
+    const url = new URL(window.location.href);
+    url.searchParams.set("deck", deck);
+    window.history.replaceState(null, "", url);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -930,12 +977,17 @@ export function PracticeApp({
         <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#173f35]/15 pb-5">
           <div className="flex items-center gap-3">
             <span className="grid size-10 place-items-center rounded-xl bg-[#173f35] font-mono text-sm font-bold text-[#d7ff91] shadow-sm">
-              C++
+              {activeDeck.badge}
             </span>
             <div>
               <p className="font-semibold tracking-[-0.02em]">Recall</p>
               <p className="text-xs text-[#64736c]">Interview practice</p>
             </div>
+            <DeckSwitcher
+              selected={selectedDeck}
+              counts={deckCounts}
+              onSelect={selectDeck}
+            />
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
@@ -959,6 +1011,7 @@ export function PracticeApp({
               account={account}
               cloudEnabled={cloudEnabled}
               syncStatus={syncStatus}
+              selectedDeck={selectedDeck}
             />
           </div>
         </header>
@@ -969,9 +1022,16 @@ export function PracticeApp({
             onClose={() => setSavedLibraryOpen(false)}
             onRemove={deleteSavedItem}
             onOpenQuestion={(questionId) => {
-              if (sessionQuestions.some((question) => question.id === questionId)) {
+              const question = sessionQuestions.find(
+                (item) => item.id === questionId,
+              );
+              if (question) {
                 clearStudySessionState();
+                setSelectedDeck(question.taxonomy.deckId);
                 setSelectedQuestionId(questionId);
+                const url = new URL(window.location.href);
+                url.searchParams.set("deck", question.taxonomy.deckId);
+                window.history.replaceState(null, "", url);
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }
               setSavedLibraryOpen(false);
@@ -989,6 +1049,8 @@ export function PracticeApp({
         ) : null}
 
         <CustomStudyPanel
+          key={selectedDeck}
+          language={activeDeck.language}
           topics={customStudyTopics}
           activeCount={customRemainingIds.length}
           notice={customStudyNotice}
@@ -999,7 +1061,7 @@ export function PracticeApp({
           }}
         />
 
-        {!current && pendingReview.length ? (
+        {!current && selectedPendingReview.length ? (
           <section className="mt-7 rounded-3xl border border-[#ba4b2f]/25 bg-[#fff4df] p-6 sm:p-8">
             <p className="font-mono text-xs tracking-[0.15em] text-[#ba4b2f] uppercase">
               Review queue
@@ -1007,7 +1069,7 @@ export function PracticeApp({
             <div className="mt-3 flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl font-semibold">
-                  {pendingReview.length} câu chờ duyệt
+                  {selectedPendingReview.length} câu chờ duyệt
                 </h1>
                 <p className="mt-1 text-sm text-[#64736c]">
                   Duyệt xong, các câu này sẽ được đưa vào lịch ôn cá nhân.
@@ -1112,6 +1174,7 @@ export function PracticeApp({
                   {requiresCodeAnswer(current) ? (
                     <div className="mt-8 space-y-5">
                       <ScenarioCodeEditor
+                        language={current.language}
                         value={codeAnswers[current.id] ?? ""}
                         onChange={(value) => updateCodeAnswer(current.id, value)}
                       />
@@ -1234,7 +1297,7 @@ export function PracticeApp({
                         }
                         onExpandNextStep={() =>
                           void askCoachFollowUp(
-                            `Hãy biến bước tiếp theo này thành một bài học mini dễ hiểu, có ví dụ C++ ngắn và một bài tập nhỏ: ${coachFeedback[current.id].nextStep}`,
+                            `Hãy biến bước tiếp theo này thành một bài học mini dễ hiểu, có ví dụ ${current.language === "python" ? "Python" : "C++"} ngắn và một bài tập nhỏ: ${coachFeedback[current.id].nextStep}`,
                           )
                         }
                         onExploreInterviewerQuestion={() =>
@@ -1377,7 +1440,7 @@ export function PracticeApp({
             </section>
 
             <aside className="space-y-4 lg:pt-12">
-              {pendingReview.length ? (
+              {selectedPendingReview.length ? (
                 <div className="rounded-3xl border border-[#ba4b2f]/25 bg-[#fff4df] p-6">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -1385,15 +1448,15 @@ export function PracticeApp({
                         Review queue
                       </p>
                       <p className="mt-2 text-2xl font-semibold">
-                        {pendingReview.length} câu chờ duyệt
+                        {selectedPendingReview.length} câu chờ duyệt
                       </p>
                     </div>
                     <span className="rounded-full bg-[#ba4b2f] px-2.5 py-1 font-mono text-xs font-bold text-white">
-                      {pendingReview.length}
+                      {selectedPendingReview.length}
                     </span>
                   </div>
                   <ul className="mt-4 space-y-2 text-sm text-[#596a62]">
-                    {pendingReview.slice(0, 3).map((question) => (
+                    {selectedPendingReview.slice(0, 3).map((question) => (
                       <li key={question.id} className="line-clamp-2">
                         <span className="font-mono text-[10px] font-bold text-[#ba4b2f] uppercase">
                           {question.status === "draft" ? "AI draft" : "Nguồn đã đổi"}
@@ -1485,13 +1548,18 @@ export function PracticeApp({
               </div>
             </aside>
           </div>
-        ) : (
+        ) : deckQuestions.length ? (
           <CompletionScreen
             completedToday={completedToday}
             streak={streak}
             today={today}
             hasRandomQuestion={randomCandidates.length > 0}
             onRandomQuestion={showRandomQuestion}
+          />
+        ) : (
+          <DeckEmptyState
+            deck={selectedDeck}
+            pendingCount={selectedPendingReview.length}
           />
         )}
 
@@ -1511,7 +1579,7 @@ function LoadingScreen() {
     <main className="grid min-h-screen place-items-center px-5">
       <div className="text-center">
         <span className="mx-auto grid size-12 animate-pulse place-items-center rounded-2xl bg-[#173f35] font-mono text-sm font-bold text-[#d7ff91]">
-          C++
+          R
         </span>
         <p className="mt-4 text-sm text-[#64736c]">Đang mở lịch ôn tập…</p>
       </div>
@@ -1563,12 +1631,14 @@ function CompletionScreen({
 }
 
 function CustomStudyPanel({
+  language,
   topics,
   activeCount,
   notice,
   onStart,
   onStop,
 }: {
+  language: ContentLanguage;
   topics: string[];
   activeCount: number;
   notice: string | null;
@@ -1611,17 +1681,24 @@ function CustomStudyPanel({
           ]}
         />
         <StudySelect
-          label="C++"
+          label={language === "python" ? "Python" : "C++"}
           value={standard}
           onChange={(value) =>
             setStandard(value as CustomStudyFilters["standard"])
           }
-          options={[
-            ["all", "Mọi version"],
-            ["cpp98", "C++98"],
-            ["cpp11", "C++11"],
-            ["cpp20", "C++20"],
-          ]}
+          options={
+            language === "python"
+              ? [
+                  ["all", "Mọi version"],
+                  ["python3", "Python 3"],
+                ]
+              : [
+                  ["all", "Mọi version"],
+                  ["cpp98", "C++98"],
+                  ["cpp11", "C++11"],
+                  ["cpp20", "C++20"],
+                ]
+          }
         />
         <StudySelect
           label="Kỹ năng"
@@ -1724,6 +1801,81 @@ function LearningCount({ label, value }: { label: string; value: number }) {
   );
 }
 
+function DeckEmptyState({
+  deck,
+  pendingCount,
+}: {
+  deck: PracticeDeckId;
+  pendingCount: number;
+}) {
+  const config = PRACTICE_DECKS[deck];
+  return (
+    <section className="grid min-h-[64vh] place-items-center py-12">
+      <div className="max-w-xl rounded-[2rem] border border-[#173f35]/15 bg-white/65 p-8 text-center shadow-[0_20px_70px_rgba(23,63,53,0.08)] sm:p-10">
+        <span className="mx-auto grid size-16 place-items-center rounded-2xl bg-[#173f35] font-mono text-lg font-bold text-[#d7ff91]">
+          {config.badge}
+        </span>
+        <h1 className="mt-6 text-3xl font-semibold tracking-tight">
+          Chưa có câu đã duyệt trong {config.label}.
+        </h1>
+        <p className="mt-4 leading-7 text-[#64736c]">
+          {pendingCount
+            ? `${pendingCount} câu đang nằm trong Review Queue. Duyệt chúng để bắt đầu luyện.`
+            : deck === "python-interview"
+              ? "Thêm bài vào python/<tên-bài>/knowledge.md; pipeline sẽ tạo draft và đưa vào Review Queue."
+              : "Thêm hoặc duyệt câu hỏi trong Admin để bắt đầu luyện."}
+        </p>
+        <Link
+          href="/admin"
+          className="mt-7 inline-flex rounded-2xl bg-[#173f35] px-5 py-3 text-sm font-bold text-white"
+        >
+          Mở Admin
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+function DeckSwitcher({
+  selected,
+  counts,
+  onSelect,
+}: {
+  selected: PracticeDeckId;
+  counts: Record<PracticeDeckId, number>;
+  onSelect: (deck: PracticeDeckId) => void;
+}) {
+  return (
+    <div
+      className="ml-1 flex rounded-xl border border-[#173f35]/15 bg-white/55 p-1"
+      aria-label="Chọn bộ câu hỏi"
+    >
+      {(Object.keys(PRACTICE_DECKS) as PracticeDeckId[]).map((deckId) => {
+        const deck = PRACTICE_DECKS[deckId];
+        const active = deckId === selected;
+        return (
+          <button
+            key={deckId}
+            type="button"
+            onClick={() => onSelect(deckId)}
+            aria-pressed={active}
+            className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+              active
+                ? "bg-[#173f35] text-white shadow-sm"
+                : "text-[#52645c] hover:bg-white/75"
+            }`}
+          >
+            {deck.badge}
+            <span className={`ml-1 font-mono text-[9px] ${active ? "text-[#d7ff91]" : "text-[#78857f]"}`}>
+              {counts[deckId]}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function StatPill({ icon, value, label }: { icon: string; value: string; label: string }) {
   return (
     <div className="flex items-center gap-2 rounded-full border border-[#173f35]/15 bg-white/55 px-3 py-2">
@@ -1765,16 +1917,18 @@ function AccountControl({
   account,
   cloudEnabled,
   syncStatus,
+  selectedDeck,
 }: {
   account: PracticeAccount | null;
   cloudEnabled: boolean;
   syncStatus: SyncStatus;
+  selectedDeck: PracticeDeckId;
 }) {
   if (account) {
     return (
       <div className="flex items-center gap-2">
         <Link
-          href="/stats"
+          href={`/stats?deck=${selectedDeck}`}
           className="rounded-full border border-[#173f35]/15 bg-white/65 px-3 py-2 font-mono text-[10px] font-bold uppercase transition hover:border-[#356b58]/40"
         >
           Thống kê
@@ -1806,7 +1960,10 @@ function AccountControl({
 
   if (cloudEnabled) {
     return (
-      <form action="/auth/login" method="post">
+      <form
+        action={`/auth/login?next=${encodeURIComponent(`/?deck=${selectedDeck}`)}`}
+        method="post"
+      >
         <button
           type="submit"
           className="rounded-full bg-[#173f35] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#245748] focus:ring-4 focus:ring-[#d7ff91] focus:outline-none"
@@ -1851,15 +2008,19 @@ function Tag({ children }: { children: React.ReactNode }) {
 }
 
 function ScenarioCodeEditor({
+  language,
   value,
   onChange,
 }: {
+  language: ContentLanguage;
   value: string;
   onChange: (value: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const lineNumbersRef = useRef<HTMLPreElement>(null);
   const lineCount = Math.max(16, value.split("\n").length);
+  const isPython = language === "python";
+  const languageLabel = isPython ? "Python" : "C++";
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key !== "Tab") return;
@@ -1888,19 +2049,23 @@ function ScenarioCodeEditor({
               <i className="size-2.5 rounded-full bg-[#e7b84b]" />
               <i className="size-2.5 rounded-full bg-[#75aa52]" />
             </span>
-            <span className="font-mono text-xs font-bold text-[#d7ff91]">main.cpp</span>
+            <span className="font-mono text-xs font-bold text-[#d7ff91]">
+              {isPython ? "main.py" : "main.cpp"}
+            </span>
             <span className="rounded-full bg-white/8 px-2 py-0.5 font-mono text-[10px] text-white/55">
-              C++ design
+              {languageLabel} design
             </span>
           </div>
           <div className="flex items-center gap-2">
             {!value ? (
               <button
                 type="button"
-                onClick={() => onChange(CPLUSPLUS_DESIGN_TEMPLATE)}
+                onClick={() =>
+                  onChange(isPython ? PYTHON_DESIGN_TEMPLATE : CPLUSPLUS_DESIGN_TEMPLATE)
+                }
                 className="rounded-lg px-2.5 py-1.5 font-mono text-[10px] font-bold text-white/65 transition hover:bg-white/10 hover:text-white"
               >
-                Chèn khung C++
+                Chèn khung {languageLabel}
               </button>
             ) : null}
             <button
@@ -1931,9 +2096,13 @@ function ScenarioCodeEditor({
             }}
             maxLength={SCENARIO_CODE_MAX}
             spellCheck={false}
-            aria-label="Code C++ cho câu hỏi thiết kế"
+            aria-label={`Code ${languageLabel} cho câu hỏi thiết kế`}
             className={`${expanded ? "h-[calc(100vh-9rem)]" : "h-96"} w-full resize-none overflow-auto bg-transparent p-4 font-mono text-[13px] leading-6 text-[#e8f4ec] caret-[#d7ff91] outline-none placeholder:text-white/25`}
-            placeholder={'// Thiết kế class/API của mày ở đây…\n\nclass Solution {\npublic:\n    // ...\n};'}
+            placeholder={
+              isPython
+                ? "# Thiết kế class/API của mày ở đây…\n\nclass Solution:\n    pass"
+                : "// Thiết kế class/API của mày ở đây…\n\nclass Solution {\npublic:\n    // ...\n};"
+            }
           />
         </div>
         <div className="flex items-center justify-between border-t border-white/8 bg-[#102f27] px-4 py-2 font-mono text-[10px] text-white/40">
@@ -1954,6 +2123,12 @@ public:
 private:
     // Khai báo state và ownership ở đây.
 };`;
+
+const PYTHON_DESIGN_TEMPLATE = `class Solution:
+    """Thiết kế public API và state ở đây."""
+
+    def __init__(self) -> None:
+        pass`;
 
 function InlineCode({ text, inverted = false }: { text: string; inverted?: boolean }) {
   return text.split(/(`[^`]+`)/g).map((part, index) =>
