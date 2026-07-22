@@ -54,7 +54,22 @@ export type CloudContext = {
   geminiUsage: GeminiUsageSummary | null;
   geminiFallbackEnabled: boolean;
   aiDailyBudget: AiDailyBudgetSnapshot | null;
+  generationJobs: ContentGenerationJobSummary[];
   error: boolean;
+};
+
+export type ContentGenerationJobSummary = {
+  id: number;
+  lessonId: string;
+  sourceHash: string;
+  status: "pending" | "running" | "deferred" | "completed" | "failed" | "dead_letter";
+  attemptCount: number;
+  requestedCount: number;
+  provider: string;
+  model: string;
+  nextAttemptAt: string;
+  lastError: Record<string, unknown> | null;
+  updatedAt: string;
 };
 
 export type AiUsageSummary = {
@@ -74,7 +89,9 @@ export type GeminiUsageSummary = {
   lastModel: string | null;
 };
 
-export async function loadCloudContext(): Promise<CloudContext> {
+export async function loadCloudContext(
+  { includeGenerationJobs = false }: { includeGenerationJobs?: boolean } = {},
+): Promise<CloudContext> {
   if (!isSupabaseConfigured()) {
     return {
       enabled: false,
@@ -88,6 +105,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
       geminiUsage: null,
       geminiFallbackEnabled: false,
       aiDailyBudget: null,
+      generationJobs: [],
       error: false,
     };
   }
@@ -107,6 +125,7 @@ export async function loadCloudContext(): Promise<CloudContext> {
       geminiUsage: null,
       geminiFallbackEnabled: false,
       aiDailyBudget: null,
+      generationJobs: [],
       error: false,
     };
   }
@@ -157,6 +176,17 @@ export async function loadCloudContext(): Promise<CloudContext> {
   const { data: geminiUsageRow, error: geminiUsageError } = geminiUsageResult;
   const { data: providerSettingsRow, error: providerSettingsError } =
     providerSettingsResult;
+  const generationJobsResult = includeGenerationJobs
+    ? await supabase
+        .from("content_generation_jobs")
+        .select(
+          "id, lesson_id, source_hash, status, attempt_count, requested_count, provider, model, next_attempt_at, last_error, updated_at",
+        )
+        .order("updated_at", { ascending: false })
+        .limit(50)
+    : { data: [], error: null };
+  const { data: generationJobRows, error: generationJobsError } =
+    generationJobsResult;
   const dailyBillingUsdMicros = dailyUsageRow?.provider_synced_at
     ? Number(dailyUsageRow.provider_usd_micros ?? 0)
     : null;
@@ -249,6 +279,28 @@ export async function loadCloudContext(): Promise<CloudContext> {
       remainingPercent: dailyBudgetRemainingPercent(dailyActualUsdMicros),
       usageDate,
     },
+    generationJobs: generationJobsError
+      ? []
+      : (generationJobRows ?? []).flatMap((row) => {
+          const status = generationJobStatus(row.status);
+          if (!status) return [];
+          return [{
+            id: Number(row.id),
+            lessonId: String(row.lesson_id),
+            sourceHash: String(row.source_hash),
+            status,
+            attemptCount: Number(row.attempt_count),
+            requestedCount: Number(row.requested_count),
+            provider: String(row.provider),
+            model: String(row.model),
+            nextAttemptAt: String(row.next_attempt_at),
+            lastError:
+              typeof row.last_error === "object" && row.last_error !== null
+                ? row.last_error as Record<string, unknown>
+                : null,
+            updatedAt: String(row.updated_at),
+          }];
+        }),
     error: Boolean(
       error ||
         statesError ||
@@ -257,9 +309,18 @@ export async function loadCloudContext(): Promise<CloudContext> {
         usageError ||
         dailyUsageError ||
         geminiUsageError ||
-        providerSettingsError,
+        providerSettingsError ||
+        generationJobsError,
     ),
   };
+}
+
+function generationJobStatus(value: unknown): ContentGenerationJobSummary["status"] | null {
+  return ["pending", "running", "deferred", "completed", "failed", "dead_letter"].includes(
+    String(value),
+  )
+    ? String(value) as ContentGenerationJobSummary["status"]
+    : null;
 }
 
 function toPracticeAccount(user: User): PracticeAccount {

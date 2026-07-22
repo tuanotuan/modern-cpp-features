@@ -1,6 +1,11 @@
+import { GoogleGenAI } from "@google/genai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 
+import {
+  geminiFallbackModel,
+  isGeminiFallbackConfigured,
+} from "../ai/gemini";
 import {
   openAIClient,
   openAIModel,
@@ -10,7 +15,7 @@ import type { GeneratedLesson } from "./schema";
 
 const MAX_PROVIDER_ATTEMPTS = 3;
 
-const aiQuestionDraftSchema = z.object({
+export const aiQuestionDraftSchema = z.object({
   type: z.enum(["recall", "code_reasoning", "pitfall", "scenario"]),
   responseMode: z.enum(["text", "code"]),
   difficulty: z.enum(["beginner", "intermediate", "advanced"]),
@@ -30,11 +35,18 @@ const aiQuestionDraftSchema = z.object({
   sources: z.array(z.object({ sectionId: z.string().min(1) })).min(1),
 });
 
-const aiDraftResponseSchema = z.object({
+export const aiDraftResponseSchema = z.object({
   questions: z.array(aiQuestionDraftSchema).min(1).max(5),
 });
 
 export type AiQuestionDraft = z.infer<typeof aiQuestionDraftSchema>;
+export type GeneratedQuestionDraftBatch = {
+  questions: AiQuestionDraft[];
+  provider: "openai" | "gemini";
+  model: string;
+};
+
+export const QUESTION_GENERATOR_PROMPT_VERSION = "trading-grounded-v1";
 
 export async function generateQuestionDraftsWithOpenAI({
   lesson,
@@ -43,6 +55,33 @@ export async function generateQuestionDraftsWithOpenAI({
   lesson: GeneratedLesson;
   count: number;
 }): Promise<AiQuestionDraft[]> {
+  return (await generateQuestionDraftBatchWithOpenAI({ lesson, count })).questions;
+}
+
+export async function generateQuestionDraftBatchWithFallback({
+  lesson,
+  count,
+}: {
+  lesson: GeneratedLesson;
+  count: number;
+}): Promise<GeneratedQuestionDraftBatch> {
+  try {
+    return await generateQuestionDraftBatchWithOpenAI({ lesson, count });
+  } catch (error) {
+    if (!isProviderRateLimitError(error) || !isGeminiFallbackConfigured()) {
+      throw error;
+    }
+    return generateQuestionDraftBatchWithGemini({ lesson, count });
+  }
+}
+
+export async function generateQuestionDraftBatchWithOpenAI({
+  lesson,
+  count,
+}: {
+  lesson: GeneratedLesson;
+  count: number;
+}): Promise<GeneratedQuestionDraftBatch> {
   if (!Number.isInteger(count) || count < 1 || count > 5) {
     throw new Error("Draft count must be an integer from 1 to 5");
   }
@@ -76,18 +115,72 @@ export async function generateQuestionDraftsWithOpenAI({
     );
   }
 
+  validateDraftSources(lesson, result.questions, "OpenAI");
+
+  return { questions: result.questions, provider: "openai", model };
+}
+
+export async function generateQuestionDraftBatchWithGemini({
+  lesson,
+  count,
+}: {
+  lesson: GeneratedLesson;
+  count: number;
+}): Promise<GeneratedQuestionDraftBatch> {
+  if (!Number.isInteger(count) || count < 1 || count > 5) {
+    throw new Error("Draft count must be an integer from 1 to 5");
+  }
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY is missing");
+  const model = geminiFallbackModel();
+  const interaction = await new GoogleGenAI({ apiKey }).interactions.create(
+    {
+      model,
+      store: false,
+      system_instruction:
+        "You create grounded C++ interview questions for software-engineering interviews at trading, quantitative-finance, and low-latency companies. Return Vietnamese questions and answers. Never introduce facts not supported by the supplied private study note.",
+      input: buildDraftPrompt(lesson, count),
+      generation_config: {
+        thinking_level: "low",
+        temperature: 0.2,
+        max_output_tokens: 6000,
+      },
+      response_format: {
+        type: "text",
+        mime_type: "application/json",
+        schema: z.toJSONSchema(aiDraftResponseSchema),
+      },
+    },
+    { timeout: 45_000, maxRetries: 1 },
+  );
+  if (!interaction.output_text) {
+    throw new Error("Gemini returned an empty draft response");
+  }
+  const result = aiDraftResponseSchema.parse(JSON.parse(interaction.output_text));
+  if (result.questions.length !== count) {
+    throw new Error(
+      `Gemini returned ${result.questions.length} drafts; expected ${count}`,
+    );
+  }
+  validateDraftSources(lesson, result.questions, "Gemini");
+  return { questions: result.questions, provider: "gemini", model };
+}
+
+export function validateDraftSources(
+  lesson: GeneratedLesson,
+  questions: AiQuestionDraft[],
+  provider: string,
+) {
   const sectionIds = new Set(lesson.sections.map((section) => section.id));
-  for (const question of result.questions) {
+  for (const question of questions) {
     for (const source of question.sources) {
       if (!sectionIds.has(source.sectionId)) {
         throw new Error(
-          `OpenAI cited unknown section ${source.sectionId} in ${lesson.id}`,
+          `${provider} cited unknown section ${source.sectionId} in ${lesson.id}`,
         );
       }
     }
   }
-
-  return result.questions;
 }
 
 export async function retryProviderRateLimit<T>(

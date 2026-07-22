@@ -164,3 +164,38 @@ While signed in as the configured owner, open `/api/admin/content-parity`. The
 response must contain `"ok": true` and empty missing/extra/mismatched ID arrays
 before a later phase changes `QUESTION_STORE` to `db`. Database mode fails closed
 when the Supabase read or schema validation fails; do not enable it in Phase C.
+
+## Phase E DB-native question generation
+
+`20260726100000_create_db_native_generation_pipeline.sql` keeps Git as the source
+of truth for lessons while moving newly generated question drafts out of YAML.
+Apply it only after the Phase D migration and successful DB cutover.
+
+The migration adds immutable question ownership, a repository-only parity view,
+and service-role RPCs to enqueue, lease, complete, fail, and retry generation
+jobs. Completion inserts the question, its immutable revision, provenance, and
+audit event in one transaction. Generated IDs use a separate `-ai-NNN`
+namespace, so future repository questions cannot silently collide with them.
+
+The main workflow now runs `content:refresh`, `content:sync`, and then
+`content:generate:db`. A lesson revision is enqueued only when it has no current,
+non-archived question grounded in the same source hash. Jobs use a 10-minute
+lease, exponential retry, and dead-letter after five attempts. OpenAI Luna is
+primary; Gemini is used only after an OpenAI 429 when `GEMINI_API_KEY` exists.
+
+Required GitHub Actions secrets:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `OPENAI_API_KEY`
+- `GEMINI_API_KEY` (optional fallback)
+
+The service-role key must remain GitHub-only. OpenAI generation shares the same
+OpenAI project hard budget as the web app, so keep that project budget at $5.
+The Admin page shows the latest generation jobs and can move a deferred, failed,
+or dead-letter job back to `pending`; execution resumes on the next scheduled or
+manually dispatched workflow.
+
+Rollback is non-destructive: disable the generation step in the workflow. DB
+drafts, immutable revisions, jobs, and events remain available for audit, while
+the existing DB reader continues serving already synchronized content.

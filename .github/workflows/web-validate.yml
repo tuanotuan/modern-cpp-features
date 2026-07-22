@@ -46,12 +46,7 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
-      - run: npm run content:auto
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_LUNA_MODEL: gpt-5.6-luna
-          OPENAI_TERRA_MODEL: gpt-5.6-terra
-          OPENAI_MONTHLY_BUDGET_USD: "5"
+      - run: npm run content:refresh
       - run: npm run validate
       - name: Commit refreshed content
         working-directory: .
@@ -73,6 +68,18 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           CONTENT_REPOSITORY: ${{ github.repository }}
           CONTENT_GITHUB_RUN_ID: ${{ github.run_id }}
+          OPENAI_LUNA_MODEL: gpt-5.6-luna
+      - name: Generate queued DB-native question drafts
+        run: npm run content:generate:db
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_LUNA_MODEL: gpt-5.6-luna
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_FALLBACK_ENABLED: "true"
+          GEMINI_FALLBACK_MODEL: gemini-3.5-flash
+          CONTENT_GENERATION_MAX_JOBS: "8"
 
   validate:
     if: github.event_name == 'pull_request' || github.ref != 'refs/heads/main'

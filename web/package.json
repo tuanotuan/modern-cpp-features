@@ -18,6 +18,7 @@
     "content:backfill:check": "tsx scripts/generate-content-backfill-sql.ts --check",
     "content:sync": "tsx scripts/sync-content-question-bank.ts",
     "content:sync:check": "tsx scripts/sync-content-question-bank.ts --check",
+    "content:generate:db": "tsx scripts/generate-db-question-drafts.ts",
     "content:refresh": "npm run content:discover",
     "content:review": "tsx scripts/review-question.ts",
     "content:status": "tsx scripts/content-status.ts",
