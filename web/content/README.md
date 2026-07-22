@@ -16,6 +16,24 @@ the practice and analytics UI select either the `cpp-interview` or
 queues, random practice, streaks, Custom Study, and analytics are calculated
 inside the selected deck.
 
+## First Python lesson rollout
+
+1. Create `python/<number>_<topic>/knowledge.md` with one `#` title and at
+   least one `##` source section.
+2. Add an optional sibling `main.py` when executable code helps explain the
+   note.
+3. Commit the source files normally and merge them into `main`.
+4. Wait for the `Validate Recall` workflow: discovery, validation, Supabase
+   sync, and DB-native draft generation must all pass.
+5. Open Admin, select `Python Interview`, inspect the generated drafts, and
+   approve only the exact revisions you want to practice.
+6. Select the Python deck on the home page. Its daily queue, random practice,
+   Custom Study, streak, and analytics are independent from the C++ deck.
+
+The enqueue job and the stored prompt metadata share
+`QUESTION_GENERATOR_PROMPT_VERSION`; changing the multilingual prompt therefore
+creates an auditable generator revision instead of silently reusing an old one.
+
 The C++ and Python notes in the repository root remain the source of truth. The
 web app adds stable metadata and interview questions without requiring existing
 notes to be reformatted.

@@ -13,6 +13,7 @@ import {
   buildContentBackfillPayload,
   type RawQuestionMetadata,
 } from "../src/lib/content/backfill";
+import { QUESTION_GENERATOR_PROMPT_VERSION } from "../src/lib/content/drafts";
 import { findRepoRoot } from "../src/lib/content/loader";
 import {
   contentManifestSchema,
@@ -32,8 +33,6 @@ const enqueueResultSchema = z.object({
   ok: z.literal(true),
   enqueued: z.number().int().nonnegative(),
 });
-
-const GENERATOR_VERSION = "trading-grounded-v1";
 
 async function main() {
   const webRoot = path.resolve(import.meta.dirname, "..");
@@ -131,7 +130,7 @@ async function main() {
   const { data: enqueueData, error: enqueueError } = await supabase.rpc(
     "enqueue_content_generation_jobs",
     {
-      p_generator_version: GENERATOR_VERSION,
+      p_generator_version: QUESTION_GENERATOR_PROMPT_VERSION,
       p_provider: "openai",
       p_model: process.env.OPENAI_LUNA_MODEL || "gpt-5.6-luna",
       p_requested_count: 2,
