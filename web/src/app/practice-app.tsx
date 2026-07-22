@@ -11,7 +11,10 @@ import {
   mergeAiDailyBudgetSnapshot,
   type AiDailyBudgetSnapshot,
 } from "@/lib/ai/budget";
-import { PRACTICE_DECKS } from "@/lib/content/decks";
+import {
+  ENABLED_PRACTICE_DECK_IDS,
+  PRACTICE_DECKS,
+} from "@/lib/content/decks";
 import type {
   ContentLanguage,
   ContentQuestion,
@@ -92,6 +95,7 @@ const standardLabels = {
   cpp11: "C++11",
   cpp20: "C++20",
   python3: "Python 3",
+  cmake: "CMake",
 } as const;
 
 const learningStateLabels = {
@@ -452,6 +456,9 @@ export function PracticeApp({
     ).length,
     "python-interview": availableQuestions.filter(
       (question) => question.taxonomy.deckId === "python-interview",
+    ).length,
+    "cmake-build-systems": availableQuestions.filter(
+      (question) => question.taxonomy.deckId === "cmake-build-systems",
     ).length,
   } satisfies Record<PracticeDeckId, number>;
   const deckQuestions = availableQuestions.filter(
@@ -1850,7 +1857,7 @@ function DeckSwitcher({
       className="ml-1 flex rounded-xl border border-[#173f35]/15 bg-white/55 p-1"
       aria-label="Chọn bộ câu hỏi"
     >
-      {(Object.keys(PRACTICE_DECKS) as PracticeDeckId[]).map((deckId) => {
+      {ENABLED_PRACTICE_DECK_IDS.map((deckId) => {
         const deck = PRACTICE_DECKS[deckId];
         const active = deckId === selected;
         return (

@@ -23,6 +23,7 @@ const KNOWLEDGE_FILE = "knowledge.md";
 const CODE_FILE_BY_LANGUAGE = {
   cpp: "main.cpp",
   python: "main.py",
+  cmake: "CMakeLists.txt",
 } as const;
 
 export function codeFileNameForLanguage(

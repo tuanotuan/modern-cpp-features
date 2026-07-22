@@ -239,7 +239,13 @@ export function rowsToContentManifest(
       title: row.title,
       knowledgePath: `${row.source_path}/knowledge.md`,
       codePath: row.code
-        ? `${row.source_path}/${row.language === "python" ? "main.py" : "main.cpp"}`
+        ? `${row.source_path}/${
+            row.language === "python"
+              ? "main.py"
+              : row.language === "cmake"
+                ? "CMakeLists.txt"
+                : "main.cpp"
+          }`
         : null,
       sourceHash: row.source_hash,
       sections: row.sections,

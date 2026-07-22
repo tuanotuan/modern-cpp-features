@@ -63,6 +63,19 @@ describe("buildCandidateAnswer", () => {
     expect(result).toContain("```python\ndef values():\n    yield 1\n```");
   });
 
+  it("labels and fences CMake code with the build-system language", () => {
+    const result = buildCandidateAnswer(
+      { type: "scenario", responseMode: "code", language: "cmake" },
+      "The dependency is private to this target.",
+      "target_link_libraries(app PRIVATE core)",
+    );
+
+    expect(result).toContain("Thiết kế CMake");
+    expect(result).toContain(
+      "```cmake\ntarget_link_libraries(app PRIVATE core)\n```",
+    );
+  });
+
   it("requires code and stays below the API/database answer limit", () => {
     expect(
       buildCandidateAnswer(

@@ -46,6 +46,27 @@ describe("multi-language lesson registry", () => {
     expect(registry.lessons[0].standard).toBe("python3");
   });
 
+  it("accepts the canonical CMake language and track contract", () => {
+    const registry = lessonRegistrySchema.parse({
+      schemaVersion: 1,
+      lessons: [
+        {
+          ...shared,
+          id: "cmake-targets",
+          sourcePath: "cmake/01_targets",
+          language: "cmake",
+          track: "cmake",
+        },
+      ],
+    });
+
+    expect(registry.lessons[0]).toMatchObject({
+      language: "cmake",
+      track: "cmake",
+      standard: "cmake",
+    });
+  });
+
   it("rejects a language and track mismatch", () => {
     expect(() =>
       lessonRegistrySchema.parse({
@@ -81,6 +102,29 @@ describe("multi-language lesson registry", () => {
           "difficulty::beginner",
           "response::text",
           "source::py3-objects",
+        ],
+      }),
+    ).toThrow("inconsistent language/track");
+  });
+
+  it("requires explicit CMake metadata on Build Systems taxonomy", () => {
+    expect(() =>
+      questionTaxonomySchema.parse({
+        deckId: "cmake-build-systems",
+        standard: "cmake",
+        topics: ["targets"],
+        skill: "recall",
+        difficulty: "beginner",
+        responseMode: "text",
+        sourceLessonId: "cmake-targets",
+        tags: [
+          "deck::cmake-build-systems",
+          "standard::cmake",
+          "topic::targets",
+          "skill::recall",
+          "difficulty::beginner",
+          "response::text",
+          "source::cmake-targets",
         ],
       }),
     ).toThrow("inconsistent language/track");

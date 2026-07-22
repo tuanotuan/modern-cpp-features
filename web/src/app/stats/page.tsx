@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { PRACTICE_DECKS, parsePracticeDeck } from "@/lib/content/decks";
+import {
+  ENABLED_PRACTICE_DECK_IDS,
+  PRACTICE_DECKS,
+  parsePracticeDeck,
+} from "@/lib/content/decks";
 import type { PracticeDeckId } from "@/lib/content/schema";
 import { isQuestionApproved } from "@/lib/practice/approvals";
 import { buildPracticeAnalytics } from "@/lib/practice/analytics";
@@ -245,7 +249,7 @@ export default async function StatsPage({
 function StatsDeckSwitcher({ selected }: { selected: PracticeDeckId }) {
   return (
     <div className="flex rounded-xl border border-[#173f35]/15 bg-white/55 p-1">
-      {(Object.keys(PRACTICE_DECKS) as PracticeDeckId[]).map((deckId) => {
+      {ENABLED_PRACTICE_DECK_IDS.map((deckId) => {
         const deck = PRACTICE_DECKS[deckId];
         return (
           <Link

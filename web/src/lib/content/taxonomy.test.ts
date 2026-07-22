@@ -71,4 +71,27 @@ describe("question taxonomy", () => {
     expect(taxonomy.tags).toContain("language::python");
     expect(taxonomy.tags).toContain("track::python3");
   });
+
+  it("routes CMake lessons to the hidden Build Systems deck", () => {
+    const taxonomy = buildQuestionTaxonomy(
+      { ...question, id: "cmake-targets-001", lessonId: "cmake-targets" },
+      {
+        ...lesson,
+        id: "cmake-targets",
+        language: "cmake",
+        track: "cmake",
+        standard: "cmake",
+        tags: ["targets", "transitive-usage-requirements"],
+      },
+    );
+
+    expect(taxonomy).toMatchObject({
+      deckId: "cmake-build-systems",
+      language: "cmake",
+      track: "cmake",
+      standard: "cmake",
+    });
+    expect(taxonomy.tags).toContain("language::cmake");
+    expect(taxonomy.tags).toContain("track::cmake");
+  });
 });

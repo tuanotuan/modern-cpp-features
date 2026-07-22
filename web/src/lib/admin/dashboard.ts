@@ -1,6 +1,7 @@
 import type {
   ContentManifest,
   ContentQuestion,
+  GeneratedLesson,
 } from "../content/schema";
 import type { QuestionOverride } from "../content/question-overrides";
 import {
@@ -17,7 +18,7 @@ export type AdminQuestionStatus = "active" | "pending" | "stale" | "archived";
 
 export type AdminQuestion = ContentQuestion & {
   lessonTitle: string;
-  standard: "cpp98" | "cpp11" | "cpp20" | "python3";
+  standard: GeneratedLesson["standard"];
   knowledgePath: string;
   sourceHeadings: string[];
   approved: boolean;
@@ -30,7 +31,7 @@ export type AdminQuestion = ContentQuestion & {
 export type AdminLessonCoverage = {
   id: string;
   title: string;
-  standard: "cpp98" | "cpp11" | "cpp20" | "python3";
+  standard: GeneratedLesson["standard"];
   knowledgePath: string;
   currentQuestions: number;
   activeQuestions: number;

@@ -6,6 +6,7 @@ import type {
 
 export const HOME_DECK_ID = "cpp-interview" as const;
 export const PYTHON_DECK_ID = "python-interview" as const;
+export const CMAKE_DECK_ID = "cmake-build-systems" as const;
 
 export function buildQuestionTaxonomy(
   question: Question,
@@ -24,7 +25,9 @@ export function buildQuestionTaxonomy(
   const responseMode = question.responseMode ?? "text";
   const deckId = lesson.language === "python"
     ? PYTHON_DECK_ID
-    : HOME_DECK_ID;
+    : lesson.language === "cmake"
+      ? CMAKE_DECK_ID
+      : HOME_DECK_ID;
   const tags = [
     `deck::${deckId}`,
     `standard::${lesson.standard}`,
