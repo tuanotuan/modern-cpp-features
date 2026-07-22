@@ -24,7 +24,7 @@ export function buildCoachPrompt({
   candidateAnswer: string;
 }): string {
   const sourceNotes = sourceNotesFor(question, lesson);
-  const language = lesson.language === "python" ? "Python" : "C++";
+  const language = languageDisplayName(lesson);
 
   return `Đánh giá câu trả lời phỏng vấn ${language} dưới đây bằng tiếng Việt, giữ nguyên các thuật ngữ ${language} bằng tiếng Anh khi tự nhiên.
 
@@ -76,7 +76,7 @@ export function buildCoachFollowUpPrompt({
   messages: CoachFollowUpMessage[];
 }): string {
   const allowedSourceIds = question.sources.map(({ sectionId }) => sectionId);
-  const language = lesson.language === "python" ? "Python" : "C++";
+  const language = languageDisplayName(lesson);
   const conversation = messages
     .map(
       (message) =>
@@ -120,8 +120,14 @@ export function buildCoachSystemInstruction(
   lesson: GeneratedLesson,
   mode: "evaluate" | "follow-up",
 ) {
-  const language = lesson.language === "python" ? "Python" : "C++";
+  const language = languageDisplayName(lesson);
   return mode === "evaluate"
     ? `Bạn là senior ${language} interviewer. Chấm công bằng, grounded vào rubric và notes; chỉ trả structured response được yêu cầu.`
     : `Bạn là senior ${language} interviewer đang giải thích lại feedback. Trả lời grounded, dễ hiểu và chỉ trả structured response được yêu cầu.`;
+}
+
+function languageDisplayName(lesson: GeneratedLesson) {
+  if (lesson.language === "python") return "Python";
+  if (lesson.language === "cmake") return "CMake/build systems";
+  return "C++";
 }

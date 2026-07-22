@@ -28,21 +28,24 @@ const registry: LessonRegistry = {
 };
 
 describe("content automation", () => {
-  it("discovers knowledge files under both C++ and Python source roots", async () => {
+  it("discovers knowledge files under C++, Python, and CMake source roots", async () => {
     const repoRoot = await mkdtemp(path.join(tmpdir(), "recall-discovery-"));
     try {
       await Promise.all([
         mkdir(path.join(repoRoot, "cpp11", "01_auto"), { recursive: true }),
         mkdir(path.join(repoRoot, "python", "01_generators"), { recursive: true }),
+        mkdir(path.join(repoRoot, "cmake", "01_targets"), { recursive: true }),
         mkdir(path.join(repoRoot, "notes", "ignored"), { recursive: true }),
       ]);
       await Promise.all([
         writeFile(path.join(repoRoot, "cpp11", "01_auto", "knowledge.md"), "# Auto"),
         writeFile(path.join(repoRoot, "python", "01_generators", "knowledge.md"), "# Generators"),
+        writeFile(path.join(repoRoot, "cmake", "01_targets", "knowledge.md"), "# Targets"),
         writeFile(path.join(repoRoot, "notes", "ignored", "knowledge.md"), "# Ignored"),
       ]);
 
       expect(await discoverKnowledgeDirectories(repoRoot)).toEqual([
+        "cmake/01_targets",
         "cpp11/01_auto",
         "python/01_generators",
       ]);
@@ -108,6 +111,37 @@ describe("content automation", () => {
         standard: "python3",
         order: 2,
         tags: ["data", "model"],
+        prerequisites: [],
+      },
+    ]);
+  });
+
+  it("registers CMake lessons with stable CMake taxonomy", () => {
+    const result = mergeDiscoveredLessons(registry, [
+      "cpp11/1_auto",
+      "cmake/02_usage-requirements",
+      "cmake/01_targets",
+    ]);
+
+    expect(result.additions).toEqual([
+      {
+        id: "cmake-targets",
+        sourcePath: "cmake/01_targets",
+        language: "cmake",
+        track: "cmake",
+        standard: "cmake",
+        order: 1,
+        tags: ["targets"],
+        prerequisites: [],
+      },
+      {
+        id: "cmake-usage-requirements",
+        sourcePath: "cmake/02_usage-requirements",
+        language: "cmake",
+        track: "cmake",
+        standard: "cmake",
+        order: 2,
+        tags: ["usage", "requirements"],
         prerequisites: [],
       },
     ]);

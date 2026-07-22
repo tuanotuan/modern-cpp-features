@@ -139,6 +139,37 @@ describe("AI coach contract", () => {
       "senior Python interviewer",
     );
   });
+
+  it("uses CMake/build-system terminology for grading and follow-ups", () => {
+    const question = manifest.questions[0];
+    const sourceLesson = manifest.lessons.find(
+      (item) => item.id === question.lessonId,
+    )!;
+    const lesson = {
+      ...sourceLesson,
+      language: "cmake" as const,
+      track: "cmake" as const,
+      standard: "cmake" as const,
+    };
+    const grading = buildCoachPrompt({
+      question,
+      lesson,
+      candidateAnswer: "A sufficiently detailed CMake answer.",
+    });
+    const followUp = buildCoachFollowUpPrompt({
+      question,
+      lesson,
+      candidateAnswer: "A sufficiently detailed CMake answer.",
+      feedback: sampleFeedback(),
+      messages: [{ role: "user", content: "Cho tôi một ví dụ target nhỏ." }],
+    });
+
+    expect(grading).toContain("phỏng vấn CMake/build systems");
+    expect(followUp).toContain("ví dụ CMake/build systems ngắn");
+    expect(buildCoachSystemInstruction(lesson, "evaluate")).toContain(
+      "senior CMake/build systems interviewer",
+    );
+  });
 });
 
 function sampleFeedback(): CoachFeedback {

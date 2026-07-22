@@ -129,6 +129,37 @@ describe("question draft conventions", () => {
     expect(rules).not.toContain("write or modify C++ code");
   });
 
+  it("uses grounded build-system rules for a CMake lesson", () => {
+    const cmakeLesson = {
+      ...lesson,
+      id: "cmake-targets",
+      title: "Target-based CMake",
+      language: "cmake",
+      track: "cmake",
+      standard: "cmake",
+      code: "add_library(core core.cpp)",
+    } as GeneratedLesson;
+    const prompt = JSON.parse(buildDraftPrompt(cmakeLesson, 2)) as {
+      lesson: { language: string; track: string; code: string };
+      rules: string[];
+    };
+    const rules = prompt.rules.join("\n");
+
+    expect(buildGeneratorSystemInstruction(cmakeLesson)).toContain(
+      "grounded CMake/build systems interview questions",
+    );
+    expect(prompt.lesson).toMatchObject({
+      language: "cmake",
+      track: "cmake",
+      code: "add_library(core core.cpp)",
+    });
+    expect(rules).toContain("CMake/build systems software-engineering interviews");
+    expect(rules).toContain("target dependency modeling");
+    expect(rules).toContain("incremental builds");
+    expect(rules).toContain("write or modify CMake/build systems code");
+    expect(rules).not.toContain("write or modify C++ code");
+  });
+
   it("rejects citations outside the exact lesson revision", () => {
     expect(() =>
       validateDraftSources(

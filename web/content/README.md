@@ -16,10 +16,10 @@ the practice and analytics UI select either the `cpp-interview` or
 queues, random practice, streaks, Custom Study, and analytics are calculated
 inside the selected deck.
 
-CMake foundation is registered with the code filename `CMakeLists.txt` and the
-deck ID `cmake-build-systems`, but that deck remains disabled in Phase A.
-Discovery, AI drafting, and production deck selection are enabled only in later
-CMake phases.
+CMake uses the code filename `CMakeLists.txt` and deck ID
+`cmake-build-systems`. Phase B enables repository discovery, Supabase sync, and
+grounded AI draft generation for `cmake/**`; the production deck selector stays
+disabled until the UI rollout phase.
 
 ## First Python lesson rollout
 
@@ -50,7 +50,7 @@ folder only requires changing `sourcePath`; attempts and review history keep the
 same lesson ID.
 
 Every registered directory must contain `knowledge.md`. A sibling `main.cpp`
-(C++) or `main.py` (Python) is optional.
+(C++), `main.py` (Python), or `CMakeLists.txt` (CMake) is optional.
 
 ## Question bank
 
@@ -75,7 +75,7 @@ the signed-in owner approves its exact version and source hash in the web queue.
 
 ### Trading interview convention
 
-The target is C++ or Python software engineering at trading and
+The target is C++, Python, or build-systems software engineering at trading and
 quantitative-finance companies. Every AI-generated batch of two or more
 questions must contain at least one realistic `scenario` question when grounded
 by the lesson. C++ scenarios may cover latency-sensitive market data, order
@@ -83,6 +83,10 @@ routing, allocation, cache locality, concurrency, ownership, or recovery.
 Python scenarios may cover market-data ingestion, research pipelines, data
 validation, batch processing, risk tooling, service integration, concurrency,
 memory use, testing, or recovery.
+CMake scenarios may cover target dependency modeling, transitive usage
+requirements, incremental-build correctness, reproducibility, dependency
+discovery, generated sources, compile/link configuration, testing, packaging,
+CI portability, or build/link failure diagnosis in a trading-system workflow.
 
 Trading vocabulary must not be cosmetic: renaming a toy variable to `Order` or
 `Price` is not a realistic scenario. The context must materially affect the
@@ -96,10 +100,10 @@ present in the source note.
 ## Updating knowledge
 
 Keep notes in one of the managed source roots: `cpp98_foundation`, `cpp11`,
-`cpp20`, or `python`. Every lesson directory needs a `knowledge.md`; use an
-optional `main.cpp` for C++ and `main.py` for Python. Python lessons are assigned
-to `language: python`, `track: python3`, and receive stable IDs beginning with
-`python-`.
+`cpp20`, `python`, or `cmake`. Every lesson directory needs a `knowledge.md`;
+use optional `main.cpp` for C++, `main.py` for Python, and `CMakeLists.txt` for
+CMake. Python lessons receive stable IDs beginning with `python-`; CMake lessons
+use `language: cmake`, `track: cmake`, and stable IDs beginning with `cmake-`.
 
 On `main`, GitHub Actions runs the safe automation automatically after a note is
 added, edited, renamed, or deleted. It:
