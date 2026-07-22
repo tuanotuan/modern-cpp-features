@@ -46,7 +46,7 @@ export type GeneratedQuestionDraftBatch = {
   model: string;
 };
 
-export const QUESTION_GENERATOR_PROMPT_VERSION = "trading-grounded-v1";
+export const QUESTION_GENERATOR_PROMPT_VERSION = "multilanguage-trading-v2";
 
 export async function generateQuestionDraftsWithOpenAI({
   lesson,
@@ -93,8 +93,7 @@ export async function generateQuestionDraftBatchWithOpenAI({
       model,
       store: false,
       safety_identifier: safetyIdentifier("content-automation"),
-      instructions:
-        "You create grounded C++ interview questions for software-engineering interviews at trading, quantitative-finance, and low-latency companies. Return Vietnamese questions and answers. Never introduce facts not supported by the supplied private study note.",
+      instructions: buildGeneratorSystemInstruction(lesson),
       input: buildDraftPrompt(lesson, count),
       reasoning: { effort: "low" },
       max_output_tokens: 6000,
@@ -137,8 +136,7 @@ export async function generateQuestionDraftBatchWithGemini({
     {
       model,
       store: false,
-      system_instruction:
-        "You create grounded C++ interview questions for software-engineering interviews at trading, quantitative-finance, and low-latency companies. Return Vietnamese questions and answers. Never introduce facts not supported by the supplied private study note.",
+      system_instruction: buildGeneratorSystemInstruction(lesson),
       input: buildDraftPrompt(lesson, count),
       generation_config: {
         thinking_level: "low",
@@ -244,6 +242,10 @@ export function nextQuestionIds(
 }
 
 export function buildDraftPrompt(lesson: GeneratedLesson, count: number) {
+  const language = lesson.language === "python" ? "Python" : "C++";
+  const scenarioScope = lesson.language === "python"
+    ? "a production trading, quantitative-research, data, or automation system"
+    : "a production trading system";
   const sections = lesson.sections.map((section) => ({
     sectionId: section.id,
     heading: section.heading,
@@ -256,23 +258,27 @@ export function buildDraftPrompt(lesson: GeneratedLesson, count: number) {
       rules: [
         "Use Vietnamese for prompt, hint, answers, and rubric.",
         "Test understanding and reasoning, not trivia.",
-        "Target C++ software-engineering interviews at trading, quantitative-finance, and low-latency companies.",
+        `Target ${language} software-engineering interviews at trading and quantitative-finance companies.`,
         count >= 2
-          ? "Include at least one question whose type is scenario and whose situation is realistic for a production trading system."
-          : "Prefer type scenario when the lesson can support a realistic production trading situation without forcing the context.",
-        "A trading scenario must involve a concrete engineering constraint or failure mode, such as market-data throughput, order-book updates, order routing, pre-trade risk checks, position state, exchange connectivity, latency, allocation, cache locality, concurrency, contention, backpressure, deterministic behavior, ownership, or recovery.",
+          ? `Include at least one question whose type is scenario and whose situation is realistic for ${scenarioScope}.`
+          : `Prefer type scenario when the lesson can support a realistic situation in ${scenarioScope} without forcing the context.`,
+        lesson.language === "python"
+          ? "A Python scenario must involve a concrete engineering constraint or failure mode, such as market-data ingestion, research pipelines, data validation, batch processing, risk tooling, service integration, concurrency, memory use, backpressure, deterministic behavior, testing, or recovery."
+          : "A trading scenario must involve a concrete engineering constraint or failure mode, such as market-data throughput, order-book updates, order routing, pre-trade risk checks, position state, exchange connectivity, latency, allocation, cache locality, concurrency, contention, backpressure, deterministic behavior, ownership, or recovery.",
         "Do not merely rename a toy variable to Order or Price. The trading context must materially affect the design choice, correctness argument, performance trade-off, or failure analysis being tested.",
         "Keep scenarios plausible and answerable in an interview. State enough context and constraints for the candidate; do not assume undocumented infrastructure.",
-        "Do not require finance-domain knowledge that is absent from the lesson. Never invent exchange rules, latency numbers, market behavior, or risk formulas; the assessed C++ facts must remain grounded in the supplied sections.",
+        `Do not require finance-domain knowledge that is absent from the lesson. Never invent exchange rules, latency numbers, market behavior, or risk formulas; the assessed ${language} facts must remain grounded in the supplied sections.`,
         "Keep the canonical short answer concise and make the detailed answer interview-ready.",
         "Use code only when it materially improves the question; otherwise return null.",
         "Never put fenced code or a code snippet inside prompt. When a snippet is needed, store it only in the separate code field and let prompt refer to it as the code below.",
-        "Set responseMode to code only when the candidate is explicitly required to write or modify C++ code. Explanatory, analytical, and scenario questions must use text.",
+        `Set responseMode to code only when the candidate is explicitly required to write or modify ${language} code. Explanatory, analytical, and scenario questions must use text.`,
         "When responseMode is code, make the prompt explicitly ask the candidate to write or modify code.",
       ],
       lesson: {
         id: lesson.id,
         title: lesson.title,
+        language: lesson.language,
+        track: lesson.track,
         standard: lesson.standard,
         sections,
         code: lesson.code?.slice(0, 6000) ?? null,
@@ -281,4 +287,9 @@ export function buildDraftPrompt(lesson: GeneratedLesson, count: number) {
     null,
     2,
   );
+}
+
+export function buildGeneratorSystemInstruction(lesson: GeneratedLesson) {
+  const language = lesson.language === "python" ? "Python" : "C++";
+  return `You create grounded ${language} interview questions for software-engineering interviews at trading and quantitative-finance companies. Return Vietnamese questions and answers. Never introduce facts not supported by the supplied private study note.`;
 }

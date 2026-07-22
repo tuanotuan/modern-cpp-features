@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildDraftPrompt,
+  buildGeneratorSystemInstruction,
   isProviderRateLimitError,
   nextQuestionIds,
   retryProviderRateLimit,
@@ -63,6 +64,8 @@ describe("question draft conventions", () => {
   const lesson = {
     id: "cpp11-move-semantics",
     title: "Move semantics",
+    language: "cpp",
+    track: "cpp11",
     standard: "cpp11",
     sections: [
       {
@@ -96,6 +99,34 @@ describe("question draft conventions", () => {
     expect(prompt.rules.join("\n")).toContain(
       "Prefer type scenario when the lesson can support",
     );
+  });
+
+  it("uses Python-specific generation rules for a Python lesson", () => {
+    const pythonLesson = {
+      ...lesson,
+      id: "python-generators",
+      title: "Generators",
+      language: "python",
+      track: "python3",
+      standard: "python3",
+    } as GeneratedLesson;
+    const prompt = JSON.parse(buildDraftPrompt(pythonLesson, 2)) as {
+      lesson: { language: string; track: string };
+      rules: string[];
+    };
+    const rules = prompt.rules.join("\n");
+
+    expect(buildGeneratorSystemInstruction(pythonLesson)).toContain(
+      "grounded Python interview questions",
+    );
+    expect(prompt.lesson).toMatchObject({
+      language: "python",
+      track: "python3",
+    });
+    expect(rules).toContain("Python software-engineering interviews");
+    expect(rules).toContain("market-data ingestion");
+    expect(rules).toContain("write or modify Python code");
+    expect(rules).not.toContain("write or modify C++ code");
   });
 
   it("rejects citations outside the exact lesson revision", () => {

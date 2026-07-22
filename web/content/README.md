@@ -10,11 +10,11 @@ as a compatibility alias for `track` until the multi-deck UI migration is
 complete.
 
 Code filenames are language-aware: C++ lessons use optional `main.cpp`, while
-Python lessons will use optional `main.py`. Phase A only establishes this
-contract; Python directory discovery and production deck selection remain off.
+Python lessons use optional `main.py`. Python directory discovery is enabled;
+production deck selection remains off until the multi-deck UI phase.
 
-The C++ notes in the repository root remain the source of truth. The web app
-adds stable metadata and interview questions without requiring the existing
+The C++ and Python notes in the repository root remain the source of truth. The
+web app adds stable metadata and interview questions without requiring existing
 notes to be reformatted.
 
 ## Lesson registry
@@ -23,8 +23,8 @@ notes to be reformatted.
 folder only requires changing `sourcePath`; attempts and review history keep the
 same lesson ID.
 
-Every registered directory must contain `knowledge.md`. A sibling `main.cpp` is
-optional, but the current corpus has one for every lesson.
+Every registered directory must contain `knowledge.md`. A sibling `main.cpp`
+(C++) or `main.py` (Python) is optional.
 
 ## Question bank
 
@@ -36,7 +36,7 @@ Each question contains:
 
 - a stable ID and version;
 - a lesson ID, type, difficulty, and expected duration;
-- an optional `responseMode: code` only when the candidate must write or modify C++ code;
+- an optional `responseMode: code` only when the candidate must write or modify code in the lesson language;
 - a canonical short answer and detailed explanation;
 - required points, optional bonus points, and common misconceptions;
 - one or more source section IDs from the parsed note.
@@ -49,18 +49,19 @@ the signed-in owner approves its exact version and source hash in the web queue.
 
 ### Trading interview convention
 
-The target role is C++ software engineering at trading, quantitative-finance,
-and low-latency companies. Every AI-generated batch of two or more questions
-must contain at least one realistic `scenario` question when grounded by the
-lesson. A scenario should test a concrete production constraint or failure mode,
-for example market-data throughput, order-book updates, order routing, pre-trade
-risk checks, position state, exchange connectivity, latency, allocation, cache
-locality, concurrency, contention, backpressure, deterministic behavior,
-ownership, or recovery.
+The target is C++ or Python software engineering at trading and
+quantitative-finance companies. Every AI-generated batch of two or more
+questions must contain at least one realistic `scenario` question when grounded
+by the lesson. C++ scenarios may cover latency-sensitive market data, order
+routing, allocation, cache locality, concurrency, ownership, or recovery.
+Python scenarios may cover market-data ingestion, research pipelines, data
+validation, batch processing, risk tooling, service integration, concurrency,
+memory use, testing, or recovery.
 
 Trading vocabulary must not be cosmetic: renaming a toy variable to `Order` or
-`Price` is not a realistic scenario. The context must materially affect the C++
-design choice, correctness argument, performance trade-off, or failure analysis.
+`Price` is not a realistic scenario. The context must materially affect the
+language design choice, correctness argument, performance trade-off, or failure
+analysis.
 At the same time, questions must remain grounded in the lesson, include enough
 context to be answered in an interview, and must not invent exchange rules,
 latency numbers, market behavior, risk formulas, or other finance knowledge not
@@ -68,9 +69,11 @@ present in the source note.
 
 ## Updating knowledge
 
-Keep notes in one of the existing source roots: `cpp98_foundation`, `cpp11`, or
-`cpp20`. Every lesson directory needs a `knowledge.md`; `main.cpp` remains
-optional.
+Keep notes in one of the managed source roots: `cpp98_foundation`, `cpp11`,
+`cpp20`, or `python`. Every lesson directory needs a `knowledge.md`; use an
+optional `main.cpp` for C++ and `main.py` for Python. Python lessons are assigned
+to `language: python`, `track: python3`, and receive stable IDs beginning with
+`python-`.
 
 On `main`, GitHub Actions runs the safe automation automatically after a note is
 added, edited, renamed, or deleted. It:

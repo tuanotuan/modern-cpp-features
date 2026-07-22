@@ -1,4 +1,4 @@
-name: Validate C++ Recall
+name: Validate Recall
 
 on:
   workflow_dispatch:
@@ -9,6 +9,7 @@ on:
       - "cpp98_foundation/**"
       - "cpp11/**"
       - "cpp20/**"
+      - "python/**"
       - "web/**"
       - ".github/workflows/web-validate.yml"
   pull_request:
@@ -16,6 +17,7 @@ on:
       - "cpp98_foundation/**"
       - "cpp11/**"
       - "cpp20/**"
+      - "python/**"
       - "web/**"
       - ".github/workflows/web-validate.yml"
 
