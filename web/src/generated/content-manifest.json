@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "sourceRevision": "e18d4b689262da7e33f82db012cd031c6cd3595a54d0d7222c22d017b432c3c9",
+  "sourceRevision": "13bfb56f329cc6e53c074759fb8df3c311ed3b201f41c2ab97678c6b7f9fc970",
   "lessons": [
     {
       "id": "cpp98-object-variable-memory",
@@ -2191,6 +2191,69 @@
       ],
       "checklistItems": [],
       "code": "#include <iostream>\r\n\r\nvoid update(double& price)\r\n{\r\n    price += 0.5;\r\n}\r\n\r\nint main()\r\n{\r\n    double bid = 100.0;\r\n    double& ref = bid;\r\n\r\n    update(ref);\r\n\r\n    std::cout << bid << '\\n';\r\n}"
+    },
+    {
+      "id": "python-day-1",
+      "sourcePath": "python/day_1",
+      "order": 1,
+      "tags": [
+        "day",
+        "1"
+      ],
+      "prerequisites": [],
+      "language": "python",
+      "track": "python3",
+      "standard": "python3",
+      "title": "Python ngày 1: phép toán, giá trị và kiểu dữ liệu",
+      "knowledgePath": "python/day_1/knowledge.md",
+      "codePath": "python/day_1/main.py",
+      "sourceHash": "b2ecc5e69e32584f5d87da4b1aaf1d8f0c760d1579c2f4a399ff33278512afb9",
+      "sections": [
+        {
+          "id": "cha-y-chu-o-ng-tri-nh-python-a-u-tie-n",
+          "heading": "Chạy chương trình Python đầu tiên",
+          "bodyMarkdown": "Python thực thi chương trình từ trên xuống dưới. Hàm `print()` đưa một giá trị\r\nra màn hình:\r\n\r\n```python\r\nprint(\"Hello, Python!\")\r\nprint(3 + 4)\r\n```\r\n\r\nChuỗi có thể được viết bằng dấu nháy đơn hoặc nháy kép:\r\n\r\n```python\r\nprint('Tuan')\r\nprint(\"Viet Nam\")\r\n```\r\n\r\nHai cách trên tạo ra cùng kiểu dữ liệu `str`. Nên chọn một kiểu dấu nháy nhất\r\nquán trong cùng một project.",
+          "bodyText": "Python thực thi chương trình từ trên xuống dưới. Hàm print() đưa một giá trị\r\nra màn hình:print(\"Hello, Python!\")\r\nprint(3 + 4)Chuỗi có thể được viết bằng dấu nháy đơn hoặc nháy kép:print('Tuan')\r\nprint(\"Viet Nam\")Hai cách trên tạo ra cùng kiểu dữ liệu str. Nên chọn một kiểu dấu nháy nhất\r\nquán trong cùng một project."
+        },
+        {
+          "id": "ca-c-toa-n-tu-so-ho-c-co-ba-n",
+          "heading": "Các toán tử số học cơ bản",
+          "bodyMarkdown": "Python hỗ trợ các phép toán thông dụng:\r\n\r\n```python\r\nprint(3 + 4)   # cộng: 7\r\nprint(3 - 4)   # trừ: -1\r\nprint(3 * 4)   # nhân: 12\r\nprint(3 / 4)   # chia thực: 0.75\r\nprint(3 // 4)  # chia lấy phần nguyên: 0\r\nprint(3 % 4)   # chia lấy dư: 3\r\nprint(3 ** 4)  # lũy thừa: 81\r\n```\r\n\r\nĐiểm cần nhớ:\r\n\r\n- `/` luôn trả về số thực `float`, kể cả khi phép chia không có phần dư.\r\n- `//` là phép chia lấy sàn, không đơn giản chỉ là bỏ phần thập phân. Ví dụ,\r\n  `-3 // 2` cho kết quả `-2`.\r\n- `%` trả về phần dư và thường được dùng để kiểm tra số chẵn/lẻ hoặc xử lý chu\r\n  kỳ.\r\n- `**` là toán tử lũy thừa.\r\n\r\nThứ tự ưu tiên toán tử tương tự toán học: lũy thừa trước, sau đó nhân/chia, rồi\r\ncộng/trừ. Dùng ngoặc tròn khi muốn biểu thức rõ ràng hơn:\r\n\r\n```python\r\nresult = (3 + 4) * 2\r\n```",
+          "bodyText": "Python hỗ trợ các phép toán thông dụng:print(3 + 4)   # cộng: 7\r\nprint(3 - 4)   # trừ: -1\r\nprint(3 * 4)   # nhân: 12\r\nprint(3 / 4)   # chia thực: 0.75\r\nprint(3 // 4)  # chia lấy phần nguyên: 0\r\nprint(3 % 4)   # chia lấy dư: 3\r\nprint(3 ** 4)  # lũy thừa: 81Điểm cần nhớ:/ luôn trả về số thực float, kể cả khi phép chia không có phần dư.// là phép chia lấy sàn, không đơn giản chỉ là bỏ phần thập phân. Ví dụ,\r\n-3 // 2 cho kết quả -2.% trả về phần dư và thường được dùng để kiểm tra số chẵn/lẻ hoặc xử lý chu\r\nkỳ.** là toán tử lũy thừa.Thứ tự ưu tiên toán tử tương tự toán học: lũy thừa trước, sau đó nhân/chia, rồi\r\ncộng/trừ. Dùng ngoặc tròn khi muốn biểu thức rõ ràng hơn:result = (3 + 4) * 2"
+        },
+        {
+          "id": "gia-tri-va-kie-u-du-lie-u",
+          "heading": "Giá trị và kiểu dữ liệu",
+          "bodyMarkdown": "Python là ngôn ngữ có kiểu động: biến không bị cố định vào một kiểu, nhưng mọi\r\ngiá trị tại runtime đều có kiểu cụ thể. Hàm `type()` cho biết kiểu của giá trị:\r\n\r\n```python\r\nprint(type(10))       # int\r\nprint(type(9.8))      # float\r\nprint(type(4 - 4j))   # complex\r\nprint(type(\"Tuan\"))   # str\r\nprint(type(True))     # bool\r\n```\r\n\r\nCác kiểu scalar xuất hiện trong bài:\r\n\r\n- `int`: số nguyên có độ chính xác tùy ý, ví dụ `10`.\r\n- `float`: số thực dấu phẩy động, ví dụ `3.14`.\r\n- `complex`: số phức, dùng hậu tố `j`, ví dụ `4 - 4j`.\r\n- `str`: chuỗi ký tự Unicode.\r\n- `bool`: giá trị logic `True` hoặc `False`.\r\n\r\n`True` và `False` phải viết hoa chữ cái đầu. Trong Python, `bool` là một kiểu\r\ncon của `int`, nhưng nên dùng nó để biểu diễn điều kiện thay vì coi như số.",
+          "bodyText": "Python là ngôn ngữ có kiểu động: biến không bị cố định vào một kiểu, nhưng mọi\r\ngiá trị tại runtime đều có kiểu cụ thể. Hàm type() cho biết kiểu của giá trị:print(type(10))       # int\r\nprint(type(9.8))      # float\r\nprint(type(4 - 4j))   # complex\r\nprint(type(\"Tuan\"))   # str\r\nprint(type(True))     # boolCác kiểu scalar xuất hiện trong bài:int: số nguyên có độ chính xác tùy ý, ví dụ 10.float: số thực dấu phẩy động, ví dụ 3.14.complex: số phức, dùng hậu tố j, ví dụ 4 - 4j.str: chuỗi ký tự Unicode.bool: giá trị logic True hoặc False.True và False phải viết hoa chữ cái đầu. Trong Python, bool là một kiểu\r\ncon của int, nhưng nên dùng nó để biểu diễn điều kiện thay vì coi như số."
+        },
+        {
+          "id": "ca-c-kie-u-collection-a-u-tie-n",
+          "heading": "Các kiểu collection đầu tiên",
+          "bodyMarkdown": "Python có nhiều kiểu dùng để chứa nhiều giá trị:\r\n\r\n```python\r\nnames = [\"Asabeneh\", \"Python\", \"Finland\"]  # list\r\npoint = (2, 3)                             # tuple\r\nunique_ids = {1, 2, 3}                    # set\r\nprices = {\"a\": 1, \"b\": 2, \"c\": 3}         # dict\r\n```\r\n\r\nKhác biệt chính:\r\n\r\n- `list` có thứ tự, thay đổi được và cho phép phần tử trùng nhau.\r\n- `tuple` có thứ tự nhưng không thay đổi được sau khi tạo.\r\n- `set` lưu các phần tử duy nhất và không truy cập bằng chỉ số.\r\n- `dict` lưu ánh xạ `key: value`; mỗi khóa phải là duy nhất.\r\n\r\nDấu ngoặc nhọn rỗng `{}` tạo một `dict`, không phải `set`. Muốn tạo set rỗng,\r\nphải gọi `set()`.",
+          "bodyText": "Python có nhiều kiểu dùng để chứa nhiều giá trị:names = [\"Asabeneh\", \"Python\", \"Finland\"]  # list\r\npoint = (2, 3)                             # tuple\r\nunique_ids = {1, 2, 3}                    # set\r\nprices = {\"a\": 1, \"b\": 2, \"c\": 3}         # dictKhác biệt chính:list có thứ tự, thay đổi được và cho phép phần tử trùng nhau.tuple có thứ tự nhưng không thay đổi được sau khi tạo.set lưu các phần tử duy nhất và không truy cập bằng chỉ số.dict lưu ánh xạ key: value; mỗi khóa phải là duy nhất.Dấu ngoặc nhọn rỗng {} tạo một dict, không phải set. Muốn tạo set rỗng,\r\nphải gọi set()."
+        },
+        {
+          "id": "bie-n-va-truy-ca-p-pha-n-tu",
+          "heading": "Biến và truy cập phần tử",
+          "bodyMarkdown": "Biến được tạo bằng phép gán:\r\n\r\n```python\r\npoint_a = (2, 3)\r\npoint_b = (10, 8)\r\n```\r\n\r\nTuple và list sử dụng chỉ số bắt đầu từ `0`:\r\n\r\n```python\r\nx1 = point_a[0]  # 2\r\ny1 = point_a[1]  # 3\r\n```\r\n\r\nTên biến nên mô tả đúng ý nghĩa dữ liệu và thường dùng `snake_case`, ví dụ\r\n`point_a`, `total_price` hoặc `user_name`.",
+          "bodyText": "Biến được tạo bằng phép gán:point_a = (2, 3)\r\npoint_b = (10, 8)Tuple và list sử dụng chỉ số bắt đầu từ 0:x1 = point_a[0]  # 2\r\ny1 = point_a[1]  # 3Tên biến nên mô tả đúng ý nghĩa dữ liệu và thường dùng snake_case, ví dụ\r\npoint_a, total_price hoặc user_name."
+        },
+        {
+          "id": "ti-nh-khoa-ng-ca-ch-euclid",
+          "heading": "Tính khoảng cách Euclid",
+          "bodyMarkdown": "Khoảng cách giữa hai điểm `(x1, y1)` và `(x2, y2)` được tính theo công thức:\r\n\r\n```text\r\nsqrt((x2 - x1)² + (y2 - y1)²)\r\n```\r\n\r\nTrong Python:\r\n\r\n```python\r\nimport math\r\n\r\npoint_a = (2, 3)\r\npoint_b = (10, 8)\r\n\r\ndistance = math.sqrt(\r\n    (point_b[0] - point_a[0]) ** 2\r\n    + (point_b[1] - point_a[1]) ** 2\r\n)\r\n\r\nprint(distance)\r\n```\r\n\r\n`import math` nạp module toán học chuẩn. `math.sqrt()` tính căn bậc hai, còn\r\n`** 2` bình phương một giá trị.\r\n\r\nPython cũng cung cấp cách viết ngắn hơn:\r\n\r\n```python\r\ndistance = math.hypot(\r\n    point_b[0] - point_a[0],\r\n    point_b[1] - point_a[1],\r\n)\r\n```",
+          "bodyText": "Khoảng cách giữa hai điểm (x1, y1) và (x2, y2) được tính theo công thức:sqrt((x2 - x1)² + (y2 - y1)²)Trong Python:import math\r\n\r\npoint_a = (2, 3)\r\npoint_b = (10, 8)\r\n\r\ndistance = math.sqrt(\r\n    (point_b[0] - point_a[0]) ** 2\r\n    + (point_b[1] - point_a[1]) ** 2\r\n)\r\n\r\nprint(distance)import math nạp module toán học chuẩn. math.sqrt() tính căn bậc hai, còn\r\n** 2 bình phương một giá trị.Python cũng cung cấp cách viết ngắn hơn:distance = math.hypot(\r\n    point_b[0] - point_a[0],\r\n    point_b[1] - point_a[1],\r\n)"
+        },
+        {
+          "id": "nhu-ng-ie-u-ca-n-nho-sau-nga-y-1",
+          "heading": "Những điều cần nhớ sau ngày 1",
+          "bodyMarkdown": "Sau bài này, cần tự trả lời được:\r\n\r\n1. `/` khác `//` như thế nào?\r\n2. `%` và `**` dùng để làm gì?\r\n3. `type()` trả về thông tin gì?\r\n4. `list`, `tuple`, `set` và `dict` khác nhau ở điểm nào?\r\n5. Vì sao `{}` không tạo ra một set rỗng?\r\n6. Chỉ số đầu tiên của list hoặc tuple là bao nhiêu?\r\n7. Làm thế nào để tính khoảng cách giữa hai điểm bằng module `math`?",
+          "bodyText": "Sau bài này, cần tự trả lời được:/ khác // như thế nào?% và ** dùng để làm gì?type() trả về thông tin gì?list, tuple, set và dict khác nhau ở điểm nào?Vì sao {} không tạo ra một set rỗng?Chỉ số đầu tiên của list hoặc tuple là bao nhiêu?Làm thế nào để tính khoảng cách giữa hai điểm bằng module math?"
+        }
+      ],
+      "checklistItems": [],
+      "code": "import math\r\nprint(3 + 4)\r\nprint(3 - 4)\r\nprint(3 * 4)\r\nprint(3 % 4)\r\nprint(3 / 4)\r\nprint(3 ** 4)\r\nprint(3 // 4)\r\nprint('Tuan')\r\nprint('Nguyen')\r\nprint('Viet Nam')\r\nprint('I am enjoying 30 days of Python')\r\nprint(type(10))\r\nprint(type(9.8))\r\nprint(type(3.14))\r\nprint(type(4 - 4j))\r\nprint(type(['Asabeneh', 'Python', 'Finland']))\r\nprint(type('Tuan'))\r\nprint(type('Nguyen'))\r\nprint(type('Viet Nam'))\r\nprint(type(True))\r\nprint(type(False))\r\nprint(type((1,2,3)))\r\nprint(type({1,2,3}))\r\nprint(type({\r\n    'a': 1,\r\n    'b': 2,\r\n    'c': 3\r\n}))\r\n# Exercise: Level 3 - Euclidean distance between (2,3) and (10,8)\r\npoint_a = (2, 3)\r\npoint_b = (10, 8)\r\ndistance = math.sqrt((point_b[0] - point_a[0]) ** 2 + (point_b[1] - point_a[1]) ** 2)\r\nprint('Euclidean distance between', point_a, 'and', point_b, 'is', distance)\r\n"
     }
   ],
   "questions": [
