@@ -26,11 +26,13 @@
   },
   "dependencies": {
     "@google/genai": "^2.12.0",
+    "@monaco-editor/react": "^4.7.0",
     "@next/env": "^16.2.10",
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.7",
     "fast-glob": "^3.3.3",
     "mdast-util-to-string": "^4.0.0",
+    "monaco-editor": "^0.56.0",
     "next": "16.2.10",
     "openai": "^6.48.0",
     "react": "19.2.4",

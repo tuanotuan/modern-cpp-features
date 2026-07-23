@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import type {
@@ -36,10 +37,7 @@ import {
   buildCustomStudyQueue,
   type CustomStudyFilters,
 } from "@/lib/practice/custom-study";
-import {
-  applyScenarioEditorKey,
-  scenarioEditorConfig,
-} from "@/lib/practice/scenario-editor";
+import { scenarioEditorConfig } from "@/lib/practice/scenario-editor";
 import {
   parseSavedItems,
   removeSavedItem,
@@ -77,6 +75,19 @@ const STORAGE_KEY = "cpp-recall:progress:v1";
 const STUDY_SESSION_KEY = "cpp-recall:study-session:v1";
 const EMPTY_SNAPSHOT = "__empty__";
 const storageListeners = new Set<() => void>();
+
+const MonacoCodeEditor = dynamic(
+  () =>
+    import("./scenario-code-editor").then((module) => module.MonacoCodeEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="grid h-96 place-items-center bg-[#0b241d] font-mono text-xs text-white/45">
+        Đang tải VS Code editor…
+      </div>
+    ),
+  },
+);
 type SyncStatus = "local" | "syncing" | "synced" | "error";
 type FollowUpChatMessage = {
   role: "user" | "assistant";
@@ -2115,30 +2126,7 @@ function ScenarioCodeEditor({
   onChange: (value: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const lineNumbersRef = useRef<HTMLPreElement>(null);
-  const lineCount = Math.max(16, value.split("\n").length);
   const editor = scenarioEditorConfig(language);
-
-  function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.ctrlKey || event.metaKey || event.altKey) return;
-    const input = event.currentTarget;
-    const start = input.selectionStart;
-    const end = input.selectionEnd;
-    const edit = applyScenarioEditorKey(
-      value,
-      start,
-      end,
-      event.key,
-      event.shiftKey,
-    );
-    if (!edit || edit.value.length > SCENARIO_CODE_MAX) return;
-
-    event.preventDefault();
-    onChange(edit.value);
-    window.requestAnimationFrame(() =>
-      input.setSelectionRange(edit.selectionStart, edit.selectionEnd),
-    );
-  }
 
   return (
     <section
@@ -2184,32 +2172,20 @@ function ScenarioCodeEditor({
             </button>
           </div>
         </div>
-        <div className="grid grid-cols-[3rem_minmax(0,1fr)] bg-[#0b241d]">
-          <pre
-            ref={lineNumbersRef}
-            aria-hidden="true"
-            className={`${expanded ? "h-[calc(100vh-9rem)]" : "h-96"} overflow-hidden border-r border-white/7 bg-black/10 py-4 pr-3 text-right font-mono text-[12px] leading-6 text-white/25 select-none`}
-          >
-            {Array.from({ length: lineCount }, (_, index) => index + 1).join("\n")}
-          </pre>
-          <textarea
+        <div className="bg-[#0b241d]">
+          <MonacoCodeEditor
+            language={language}
             value={value}
-            onChange={(event) => onChange(event.target.value)}
-            onKeyDown={handleKeyDown}
-            onScroll={(event) => {
-              if (lineNumbersRef.current) {
-                lineNumbersRef.current.scrollTop = event.currentTarget.scrollTop;
-              }
-            }}
-            maxLength={SCENARIO_CODE_MAX}
-            spellCheck={false}
-            aria-label={`Code ${editor.languageLabel} cho câu hỏi thiết kế`}
-            className={`${expanded ? "h-[calc(100vh-9rem)]" : "h-96"} w-full resize-none overflow-auto bg-transparent p-4 font-mono text-[13px] leading-6 text-[#e8f4ec] caret-[#d7ff91] outline-none placeholder:text-white/25`}
+            onChange={(nextValue) =>
+              onChange(nextValue.slice(0, SCENARIO_CODE_MAX))
+            }
+            height={expanded ? "calc(100vh - 9rem)" : "24rem"}
+            expanded={expanded}
             placeholder={editor.placeholder}
           />
         </div>
         <div className="flex items-center justify-between border-t border-white/8 bg-[#102f27] px-4 py-2 font-mono text-[10px] text-white/40">
-          <span>Tab = 2 spaces · tự đóng ngoặc · tự căn dòng · tự lưu khi F5</span>
+          <span>Monaco · Ctrl+F tìm kiếm · Alt+↑↓ chuyển dòng · Ctrl+S đã tự lưu</span>
           <span>{value.length}/{SCENARIO_CODE_MAX}</span>
         </div>
       </div>
