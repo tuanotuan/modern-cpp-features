@@ -230,7 +230,7 @@ export function PracticeApp({
   >("idle");
   const initialSyncStarted = useRef(false);
   const sessionHydrationStarted = useRef(false);
-  const scrollToAnswerAfterReveal = useRef(false);
+  const scrollToRatingWhenAvailable = useRef(false);
   const [sessionHydrated, setSessionHydrated] = useState(false);
   const sessionQuestions = useMemo(() => {
     const byId = new Map<string, PracticeQuestion>();
@@ -574,6 +574,11 @@ export function PracticeApp({
   const hasAnswered = Boolean(
     current && (coachFeedback[current.id] || revealed.has(current.id)),
   );
+  const currentSuggestedRating = current
+    ? ratingOptions.find(
+        (option) => option.value === coachFeedback[current.id]?.suggestedRating,
+      )
+    : undefined;
   const dailyTotal = completedToday + remainingIds.length;
   const streak = calculateStreak(deckReviews, today);
   const customStudyTopics = [
@@ -679,15 +684,15 @@ export function PracticeApp({
 
   function toggleReferenceAnswer() {
     if (!current) return;
-    scrollToAnswerAfterReveal.current = !revealed.has(current.id);
+    scrollToRatingWhenAvailable.current = !revealed.has(current.id);
     toggleSet(setRevealed, current.id);
   }
 
-  function handleAnswerSectionRef(node: HTMLDivElement | null) {
-    if (!node || !scrollToAnswerAfterReveal.current) return;
-    scrollToAnswerAfterReveal.current = false;
+  function handleRatingSectionRef(node: HTMLDivElement | null) {
+    if (!node || !scrollToRatingWhenAvailable.current) return;
+    scrollToRatingWhenAvailable.current = false;
     window.requestAnimationFrame(() =>
-      node.scrollIntoView({ behavior: "smooth", block: "start" }),
+      node.scrollIntoView({ behavior: "smooth", block: "center" }),
     );
   }
 
@@ -762,6 +767,7 @@ export function PracticeApp({
         throw new Error(payload.error || "AI coach chưa trả lời được.");
       }
 
+      scrollToRatingWhenAvailable.current = true;
       setCoachFeedback((feedback) => ({
         ...feedback,
         [current.id]: payload.feedback!,
@@ -1329,6 +1335,50 @@ export function PracticeApp({
                     </p>
                   ) : null}
 
+                  {hasAnswered ? (
+                    <div
+                      ref={handleRatingSectionRef}
+                      className="sticky bottom-3 z-20 mt-5 scroll-m-4 rounded-3xl border-2 border-[#356b58]/35 bg-[#fffef9]/95 p-4 shadow-[0_16px_45px_rgba(23,63,53,0.18)] backdrop-blur-md sm:p-5"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-bold text-[#173f35]">
+                            Chấm mức độ ghi nhớ để sang câu tiếp theo
+                          </p>
+                          <p className="mt-0.5 text-xs text-[#5c6e65]">
+                            {revealed.has(current.id)
+                              ? "So với đáp án, mày nhớ được tới đâu?"
+                              : "AI đã chấm xong — giờ mày tự chọn mức phù hợp."}
+                          </p>
+                        </div>
+                        {currentSuggestedRating ? (
+                          <span className="rounded-full bg-[#d7ff91]/70 px-3 py-1 text-xs font-semibold text-[#356b58]">
+                            AI gợi ý: {currentSuggestedRating.label}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {ratingOptions.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => rateCurrent(option.value)}
+                            data-tone={option.tone}
+                            className="rating-button rounded-2xl border bg-white px-3 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:ring-4 focus:ring-[#d7ff91] focus:outline-none"
+                          >
+                            <span className="block text-sm font-bold">{option.label}</span>
+                            <span className="mt-1 block font-mono text-[11px] opacity-65">
+                              lại sau{" "}
+                              {currentLearningState
+                                ? `${ratingIntervalDays(currentLearningState, option.value)} ngày`
+                                : option.interval}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
                   {coachFeedback[current.id] ? (
                     <>
                       <CoachFeedbackPanel
@@ -1427,7 +1477,6 @@ export function PracticeApp({
 
                 {revealed.has(current.id) ? (
                   <div
-                    ref={handleAnswerSectionRef}
                     className="scroll-mt-6 border-t border-[#173f35]/12 bg-[#edf3e9] p-6 sm:p-9 lg:p-11"
                   >
                     <p className="font-mono text-xs font-bold tracking-[0.16em] text-[#356b58] uppercase">
@@ -1467,30 +1516,6 @@ export function PracticeApp({
                       <SourceNotes question={current} />
                     ) : null}
 
-                    <div className="mt-8 border-t border-[#173f35]/12 pt-7">
-                      <p className="text-center text-sm font-semibold text-[#465c52]">
-                        So với đáp án, mày nhớ được tới đâu?
-                      </p>
-                      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        {ratingOptions.map((option) => (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => rateCurrent(option.value)}
-                            data-tone={option.tone}
-                            className="rating-button rounded-2xl border bg-white/70 px-3 py-3 text-left transition hover:-translate-y-0.5 hover:shadow-sm focus:ring-4 focus:ring-[#d7ff91] focus:outline-none"
-                          >
-                            <span className="block text-sm font-bold">{option.label}</span>
-                            <span className="mt-1 block font-mono text-[11px] opacity-65">
-                              lại sau{" "}
-                              {currentLearningState
-                                ? `${ratingIntervalDays(currentLearningState, option.value)} ngày`
-                                : option.interval}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
                   </div>
                 ) : null}
               </article>
