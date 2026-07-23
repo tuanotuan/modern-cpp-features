@@ -48,7 +48,9 @@ describe("content loader", () => {
     expect(manifest.lessons.some((lesson) => lesson.codePath !== null)).toBe(true);
     expect(
       manifest.lessons.every(
-        (lesson) => lesson.codePath === null || lesson.codePath.endsWith("main.cpp"),
+        (lesson) =>
+          lesson.codePath === null ||
+          lesson.codePath.endsWith(codeFileNameForLanguage(lesson.language)),
       ),
     ).toBe(true);
     expect(

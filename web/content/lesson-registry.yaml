@@ -279,9 +279,18 @@ lessons:
     track: cpp11
   - id: cpp11-lvalue
     sourcePath: cpp11/19_21_lvalue
-    language: cpp
-    track: cpp11
     order: 22
     tags:
       - lvalue
+    prerequisites: []
+    language: cpp
+    track: cpp11
+  - id: python-day-1
+    sourcePath: python/day_1
+    language: python
+    track: python3
+    order: 1
+    tags:
+      - day
+      - "1"
     prerequisites: []
