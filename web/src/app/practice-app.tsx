@@ -36,7 +36,10 @@ import {
   buildCustomStudyQueue,
   type CustomStudyFilters,
 } from "@/lib/practice/custom-study";
-import { scenarioEditorConfig } from "@/lib/practice/scenario-editor";
+import {
+  applyScenarioEditorKey,
+  scenarioEditorConfig,
+} from "@/lib/practice/scenario-editor";
 import {
   parseSavedItems,
   removeSavedItem,
@@ -2117,14 +2120,24 @@ function ScenarioCodeEditor({
   const editor = scenarioEditorConfig(language);
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key !== "Tab") return;
-    event.preventDefault();
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
     const input = event.currentTarget;
     const start = input.selectionStart;
     const end = input.selectionEnd;
-    const nextValue = `${value.slice(0, start)}  ${value.slice(end)}`;
-    onChange(nextValue.slice(0, SCENARIO_CODE_MAX));
-    window.requestAnimationFrame(() => input.setSelectionRange(start + 2, start + 2));
+    const edit = applyScenarioEditorKey(
+      value,
+      start,
+      end,
+      event.key,
+      event.shiftKey,
+    );
+    if (!edit || edit.value.length > SCENARIO_CODE_MAX) return;
+
+    event.preventDefault();
+    onChange(edit.value);
+    window.requestAnimationFrame(() =>
+      input.setSelectionRange(edit.selectionStart, edit.selectionEnd),
+    );
   }
 
   return (
@@ -2196,7 +2209,7 @@ function ScenarioCodeEditor({
           />
         </div>
         <div className="flex items-center justify-between border-t border-white/8 bg-[#102f27] px-4 py-2 font-mono text-[10px] text-white/40">
-          <span>Tab = 2 spaces · tự lưu khi F5</span>
+          <span>Tab = 2 spaces · tự đóng ngoặc · tự căn dòng · tự lưu khi F5</span>
           <span>{value.length}/{SCENARIO_CODE_MAX}</span>
         </div>
       </div>
