@@ -14,7 +14,11 @@ export default async function Home({
     deck?: string | string[];
   }>;
 }) {
-  const cloud = await loadCloudContext();
+  const cloud = await loadCloudContext({
+    includeAiUsage: false,
+    includeGeminiUsage: false,
+    includeProviderSettings: false,
+  });
   const manifest = cloud.manifest;
   const params = await searchParams;
   const authCode = Array.isArray(params.auth) ? params.auth[0] : params.auth;

@@ -11,6 +11,7 @@ import {
 } from "@/lib/content/question-store-server";
 import type { ContentManifest } from "@/lib/content/schema";
 import {
+  applyQuestionOverrides,
   questionOverrideSelect,
   rowsToQuestionOverrides,
   type QuestionOverride,
@@ -92,7 +93,19 @@ export type GeminiUsageSummary = {
 };
 
 export async function loadCloudContext(
-  { includeGenerationJobs = false }: { includeGenerationJobs?: boolean } = {},
+  {
+    includeGenerationJobs = false,
+    includeAiUsage = true,
+    includeDailyAiBudget = true,
+    includeGeminiUsage = true,
+    includeProviderSettings = true,
+  }: {
+    includeGenerationJobs?: boolean;
+    includeAiUsage?: boolean;
+    includeDailyAiBudget?: boolean;
+    includeGeminiUsage?: boolean;
+    includeProviderSettings?: boolean;
+  } = {},
 ): Promise<CloudContext> {
   if (!isSupabaseConfigured()) {
     return {
@@ -133,7 +146,58 @@ export async function loadCloudContext(
   }
 
   const usageDate = vietnamUsageDate();
-  const [reviewsResult, statesResult, approvalsResult, overridesResult, monthlyUsageResult, dailyUsageResult, geminiUsageResult, providerSettingsResult] =
+  const skippedSingleResult = () =>
+    Promise.resolve({ data: null, error: null });
+  const monthlyUsagePromise = includeAiUsage
+    ? readAiUsageRow(
+        supabase,
+        "ai_usage_monthly",
+        "month_start",
+        `${usageDate.slice(0, 7)}-01`,
+      )
+    : skippedSingleResult();
+  const dailyUsagePromise = includeDailyAiBudget
+    ? readAiUsageRow(
+        supabase,
+        "ai_usage_daily",
+        "usage_date",
+        usageDate,
+      )
+    : skippedSingleResult();
+  const geminiUsagePromise = includeGeminiUsage
+    ? supabase
+        .from("gemini_usage_daily")
+        .select("request_count, input_tokens, output_tokens, thought_tokens, total_tokens, last_model")
+        .eq("usage_date", usageDate)
+        .maybeSingle()
+    : skippedSingleResult();
+  const providerSettingsPromise = includeProviderSettings
+    ? supabase
+        .from("ai_provider_settings")
+        .select("gemini_fallback_enabled")
+        .maybeSingle()
+    : skippedSingleResult();
+  const generationJobsPromise = includeGenerationJobs
+    ? supabase
+        .from("content_generation_jobs")
+        .select(
+          "id, lesson_id, source_hash, status, attempt_count, requested_count, provider, model, next_attempt_at, last_error, updated_at",
+        )
+        .order("updated_at", { ascending: false })
+        .limit(50)
+    : Promise.resolve({ data: [], error: null });
+  const [
+    reviewsResult,
+    statesResult,
+    approvalsResult,
+    overridesResult,
+    monthlyUsageResult,
+    dailyUsageResult,
+    geminiUsageResult,
+    providerSettingsResult,
+    generationJobsResult,
+    baseManifest,
+  ] =
     await Promise.all([
       supabase
         .from("practice_reviews")
@@ -149,27 +213,12 @@ export async function loadCloudContext(
       supabase
         .from("question_overrides")
         .select(questionOverrideSelect),
-      readAiUsageRow(
-        supabase,
-        "ai_usage_monthly",
-        "month_start",
-        `${usageDate.slice(0, 7)}-01`,
-      ),
-      readAiUsageRow(
-        supabase,
-        "ai_usage_daily",
-        "usage_date",
-        usageDate,
-      ),
-      supabase
-        .from("gemini_usage_daily")
-        .select("request_count, input_tokens, output_tokens, thought_tokens, total_tokens, last_model")
-        .eq("usage_date", usageDate)
-        .maybeSingle(),
-      supabase
-        .from("ai_provider_settings")
-        .select("gemini_fallback_enabled")
-        .maybeSingle(),
+      monthlyUsagePromise,
+      dailyUsagePromise,
+      geminiUsagePromise,
+      providerSettingsPromise,
+      generationJobsPromise,
+      loadQuestionStoreManifest({ supabase }),
     ]);
   const { data: rows, error } = reviewsResult;
   const { data: stateRows, error: statesError } = statesResult;
@@ -180,22 +229,15 @@ export async function loadCloudContext(
   const { data: geminiUsageRow, error: geminiUsageError } = geminiUsageResult;
   const { data: providerSettingsRow, error: providerSettingsError } =
     providerSettingsResult;
-  const generationJobsResult = includeGenerationJobs
-    ? await supabase
-        .from("content_generation_jobs")
-        .select(
-          "id, lesson_id, source_hash, status, attempt_count, requested_count, provider, model, next_attempt_at, last_error, updated_at",
-        )
-        .order("updated_at", { ascending: false })
-        .limit(50)
-    : { data: [], error: null };
   const { data: generationJobRows, error: generationJobsError } =
     generationJobsResult;
-  const aiDailyBudget = aiDailyBudgetSnapshotFromUsageRead({
-    row: dailyUsageRow,
-    readError: dailyUsageError,
-    usageDate,
-  });
+  const aiDailyBudget = includeDailyAiBudget
+    ? aiDailyBudgetSnapshotFromUsageRead({
+        row: dailyUsageRow,
+        readError: dailyUsageError,
+        usageDate,
+      })
+    : null;
   if (dailyUsageError) {
     console.error("Daily AI usage read failed", {
       code: dailyUsageError.code ?? "unknown",
@@ -204,10 +246,7 @@ export async function loadCloudContext(
   const questionOverrides = overridesError
     ? []
     : rowsToQuestionOverrides((overrideRows ?? []) as QuestionOverrideRow[]);
-  const manifest = await loadQuestionStoreManifest({
-    supabase,
-    overrides: questionOverrides,
-  });
+  const manifest = applyQuestionOverrides(baseManifest, questionOverrides);
 
   return {
     enabled: true,
@@ -260,6 +299,7 @@ export async function loadCloudContext(
         }
       : null,
     geminiFallbackEnabled:
+      includeProviderSettings &&
       Boolean(process.env.GEMINI_API_KEY) &&
       process.env.GEMINI_FALLBACK_ENABLED?.toLowerCase() !== "false" &&
       providerSettingsRow?.gemini_fallback_enabled !== false,

@@ -1,8 +1,15 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  useTransition,
+} from "react";
 
 import type {
   CoachFeedback,
@@ -222,7 +229,6 @@ export function PracticeApp({
   const [deepDiveLoading, setDeepDiveLoading] = useState<string | null>(null);
   const [deepDiveErrors, setDeepDiveErrors] = useState<Record<string, string>>({});
   const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
-  const [savedLibraryOpen, setSavedLibraryOpen] = useState(false);
   const [aiDailyBudget, setAiDailyBudget] = useState(initialAiDailyBudget);
   const [aiBudgetCacheHydrated, setAiBudgetCacheHydrated] = useState(false);
   const [cloudQuestionStates, setCloudQuestionStates] = useState(
@@ -239,12 +245,15 @@ export function PracticeApp({
   const [availableQuestions, setAvailableQuestions] = useState(questions);
   const [pendingReview, setPendingReview] = useState(reviewQueue);
   const [selectedDeck, setSelectedDeck] = useState(initialDeck);
+  const [requestedDeck, setRequestedDeck] = useState(initialDeck);
+  const [deckTransitionPending, startDeckTransition] = useTransition();
   const [approvalStatus, setApprovalStatus] = useState<
     "idle" | "saving" | "error"
   >("idle");
   const initialSyncStarted = useRef(false);
   const sessionHydrationStarted = useRef(false);
   const scrollToRatingWhenAvailable = useRef(false);
+  const pendingSessionSaveRef = useRef<(() => void) | null>(null);
   const [sessionHydrated, setSessionHydrated] = useState(false);
   const sessionQuestions = useMemo(() => {
     const byId = new Map<string, PracticeQuestion>();
@@ -369,70 +378,80 @@ export function PracticeApp({
   useEffect(() => {
     if (!sessionHydrated) return;
 
-    const savedQuestions: Record<string, QuestionStudySession> = {};
-    sessionQuestions.forEach((question) => {
-      const answer = answers[question.id];
-      const codeAnswer = codeAnswers[question.id];
-      const feedback = coachFeedback[question.id];
-      const model = coachModels[question.id];
-      const coachAnswer = coachAnswers[question.id];
-      const followUpInput = followUpInputs[question.id];
-      const followUpChat = followUpChats[question.id];
-      const deepDiveAnswer = deepDiveAnswers[question.id];
-      const savedDeepDiveFeedback = deepDiveFeedback[question.id];
-      const deepDiveModel = deepDiveModels[question.id];
-      const isDeepDiveOpen = deepDiveOpen.has(question.id);
-      const isRevealed = revealed.has(question.id);
-      const hasHint = hints.has(question.id);
-      const sourceVisible = visibleSources.has(question.id);
-      const hasSession = Boolean(
-        answer ||
-          codeAnswer ||
-          feedback ||
-          followUpInput ||
-          followUpChat?.length ||
-          deepDiveAnswer ||
-          savedDeepDiveFeedback ||
-          isDeepDiveOpen ||
-          isRevealed ||
-          hasHint ||
-          sourceVisible,
-      );
-      if (!hasSession) return;
+    const saveSession = () => {
+      const savedQuestions: Record<string, QuestionStudySession> = {};
+      sessionQuestions.forEach((question) => {
+        const answer = answers[question.id];
+        const codeAnswer = codeAnswers[question.id];
+        const feedback = coachFeedback[question.id];
+        const model = coachModels[question.id];
+        const coachAnswer = coachAnswers[question.id];
+        const followUpInput = followUpInputs[question.id];
+        const followUpChat = followUpChats[question.id];
+        const deepDiveAnswer = deepDiveAnswers[question.id];
+        const savedDeepDiveFeedback = deepDiveFeedback[question.id];
+        const deepDiveModel = deepDiveModels[question.id];
+        const isDeepDiveOpen = deepDiveOpen.has(question.id);
+        const isRevealed = revealed.has(question.id);
+        const hasHint = hints.has(question.id);
+        const sourceVisible = visibleSources.has(question.id);
+        const hasSession = Boolean(
+          answer ||
+            codeAnswer ||
+            feedback ||
+            followUpInput ||
+            followUpChat?.length ||
+            deepDiveAnswer ||
+            savedDeepDiveFeedback ||
+            isDeepDiveOpen ||
+            isRevealed ||
+            hasHint ||
+            sourceVisible,
+        );
+        if (!hasSession) return;
 
-      savedQuestions[question.id] = {
-        questionVersion: question.version,
-        sourceHash: question.sourceHash,
-        ...(answer ? { answer } : {}),
-        ...(codeAnswer ? { codeAnswer } : {}),
-        ...(isRevealed ? { revealed: true } : {}),
-        ...(hasHint ? { hint: true } : {}),
-        ...(sourceVisible ? { sourceVisible: true } : {}),
-        ...(feedback ? { coachFeedback: feedback } : {}),
-        ...(model ? { coachModel: model } : {}),
-        ...(coachAnswer ? { coachAnswer } : {}),
-        ...(followUpInput ? { followUpInput } : {}),
-        ...(followUpChat?.length ? { followUpChat } : {}),
-        ...(isDeepDiveOpen ? { deepDiveOpen: true } : {}),
-        ...(deepDiveAnswer ? { deepDiveAnswer } : {}),
-        ...(savedDeepDiveFeedback
-          ? { deepDiveFeedback: savedDeepDiveFeedback }
-          : {}),
-        ...(deepDiveModel ? { deepDiveModel } : {}),
-      };
-    });
+        savedQuestions[question.id] = {
+          questionVersion: question.version,
+          sourceHash: question.sourceHash,
+          ...(answer ? { answer } : {}),
+          ...(codeAnswer ? { codeAnswer } : {}),
+          ...(isRevealed ? { revealed: true } : {}),
+          ...(hasHint ? { hint: true } : {}),
+          ...(sourceVisible ? { sourceVisible: true } : {}),
+          ...(feedback ? { coachFeedback: feedback } : {}),
+          ...(model ? { coachModel: model } : {}),
+          ...(coachAnswer ? { coachAnswer } : {}),
+          ...(followUpInput ? { followUpInput } : {}),
+          ...(followUpChat?.length ? { followUpChat } : {}),
+          ...(isDeepDiveOpen ? { deepDiveOpen: true } : {}),
+          ...(deepDiveAnswer ? { deepDiveAnswer } : {}),
+          ...(savedDeepDiveFeedback
+            ? { deepDiveFeedback: savedDeepDiveFeedback }
+            : {}),
+          ...(deepDiveModel ? { deepDiveModel } : {}),
+        };
+      });
 
-    try {
-      window.localStorage.setItem(
-        STUDY_SESSION_KEY,
-        serializeStudySession(
-          savedQuestions,
-          selectedQuestionId ?? undefined,
-        ),
-      );
-    } catch {
-      // Practice remains usable if browser storage is unavailable or full.
-    }
+      try {
+        window.localStorage.setItem(
+          STUDY_SESSION_KEY,
+          serializeStudySession(
+            savedQuestions,
+            selectedQuestionId ?? undefined,
+          ),
+        );
+      } catch {
+        // Practice remains usable if browser storage is unavailable or full.
+      }
+    };
+    pendingSessionSaveRef.current = saveSession;
+    const timeoutId = window.setTimeout(() => {
+      saveSession();
+      if (pendingSessionSaveRef.current === saveSession) {
+        pendingSessionSaveRef.current = null;
+      }
+    }, 350);
+    return () => window.clearTimeout(timeoutId);
   }, [
     answers,
     coachAnswers,
@@ -452,6 +471,14 @@ export function PracticeApp({
     sessionQuestions,
     visibleSources,
   ]);
+
+  useEffect(
+    () => () => {
+      pendingSessionSaveRef.current?.();
+      pendingSessionSaveRef.current = null;
+    },
+    [],
+  );
 
   useEffect(() => {
     if (snapshot === null || !account || initialSyncStarted.current) return;
@@ -508,56 +535,102 @@ export function PracticeApp({
       .catch(() => setSyncStatus("error"));
   }, [account, initialCloudProgress, initialQuestionStates, snapshot]);
 
+  const today = localDateKey();
+  const {
+    activeDeck,
+    completedToday,
+    customStudyTopics,
+    deckCounts,
+    deckQuestions,
+    latest,
+    learningCounts,
+    learningStates,
+    questionById,
+    remainingIds,
+    selectedPendingReview,
+    streak,
+  } = useMemo(() => {
+    const nextDeckCounts = {
+      "cpp-interview": 0,
+      "python-interview": 0,
+      "cmake-build-systems": 0,
+    } satisfies Record<PracticeDeckId, number>;
+    availableQuestions.forEach((question) => {
+      nextDeckCounts[question.taxonomy.deckId] += 1;
+    });
+
+    const nextDeckQuestions = availableQuestions.filter(
+      (question) => question.taxonomy.deckId === selectedDeck,
+    );
+    const deckQuestionIds = new Set(
+      nextDeckQuestions.map((question) => question.id),
+    );
+    const nextDeckReviews = progress.reviews.filter((review) =>
+      deckQuestionIds.has(review.questionId),
+    );
+    const nextSelectedPendingReview = pendingReview.filter(
+      (question) => question.taxonomy.deckId === selectedDeck,
+    );
+    const nextQuestionById = new Map(
+      nextDeckQuestions.map((question) => [question.id, question]),
+    );
+    const nextLearningStates = buildLearningStates(
+      nextDeckQuestions.map((question) => ({
+        id: question.id,
+        version: question.version,
+        sourceHash: question.sourceHash,
+      })),
+      nextDeckReviews,
+      cloudQuestionStates.filter((state) =>
+        deckQuestionIds.has(state.questionId),
+      ),
+    );
+    const nextLatest = latestReviews(nextDeckReviews);
+    const nextRemainingIds = buildAnkiDailyQueue(
+      nextLearningStates,
+      today,
+    ).filter(
+      (questionId) => nextLatest.get(questionId)?.reviewedOn !== today,
+    );
+    const nextCompletedToday = new Set(
+      nextDeckReviews
+        .filter((review) => review.reviewedOn === today)
+        .map((review) => review.questionId),
+    ).size;
+
+    return {
+      activeDeck: PRACTICE_DECKS[selectedDeck],
+      completedToday: nextCompletedToday,
+      customStudyTopics: [
+        ...new Set(
+          nextDeckQuestions.flatMap(
+            (question) => question.taxonomy.topics,
+          ),
+        ),
+      ].sort(),
+      deckCounts: nextDeckCounts,
+      deckQuestions: nextDeckQuestions,
+      latest: nextLatest,
+      learningCounts: countLearningStates(nextLearningStates.values()),
+      learningStates: nextLearningStates,
+      questionById: nextQuestionById,
+      remainingIds: nextRemainingIds,
+      selectedPendingReview: nextSelectedPendingReview,
+      streak: calculateStreak(nextDeckReviews, today),
+    };
+  }, [
+    availableQuestions,
+    cloudQuestionStates,
+    pendingReview,
+    progress.reviews,
+    selectedDeck,
+    today,
+  ]);
+
   if (snapshot === null) {
     return <LoadingScreen />;
   }
 
-  const today = localDateKey();
-  const activeDeck = PRACTICE_DECKS[selectedDeck];
-  const deckCounts = {
-    "cpp-interview": availableQuestions.filter(
-      (question) => question.taxonomy.deckId === "cpp-interview",
-    ).length,
-    "python-interview": availableQuestions.filter(
-      (question) => question.taxonomy.deckId === "python-interview",
-    ).length,
-    "cmake-build-systems": availableQuestions.filter(
-      (question) => question.taxonomy.deckId === "cmake-build-systems",
-    ).length,
-  } satisfies Record<PracticeDeckId, number>;
-  const deckQuestions = availableQuestions.filter(
-    (question) => question.taxonomy.deckId === selectedDeck,
-  );
-  const deckQuestionIds = new Set(deckQuestions.map((question) => question.id));
-  const deckReviews = progress.reviews.filter((review) =>
-    deckQuestionIds.has(review.questionId),
-  );
-  const selectedPendingReview = pendingReview.filter(
-    (question) => question.taxonomy.deckId === selectedDeck,
-  );
-  const questionById = new Map(
-    deckQuestions.map((question) => [question.id, question]),
-  );
-  const learningStates = buildLearningStates(
-    deckQuestions.map((question) => ({
-      id: question.id,
-      version: question.version,
-      sourceHash: question.sourceHash,
-    })),
-    deckReviews,
-    cloudQuestionStates.filter((state) => deckQuestionIds.has(state.questionId)),
-  );
-  const queue = buildAnkiDailyQueue(learningStates, today);
-  const learningCounts = countLearningStates(learningStates.values());
-  const latest = latestReviews(deckReviews);
-  const remainingIds = queue.filter(
-    (questionId) => latest.get(questionId)?.reviewedOn !== today,
-  );
-  const completedToday = new Set(
-    deckReviews
-      .filter((review) => review.reviewedOn === today)
-      .map((review) => review.questionId),
-  ).size;
   const selectedQuestion = selectedQuestionId
     ? questionById.get(selectedQuestionId)
     : undefined;
@@ -594,12 +667,6 @@ export function PracticeApp({
       )
     : undefined;
   const dailyTotal = completedToday + remainingIds.length;
-  const streak = calculateStreak(deckReviews, today);
-  const customStudyTopics = [
-    ...new Set(
-      deckQuestions.flatMap((question) => question.taxonomy.topics),
-    ),
-  ].sort();
 
   async function approveAllPending() {
     if (!selectedPendingReview.length || approvalStatus === "saving") return;
@@ -684,16 +751,19 @@ export function PracticeApp({
   }
 
   function selectDeck(deck: PracticeDeckId) {
-    if (deck === selectedDeck) return;
-    clearStudySessionState();
-    setSelectedQuestionId(null);
-    setCustomStudyIds(null);
-    setCustomStudyNotice(null);
-    setSelectedDeck(deck);
+    if (deck === requestedDeck) return;
+    setRequestedDeck(deck);
     const url = new URL(window.location.href);
     url.searchParams.set("deck", deck);
     window.history.replaceState(null, "", url);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0 });
+    startDeckTransition(() => {
+      clearStudySessionState();
+      setSelectedQuestionId(null);
+      setCustomStudyIds(null);
+      setCustomStudyNotice(null);
+      setSelectedDeck(deck);
+    });
   }
 
   function toggleReferenceAnswer() {
@@ -1054,15 +1124,16 @@ export function PracticeApp({
         <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#173f35]/15 pb-5">
           <div className="flex items-center gap-3">
             <span className="grid size-10 place-items-center rounded-xl bg-[#173f35] font-mono text-sm font-bold text-[#d7ff91] shadow-sm">
-              {activeDeck.badge}
+              {PRACTICE_DECKS[requestedDeck].badge}
             </span>
             <div>
               <p className="font-semibold tracking-[-0.02em]">Recall</p>
               <p className="text-xs text-[#64736c]">Interview practice</p>
             </div>
             <DeckSwitcher
-              selected={selectedDeck}
+              selected={requestedDeck}
               counts={deckCounts}
+              pending={deckTransitionPending}
               onSelect={selectDeck}
             />
           </div>
@@ -1077,44 +1148,33 @@ export function PracticeApp({
             {account && aiBudgetCacheHydrated && aiDailyBudget ? (
               <AiBudgetPill budget={aiDailyBudget} />
             ) : null}
-            <button
-              type="button"
-              onClick={() => setSavedLibraryOpen(true)}
-              className="rounded-full border border-[#173f35]/15 bg-white/55 px-3 py-2 text-xs font-bold transition hover:bg-white"
-            >
-              ☆ Đã lưu {savedItems.length ? `(${savedItems.length})` : ""}
-            </button>
+            <SavedItemsControl
+              items={savedItems}
+              onRemove={deleteSavedItem}
+              onOpenQuestion={(questionId) => {
+                const question = sessionQuestions.find(
+                  (item) => item.id === questionId,
+                );
+                if (!question) return;
+                const nextDeck = question.taxonomy.deckId;
+                clearStudySessionState();
+                setRequestedDeck(nextDeck);
+                setSelectedDeck(nextDeck);
+                setSelectedQuestionId(questionId);
+                const url = new URL(window.location.href);
+                url.searchParams.set("deck", nextDeck);
+                window.history.replaceState(null, "", url);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            />
             <AccountControl
               account={account}
               cloudEnabled={cloudEnabled}
               syncStatus={syncStatus}
-              selectedDeck={selectedDeck}
+              selectedDeck={requestedDeck}
             />
           </div>
         </header>
-
-        {savedLibraryOpen ? (
-          <SavedLibrary
-            items={savedItems}
-            onClose={() => setSavedLibraryOpen(false)}
-            onRemove={deleteSavedItem}
-            onOpenQuestion={(questionId) => {
-              const question = sessionQuestions.find(
-                (item) => item.id === questionId,
-              );
-              if (question) {
-                clearStudySessionState();
-                setSelectedDeck(question.taxonomy.deckId);
-                setSelectedQuestionId(questionId);
-                const url = new URL(window.location.href);
-                url.searchParams.set("deck", question.taxonomy.deckId);
-                window.history.replaceState(null, "", url);
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }
-              setSavedLibraryOpen(false);
-            }}
-          />
-        ) : null}
 
         {authNotice ? (
           <p
@@ -1948,10 +2008,12 @@ function DeckEmptyState({
 function DeckSwitcher({
   selected,
   counts,
+  pending,
   onSelect,
 }: {
   selected: PracticeDeckId;
   counts: Record<PracticeDeckId, number>;
+  pending: boolean;
   onSelect: (deck: PracticeDeckId) => void;
 }) {
   return (
@@ -1968,6 +2030,7 @@ function DeckSwitcher({
             type="button"
             onClick={() => onSelect(deckId)}
             aria-pressed={active}
+            aria-busy={active && pending}
             className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
               active
                 ? "bg-[#173f35] text-white shadow-sm"
@@ -1978,6 +2041,12 @@ function DeckSwitcher({
             <span className={`ml-1 font-mono text-[9px] ${active ? "text-[#d7ff91]" : "text-[#78857f]"}`}>
               {counts[deckId]}
             </span>
+            {active && pending ? (
+              <span
+                className="ml-1.5 inline-block size-2 animate-pulse rounded-full bg-[#d7ff91]"
+                aria-hidden="true"
+              />
+            ) : null}
           </button>
         );
       })}
@@ -2022,6 +2091,34 @@ function AiBudgetPill({ budget }: { budget: AiDailyBudgetSnapshot }) {
   );
 }
 
+function HeaderNavLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="relative inline-flex items-center gap-1.5 rounded-full border border-[#173f35]/15 bg-white/65 px-3 py-2 font-mono text-[10px] font-bold uppercase transition hover:border-[#356b58]/40"
+    >
+      <span>{children}</span>
+      <HeaderNavPending />
+    </Link>
+  );
+}
+
+function HeaderNavPending() {
+  const { pending } = useLinkStatus();
+  return pending ? (
+    <span
+      className="size-2 animate-spin rounded-full border border-[#356b58]/35 border-t-[#356b58]"
+      aria-label="Đang chuyển trang"
+    />
+  ) : null;
+}
+
 function AccountControl({
   account,
   cloudEnabled,
@@ -2036,18 +2133,16 @@ function AccountControl({
   if (account) {
     return (
       <div className="flex items-center gap-2">
-        <Link
+        <HeaderNavLink
           href={`/stats?deck=${selectedDeck}`}
-          className="rounded-full border border-[#173f35]/15 bg-white/65 px-3 py-2 font-mono text-[10px] font-bold uppercase transition hover:border-[#356b58]/40"
         >
           Thống kê
-        </Link>
-        <Link
+        </HeaderNavLink>
+        <HeaderNavLink
           href="/admin"
-          className="rounded-full border border-[#173f35]/15 bg-white/65 px-3 py-2 font-mono text-[10px] font-bold uppercase transition hover:border-[#356b58]/40"
         >
           Admin
-        </Link>
+        </HeaderNavLink>
         <form action="/auth/logout" method="post">
           <button
             type="submit"
@@ -2790,6 +2885,41 @@ function SourceNotes({ question }: { question: PracticeQuestion }) {
   );
 }
 
+function SavedItemsControl({
+  items,
+  onRemove,
+  onOpenQuestion,
+}: {
+  items: SavedItem[];
+  onRemove: (itemId: string) => void;
+  onOpenQuestion: (questionId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="rounded-full border border-[#173f35]/15 bg-white/55 px-3 py-2 text-xs font-bold transition hover:bg-white"
+      >
+        ☆ Đã lưu {items.length ? `(${items.length})` : ""}
+      </button>
+      {open ? (
+        <SavedLibrary
+          items={items}
+          onClose={() => setOpen(false)}
+          onRemove={onRemove}
+          onOpenQuestion={(questionId) => {
+            onOpenQuestion(questionId);
+            setOpen(false);
+          }}
+        />
+      ) : null}
+    </>
+  );
+}
+
 function SavedLibrary({
   items,
   onClose,
@@ -2831,47 +2961,12 @@ function SavedLibrary({
 
         <div className="flex-1 space-y-3 overflow-y-auto p-4 sm:p-6">
           {items.map((item) => (
-            <article key={item.id} className="rounded-2xl border border-[#173f35]/12 bg-white/75 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className={`rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase ${item.kind === "question" ? "bg-[#d7ff91] text-[#356b58]" : "bg-[#e3ddff] text-[#55468c]"}`}>
-                  {item.kind === "question" ? "Câu hỏi" : "AI trả lời"}
-                </span>
-                <time className="font-mono text-[10px] text-[#78867f]">
-                  {new Date(item.savedAt).toLocaleDateString("vi-VN")}
-                </time>
-              </div>
-              <h3 className="mt-3 font-semibold">{item.title}</h3>
-              {item.context ? (
-                <p className="mt-2 line-clamp-3 text-xs leading-5 text-[#718078]">
-                  <InlineCode text={item.context} />
-                </p>
-              ) : null}
-              <details className="group mt-3 rounded-xl bg-[#f2f4ed] px-3 py-2.5">
-                <summary className="cursor-pointer list-none text-xs font-bold text-[#356b58]">
-                  <span className="group-open:hidden">Xem nội dung ↓</span>
-                  <span className="hidden group-open:inline">Thu gọn ↑</span>
-                </summary>
-                <div className="mt-3 text-sm leading-6 text-[#465c52]">
-                  <RichText text={item.content} />
-                </div>
-              </details>
-              <div className="mt-4 flex flex-wrap justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => onOpenQuestion(item.questionId)}
-                  className="rounded-lg border border-[#356b58]/18 bg-white px-3 py-2 text-xs font-bold text-[#356b58]"
-                >
-                  Mở câu gốc
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onRemove(item.id)}
-                  className="rounded-lg px-3 py-2 text-xs font-bold text-[#a0442d] hover:bg-[#f8e8df]"
-                >
-                  Bỏ lưu
-                </button>
-              </div>
-            </article>
+            <SavedLibraryItem
+              key={item.id}
+              item={item}
+              onOpenQuestion={onOpenQuestion}
+              onRemove={onRemove}
+            />
           ))}
           {!items.length ? (
             <div className="rounded-2xl border border-dashed border-[#173f35]/20 px-5 py-12 text-center text-sm leading-6 text-[#64736c]">
@@ -2881,5 +2976,66 @@ function SavedLibrary({
         </div>
       </aside>
     </div>
+  );
+}
+
+function SavedLibraryItem({
+  item,
+  onOpenQuestion,
+  onRemove,
+}: {
+  item: SavedItem;
+  onOpenQuestion: (questionId: string) => void;
+  onRemove: (itemId: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <article className="rounded-2xl border border-[#173f35]/12 bg-white/75 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className={`rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase ${item.kind === "question" ? "bg-[#d7ff91] text-[#356b58]" : "bg-[#e3ddff] text-[#55468c]"}`}>
+          {item.kind === "question" ? "Câu hỏi" : "AI trả lời"}
+        </span>
+        <time className="font-mono text-[10px] text-[#78867f]">
+          {new Date(item.savedAt).toLocaleDateString("vi-VN")}
+        </time>
+      </div>
+      <h3 className="mt-3 font-semibold">{item.title}</h3>
+      {item.context ? (
+        <p className="mt-2 line-clamp-3 text-xs leading-5 text-[#718078]">
+          <InlineCode text={item.context} />
+        </p>
+      ) : null}
+      <details
+        className="group mt-3 rounded-xl bg-[#f2f4ed] px-3 py-2.5"
+        onToggle={(event) => setExpanded(event.currentTarget.open)}
+      >
+        <summary className="cursor-pointer list-none text-xs font-bold text-[#356b58]">
+          <span className="group-open:hidden">Xem nội dung ↓</span>
+          <span className="hidden group-open:inline">Thu gọn ↑</span>
+        </summary>
+        {expanded ? (
+          <div className="mt-3 text-sm leading-6 text-[#465c52]">
+            <RichText text={item.content} />
+          </div>
+        ) : null}
+      </details>
+      <div className="mt-4 flex flex-wrap justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => onOpenQuestion(item.questionId)}
+          className="rounded-lg border border-[#356b58]/18 bg-white px-3 py-2 text-xs font-bold text-[#356b58]"
+        >
+          Mở câu gốc
+        </button>
+        <button
+          type="button"
+          onClick={() => onRemove(item.id)}
+          className="rounded-lg px-3 py-2 text-xs font-bold text-[#a0442d] hover:bg-[#f8e8df]"
+        >
+          Bỏ lưu
+        </button>
+      </div>
+    </article>
   );
 }

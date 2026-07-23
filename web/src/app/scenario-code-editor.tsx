@@ -5,6 +5,8 @@ import Editor, {
   type BeforeMount,
   type OnMount,
 } from "@monaco-editor/react";
+import { useMemo } from "react";
+import type { editor } from "monaco-editor";
 
 import type { ContentLanguage } from "@/lib/content/schema";
 
@@ -121,6 +123,45 @@ export function MonacoCodeEditor({
   expanded: boolean;
   placeholder: string;
 }) {
+  const options = useMemo<editor.IStandaloneEditorConstructionOptions>(
+    () => ({
+      ariaLabel: `Code ${languageIds[language]} cho câu hỏi thiết kế`,
+      automaticLayout: true,
+      autoClosingBrackets: "always",
+      autoClosingDelete: "always",
+      autoClosingOvertype: "always",
+      autoClosingQuotes: "always",
+      autoIndent: "full",
+      bracketPairColorization: { enabled: true },
+      cursorBlinking: "smooth",
+      cursorSmoothCaretAnimation: "on",
+      detectIndentation: false,
+      folding: true,
+      fontFamily: '"Cascadia Code", "SFMono-Regular", Consolas, monospace',
+      fontLigatures: true,
+      fontSize: 13,
+      formatOnPaste: true,
+      formatOnType: true,
+      guides: {
+        bracketPairs: true,
+        indentation: true,
+      },
+      insertSpaces: true,
+      lineHeight: 24,
+      matchBrackets: "always",
+      minimap: { enabled: expanded },
+      padding: { top: 16, bottom: 16 },
+      placeholder,
+      quickSuggestions: true,
+      renderWhitespace: "selection",
+      scrollBeyondLastLine: false,
+      smoothScrolling: true,
+      tabSize: 2,
+      wordWrap: "on",
+    }),
+    [expanded, language, placeholder],
+  );
+
   return (
     <Editor
       height={height}
@@ -137,41 +178,7 @@ export function MonacoCodeEditor({
         </div>
       }
       saveViewState={false}
-      options={{
-        ariaLabel: `Code ${languageIds[language]} cho câu hỏi thiết kế`,
-        automaticLayout: true,
-        autoClosingBrackets: "always",
-        autoClosingDelete: "always",
-        autoClosingOvertype: "always",
-        autoClosingQuotes: "always",
-        autoIndent: "full",
-        bracketPairColorization: { enabled: true },
-        cursorBlinking: "smooth",
-        cursorSmoothCaretAnimation: "on",
-        detectIndentation: false,
-        folding: true,
-        fontFamily: '"Cascadia Code", "SFMono-Regular", Consolas, monospace',
-        fontLigatures: true,
-        fontSize: 13,
-        formatOnPaste: true,
-        formatOnType: true,
-        guides: {
-          bracketPairs: true,
-          indentation: true,
-        },
-        insertSpaces: true,
-        lineHeight: 24,
-        matchBrackets: "always",
-        minimap: { enabled: expanded },
-        padding: { top: 16, bottom: 16 },
-        placeholder,
-        quickSuggestions: true,
-        renderWhitespace: "selection",
-        scrollBeyondLastLine: false,
-        smoothScrolling: true,
-        tabSize: 2,
-        wordWrap: "on",
-      }}
+      options={options}
     />
   );
 }
