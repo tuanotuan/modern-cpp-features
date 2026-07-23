@@ -14,6 +14,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi" className="h-full antialiased">
+      <head>
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+      </head>
       <body className="min-h-full">{children}</body>
     </html>
   );
