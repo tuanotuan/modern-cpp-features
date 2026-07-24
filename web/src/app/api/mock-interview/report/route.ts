@@ -119,7 +119,10 @@ export async function POST(request: Request) {
 
   let approvals: QuestionApproval[] = [];
   let manifest = getRepoContentManifest();
-  if (supabase) {
+  const needsQuestionBank = parsed.data.items.some(
+    (item) => item.origin === "question_bank",
+  );
+  if (supabase && needsQuestionBank) {
     const [approvalsResult, overridesResult] = await Promise.all([
       supabase
         .from("question_approvals")

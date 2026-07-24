@@ -4,7 +4,10 @@ import {
   buildWorldQuantGroundingCoverage,
   inferMockCompetency,
   selectWorldQuantQuestions,
+  worldQuantMockSetsForDuration,
+  WORLDQUANT_MOCK_SETS,
   WORLDQUANT_ROLE_QUESTIONS,
+  type MockInterviewDuration,
   type MockInterviewQuestion,
 } from "./profile";
 
@@ -38,26 +41,59 @@ const bankQuestions: MockInterviewQuestion[] = [
 ];
 
 describe("WorldQuant mock profile", () => {
-  it("builds the expected fixed-size role mix without duplicate questions", () => {
-    const selected = selectWorldQuantQuestions({
-      durationMinutes: 60,
-      bankQuestions,
-      seed: "stable-session",
-    });
+  it("stores exactly two fixed sets for every supported duration", () => {
+    expect(WORLDQUANT_MOCK_SETS).toHaveLength(6);
+    expect(new Set(WORLDQUANT_MOCK_SETS.map((mockSet) => mockSet.id)).size).toBe(
+      6,
+    );
 
-    expect(selected).toHaveLength(7);
-    expect(new Set(selected.map((question) => question.id)).size).toBe(7);
-    expect(selected.filter((question) => question.origin === "question_bank")).toHaveLength(1);
-    expect(
-      selected.some(
-        (question) => question.id === "worldquant-tick-feed-correctness",
-      ),
-    ).toBe(true);
-    expect(
-      selected.some(
-        (question) => question.id === "worldquant-researcher-collaboration",
-      ),
-    ).toBe(true);
+    const expectedCounts: Record<MockInterviewDuration, number> = {
+      30: 4,
+      45: 5,
+      60: 7,
+    };
+    for (const duration of [30, 45, 60] as const) {
+      const sets = worldQuantMockSetsForDuration(duration);
+      expect(sets).toHaveLength(2);
+      for (const mockSet of sets) {
+        expect(mockSet.questionIds).toHaveLength(expectedCounts[duration]);
+        expect(new Set(mockSet.questionIds).size).toBe(
+          mockSet.questionIds.length,
+        );
+        const estimatedMinutes = selectWorldQuantQuestions({
+          setId: mockSet.id,
+        }).reduce((sum, question) => sum + question.estimatedMinutes, 0);
+        expect(estimatedMinutes).toBeLessThanOrEqual(duration);
+      }
+      const secondSetIds = new Set<string>(sets[1].questionIds);
+      expect(
+        sets[0].questionIds.some((questionId) =>
+          secondSetIds.has(questionId),
+        ),
+      ).toBe(false);
+    }
+  });
+
+  it("keeps each A/B family nested and resolves a set deterministically", () => {
+    for (const variant of ["A", "B"] as const) {
+      const idsByDuration = ([30, 45, 60] as const).map(
+        (duration) =>
+          worldQuantMockSetsForDuration(duration).find(
+            (mockSet) => mockSet.variant === variant,
+          )!.questionIds,
+      );
+      expect(idsByDuration[1].slice(0, 4)).toEqual(idsByDuration[0]);
+      expect(idsByDuration[2].slice(0, 5)).toEqual(idsByDuration[1]);
+    }
+
+    const first = selectWorldQuantQuestions({ setId: "worldquant-60-b" });
+    const second = selectWorldQuantQuestions({ setId: "worldquant-60-b" });
+    expect(second.map((question) => question.id)).toEqual(
+      first.map((question) => question.id),
+    );
+    expect(first.every((question) => question.origin === "role_profile")).toBe(
+      true,
+    );
   });
 
   it("does not expose a role question ID without a stable revision", () => {
@@ -76,32 +112,18 @@ describe("WorldQuant mock profile", () => {
     expect(coverage.missingCompetencies).toContain("scripting");
   });
 
-  it("replaces a curated round when an approved bank question grounds the same role competency", () => {
-    const cmakeQuestion: MockInterviewQuestion = {
-      id: "cmake-target-usage-requirements-001",
-      origin: "question_bank",
-      version: 1,
-      contentRevision: "c".repeat(64),
-      prompt: "Explain target usage requirements in a migration scenario.",
-      language: "cmake",
-      track: "cmake",
-      responseMode: "text",
-      estimatedMinutes: 5,
-      competency: "engineering_quality",
-      selectionTopics: ["cmake", "build", "lesson::cmake-targets"],
-    };
-    const selected = selectWorldQuantQuestions({
-      durationMinutes: 45,
-      bankQuestions: [...bankQuestions, cmakeQuestion],
-      seed: "grounded-session",
-    });
-
-    expect(selected.map((question) => question.id)).toContain(
-      cmakeQuestion.id,
+  it("resolves every stored question ID to a versioned curated question", () => {
+    const questionIds = new Set(
+      WORLDQUANT_ROLE_QUESTIONS.map((question) => question.id),
     );
-    expect(selected.map((question) => question.id)).not.toContain(
-      "worldquant-cmake-delivery",
-    );
+    const storedQuestionIds = new Set<string>();
+    for (const mockSet of WORLDQUANT_MOCK_SETS) {
+      for (const questionId of mockSet.questionIds) {
+        expect(questionIds.has(questionId)).toBe(true);
+        storedQuestionIds.add(questionId);
+      }
+    }
+    expect([...storedQuestionIds].sort()).toEqual([...questionIds].sort());
   });
 
   it("maps language and controlled topics to role competencies", () => {
