@@ -75,11 +75,11 @@ describe("WorldQuant mock profile", () => {
   });
 
   it("keeps each A/B family nested and resolves a set deterministically", () => {
-    for (const variant of ["A", "B"] as const) {
+    for (const setNumber of [1, 2] as const) {
       const idsByDuration = ([30, 45, 60] as const).map(
         (duration) =>
           worldQuantMockSetsForDuration(duration).find(
-            (mockSet) => mockSet.variant === variant,
+            (mockSet) => mockSet.number === setNumber,
           )!.questionIds,
       );
       expect(idsByDuration[1].slice(0, 4)).toEqual(idsByDuration[0]);

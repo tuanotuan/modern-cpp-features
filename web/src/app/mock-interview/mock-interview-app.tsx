@@ -86,12 +86,10 @@ function clearMockSession() {
 
 const durationOptions: Array<{
   minutes: MockInterviewDuration;
-  label: string;
-  note: string;
 }> = [
-  { minutes: 30, label: "Screening", note: "4 câu · C++ + domain core" },
-  { minutes: 45, label: "Technical", note: "5 câu · có coding + build" },
-  { minutes: 60, label: "Full loop", note: "7 câu · đủ role + English" },
+  { minutes: 30 },
+  { minutes: 45 },
+  { minutes: 60 },
 ];
 
 const readinessLabels: Record<MockInterviewReport["readiness"], string> = {
@@ -490,8 +488,8 @@ export function MockInterviewApp({
             <div>
               <p className="font-semibold">Mock interview</p>
               <p className="text-xs text-[#64736c]">
-                Bộ {currentMockSet?.variant ?? "?"} ·{" "}
-                {currentMockSet?.title ?? WORLDQUANT_PROFILE.role}
+                Bộ đề {currentMockSet?.number ?? "?"} ·{" "}
+                {session.durationMinutes} phút
               </p>
             </div>
           </div>
@@ -781,7 +779,7 @@ function MockSetup({
                     }`}
                   >
                     <span className="flex items-center justify-between gap-3">
-                      <strong>{option.minutes} phút · {option.label}</strong>
+                      <strong>{option.minutes} phút</strong>
                       <span
                         className={`size-3 rounded-full border ${
                           active
@@ -791,7 +789,7 @@ function MockSetup({
                       />
                     </span>
                     <span className="mt-1 block text-xs text-white/55">
-                      {option.note}
+                      {mockDurationQuestionCounts[option.minutes]} câu
                     </span>
                   </button>
                 );
@@ -816,15 +814,13 @@ function MockSetup({
                     }`}
                   >
                     <span className="flex items-center justify-between gap-3">
-                      <strong>
-                        Bộ {mockSet.variant} · {mockSet.title}
-                      </strong>
+                      <strong>Bộ đề {mockSet.number}</strong>
                       <span className="font-mono text-[10px] text-white/45">
                         v{mockSet.version}
                       </span>
                     </span>
                     <span className="mt-1 block text-xs leading-5 text-white/55">
-                      {mockSet.description}
+                      {mockSet.questionIds.length} câu · thứ tự cố định
                     </span>
                   </button>
                 );
@@ -835,7 +831,7 @@ function MockSetup({
               onClick={onStart}
               className="mt-5 w-full rounded-2xl bg-[#d7ff91] px-5 py-3.5 text-sm font-bold text-[#173f35] transition hover:-translate-y-0.5"
             >
-              Bắt đầu bộ {selectedSet?.variant ?? "A"} ·{" "}
+              Bắt đầu bộ đề {selectedSet?.number ?? 1} ·{" "}
               {mockDurationQuestionCounts[duration]} câu →
             </button>
             <p className="mt-4 text-center text-[11px] leading-5 text-white/45">
@@ -991,8 +987,7 @@ function MockReport({
             </p>
             <div className="mt-6 border-t border-white/12 pt-4 font-mono text-[10px] leading-5 text-white/42">
               <p>
-                Bộ {mockSet?.variant ?? "?"} ·{" "}
-                {mockSet?.title ?? session.setId} · v{session.setVersion}
+                Bộ đề {mockSet?.number ?? "?"} · v{session.setVersion}
               </p>
               <p>{session.durationMinutes} phút · {questions.length} câu</p>
               <p>{session.reportModel ?? "AI model"}</p>
