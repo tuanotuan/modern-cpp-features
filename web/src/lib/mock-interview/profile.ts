@@ -47,9 +47,7 @@ export type MockInterviewSet = {
   id: MockInterviewSetId;
   version: number;
   durationMinutes: MockInterviewDuration;
-  variant: "A" | "B";
-  title: string;
-  description: string;
+  number: 1 | 2;
   questionIds: readonly string[];
 };
 
@@ -475,54 +473,42 @@ export const WORLDQUANT_MOCK_SETS = [
     id: "worldquant-30-a",
     version: 1,
     durationMinutes: 30,
-    variant: "A",
-    title: "Core correctness",
-    description: "C++ correctness, tick ingest và migration ownership.",
+    number: 1,
     questionIds: familyAQuestionIds.slice(0, 4),
   },
   {
     id: "worldquant-30-b",
     version: 1,
     durationMinutes: 30,
-    variant: "B",
-    title: "Realtime foundations",
-    description: "Order book, lifetime, deterministic replay và incident response.",
+    number: 2,
     questionIds: familyBQuestionIds.slice(0, 4),
   },
   {
     id: "worldquant-45-a",
     version: 1,
     durationMinutes: 45,
-    variant: "A",
-    title: "Platform migration",
-    description: "Bộ Core correctness mở rộng thêm build và delivery.",
+    number: 1,
     questionIds: familyAQuestionIds.slice(0, 5),
   },
   {
     id: "worldquant-45-b",
     version: 1,
     durationMinutes: 45,
-    variant: "B",
-    title: "Realtime delivery",
-    description: "Bộ Realtime foundations mở rộng thêm testing và CI.",
+    number: 2,
     questionIds: familyBQuestionIds.slice(0, 5),
   },
   {
     id: "worldquant-60-a",
     version: 1,
     durationMinutes: 60,
-    variant: "A",
-    title: "Full platform ownership",
-    description: "Full loop từ C++, tick data tới CMake, Python và English.",
+    number: 1,
     questionIds: familyAQuestionIds,
   },
   {
     id: "worldquant-60-b",
     version: 1,
     durationMinutes: 60,
-    variant: "B",
-    title: "Production resilience",
-    description: "Full loop thiên về order book, replay và vận hành production.",
+    number: 2,
     questionIds: familyBQuestionIds,
   },
 ] as const satisfies readonly MockInterviewSet[];
