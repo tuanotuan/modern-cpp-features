@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { codeExecutionResultSchema } from "@/lib/code-runner/contracts";
+
 import { mockInterviewReportSchema } from "./contracts";
 import {
   matchesWorldQuantMockSet,
@@ -12,14 +14,14 @@ import {
 } from "./profile";
 
 export const MOCK_INTERVIEW_STORAGE_KEY =
-  "recall:mock-interview:worldquant:v2";
+  "recall:mock-interview:worldquant:v3";
 
 const sessionSchema = z
   .object({
-    schemaVersion: z.literal(2),
+    schemaVersion: z.literal(3),
     sessionId: z.string().uuid(),
     profileId: z.literal("worldquant-tick-data-engineer"),
-    profileVersion: z.literal(2),
+    profileVersion: z.literal(WORLDQUANT_PROFILE_VERSION),
     setId: z.enum(mockInterviewSetIds),
     setVersion: z.number().int().positive(),
     sourceRevision: z.string().regex(/^[a-f0-9]{40,64}$/),
@@ -53,6 +55,16 @@ const sessionSchema = z
       z.string(),
       z.number().int().min(0).max(2 * 60 * 60),
     ),
+    sampleCodeRuns: z.record(z.string(), codeExecutionResultSchema),
+    hiddenCodeRuns: z.record(z.string(), codeExecutionResultSchema),
+    pendingCodeRuns: z.record(
+      z.string(),
+      z.object({
+        idempotencyKey: z.string().uuid(),
+        requestedAt: z.string().datetime(),
+      }),
+    ),
+    reportIdempotencyKey: z.string().uuid().optional(),
     activeQuestionStartedAt: z.string().datetime(),
     report: mockInterviewReportSchema.optional(),
     reportModel: z.string().trim().max(120).optional(),
@@ -92,12 +104,37 @@ const sessionSchema = z
     for (const questionId of [
       ...Object.keys(session.answers),
       ...Object.keys(session.elapsedByQuestion),
+      ...Object.keys(session.sampleCodeRuns),
+      ...Object.keys(session.hiddenCodeRuns),
+      ...Object.keys(session.pendingCodeRuns),
     ]) {
       if (!knownIds.has(questionId)) {
         context.addIssue({
           code: "custom",
           path: ["answers", questionId],
           message: "Mock session contains state for an unknown question",
+        });
+      }
+    }
+    for (const [questionId, result] of Object.entries(
+      session.sampleCodeRuns,
+    )) {
+      if (result.suite !== "sample") {
+        context.addIssue({
+          code: "custom",
+          path: ["sampleCodeRuns", questionId, "suite"],
+          message: "Sample run must contain sample-suite evidence",
+        });
+      }
+    }
+    for (const [questionId, result] of Object.entries(
+      session.hiddenCodeRuns,
+    )) {
+      if (result.suite !== "hidden") {
+        context.addIssue({
+          code: "custom",
+          path: ["hiddenCodeRuns", questionId, "suite"],
+          message: "Hidden run must contain hidden-suite evidence",
         });
       }
     }
@@ -128,7 +165,7 @@ export function createMockInterviewSession({
   const questions = selectWorldQuantQuestions({ setId });
 
   return sessionSchema.parse({
-    schemaVersion: 2,
+    schemaVersion: 3,
     sessionId,
     profileId: WORLDQUANT_PROFILE_ID,
     profileVersion: WORLDQUANT_PROFILE_VERSION,
@@ -148,8 +185,25 @@ export function createMockInterviewSession({
       contentRevision: question.contentRevision,
     })),
     currentIndex: 0,
-    answers: {},
+    answers: Object.fromEntries(
+      questions.flatMap((question) =>
+        question.responseMode === "code" && question.code
+          ? [
+              [
+                question.id,
+                {
+                  response: question.code,
+                  explanation: "",
+                },
+              ],
+            ]
+          : [],
+      ),
+    ),
     elapsedByQuestion: {},
+    sampleCodeRuns: {},
+    hiddenCodeRuns: {},
+    pendingCodeRuns: {},
     activeQuestionStartedAt: startedAt.toISOString(),
   });
 }

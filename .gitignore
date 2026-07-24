@@ -16,3 +16,6 @@ test.cpp
 
 # Existing no-extension sample binary name
 **/app
+
+# Local Vercel project link and OIDC metadata
+.vercel/

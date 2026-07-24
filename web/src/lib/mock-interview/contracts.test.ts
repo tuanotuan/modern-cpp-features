@@ -37,9 +37,10 @@ function reportRequestForSet(mockSet: MockInterviewSet) {
     WORLDQUANT_ROLE_QUESTIONS.map((question) => [question.id, question]),
   );
   return {
+    idempotencyKey: "23966699-ebc3-4b74-9a16-0ca48f4a47c7",
     sessionId: "9f58ceae-6ce7-4d56-bf6e-2be2256cc063",
     profileId: "worldquant-tick-data-engineer",
-    profileVersion: 2,
+    profileVersion: 3,
     setId: mockSet.id,
     setVersion: mockSet.version,
     sourceRevision: "a".repeat(40),
@@ -52,7 +53,8 @@ function reportRequestForSet(mockSet: MockInterviewSet) {
         origin: question.origin,
         version: question.version,
         contentRevision: question.contentRevision,
-        answer: "A candidate answer.",
+        response: "A candidate answer.",
+        explanation: "The relevant engineering trade-offs.",
         elapsedSeconds: 30,
       };
     }),
@@ -88,6 +90,25 @@ describe("mock interview report requests", () => {
       mockInterviewReportRequestSchema.safeParse({
         ...request,
         items: [...request.items].reverse(),
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects profile-v2 payloads and legacy answer fields", () => {
+    const request = reportRequestForSet(WORLDQUANT_MOCK_SETS[0]);
+    expect(
+      mockInterviewReportRequestSchema.safeParse({
+        ...request,
+        profileVersion: 2,
+      }).success,
+    ).toBe(false);
+    expect(
+      mockInterviewReportRequestSchema.safeParse({
+        ...request,
+        items: request.items.map(({ response, explanation, ...item }) => ({
+          ...item,
+          answer: `${response}\n${explanation}`,
+        })),
       }).success,
     ).toBe(false);
   });
@@ -150,6 +171,22 @@ describe("mock interview report normalization", () => {
     expect(normalized.competencies.scripting.score).toBeNull();
     expect(normalized.overallScore).toBe(66);
     expect(normalized.readiness).toBe("developing");
+
+    const executionCapped = normalizeMockInterviewReport({
+      rawReport,
+      questionCompetencies,
+      executionByQuestionId: {
+        "cpp11-reference-001": "compile_error",
+        "worldquant-legacy-migration": "sandbox_error",
+      },
+    });
+    expect(executionCapped.questionAssessments[0]?.score).toBe(39);
+    expect(executionCapped.questionAssessments[0]?.verdict).toBe(
+      "needs_work",
+    );
+    expect(
+      executionCapped.competencies.communication_ownership.score,
+    ).toBe(40);
   });
 
   it("rejects AI reports with missing or invented question IDs", () => {

@@ -56,7 +56,7 @@ export const WORLDQUANT_CURATED_EVALUATIONS: Record<
       "Dùng công thức average price không có quantity weight.",
     ],
     evaluationGuide:
-      "Chấm cả code lẫn giải thích. Không bắt buộc một numeric representation cụ thể; ứng viên phải nhận diện contract và rủi ro, đồng thời code cơ bản phải nhất quán.",
+      "Dùng kết quả compile/hidden tests làm evidence chính cho correctness của OHLC, volume, turnover và VWAP. Vẫn chấm riêng phần giải thích về validation, complexity, precision và overflow vì runner không bao phủ toàn bộ production contract.",
   },
   "worldquant-legacy-migration": {
     required: [
@@ -80,23 +80,25 @@ export const WORLDQUANT_CURATED_EVALUATIONS: Record<
   },
   "worldquant-cmake-delivery": {
     required: [
-      "Chuyển sang target-based CMake với usage requirements PUBLIC, PRIVATE và INTERFACE rõ ràng.",
-      "Loại bỏ global flags/include/link-order ngầm định theo từng bước migration có kiểm soát.",
-      "Pin hoặc quản lý toolchain/dependencies và dùng presets/configuration nhất quán giữa local với CI.",
-      "Thiết kế test layers và quality gates gồm unit/integration, sanitizer/static analysis và regression checks phù hợp.",
-      "Bảo đảm CI clean build, cache không che dependency lỗi và artifact/build metadata truy vết được.",
+      "Tạo library target `feed_decoder` từ `src/feed_decoder.cpp` và executable target `feed_decoder_tests` từ `tests/feed_decoder_test.cpp`.",
+      "Khai báo thư mục `include` là usage requirement `PUBLIC` của library để consumer nhận include path qua dependency thay vì global include directory.",
+      "Yêu cầu C++20 bằng target-level compile feature/property, không sửa global `CMAKE_CXX_FLAGS`.",
+      "Link `feed_decoder_tests` tới `feed_decoder` với scope `PRIVATE` thay vì compile lặp source của library vào test.",
+      "Bật CTest và đăng ký `feed_decoder_tests` bằng `add_test` để cả configure, build và test đều chạy được.",
+      "Phần giải thích nêu cách thêm sanitizer/CI theo target hoặc opt-in configuration mà không làm rò flags sang mọi dependency.",
     ],
     bonus: [
-      "Nêu install/export/package config, reproducible flags hoặc performance benchmark gates.",
-      "Có chiến lược compatibility wrapper để migration monorepo dần thay vì rewrite toàn bộ.",
+      "Dùng `BUILD_INTERFACE`/`INSTALL_INTERFACE`, `GNUInstallDirs` hoặc install/export rules nếu project cần được package.",
+      "Tách warnings/sanitizers thành INTERFACE target hoặc option/preset có kiểm soát và nêu clean-build matrix trên CI.",
     ],
     misconceptions: [
-      "Chỉ thêm include_directories/link_directories toàn cục mới.",
-      "Cho rằng build chạy trên một máy chứng minh dependency graph đúng.",
-      "Biến mọi warning thành error ngay trên toàn legacy tree mà không có rollout.",
+      "Dùng `include_directories`, `link_directories` hoặc global compiler flags để làm build tình cờ chạy.",
+      "Compile `src/feed_decoder.cpp` trực tiếp vào test thay vì để test consume library target.",
+      "Tạo executable test nhưng quên `enable_testing`/`include(CTest)` hoặc `add_test`, khiến CTest không thấy test.",
+      "Dùng `FetchContent` hay tải dependency từ network dù đề bài cấm.",
     ],
     evaluationGuide:
-      "Chấp nhận nhiều cấu trúc repository; chấm vào dependency ownership, reproducibility, rollout và feedback loop.",
+      "Dùng kết quả configure/build/CTest của hidden runner làm evidence chính cho target graph runnable. Sau đó chấm usage scopes, target-level C++20 và phần giải thích sanitizer/CI; hidden tests pass không tự động đồng nghĩa đạt toàn bộ rubric.",
   },
   "worldquant-python-reconciliation": {
     required: [
@@ -154,7 +156,7 @@ export const WORLDQUANT_CURATED_EVALUATIONS: Record<
       "Tự tăng sequence qua gap và tiếp tục như thể dữ liệu đầy đủ.",
     ],
     evaluationGuide:
-      "Chấm correctness và invariant trước micro-optimization. Code không cần compile tuyệt đối nhưng phải thể hiện rõ duplicate, gap và delete semantics.",
+      "Dùng kết quả compile/hidden tests làm evidence chính cho duplicate, gap, ordering và delete semantics. Chấm thêm phần giải thích về invariant, complexity và snapshot/resync; code không compile hoặc fail hidden tests phải bị giới hạn điểm correctness tương ứng.",
   },
   "worldquant-cpp-event-lifetime": {
     required: [
@@ -213,7 +215,8 @@ export const WORLDQUANT_CURATED_EVALUATIONS: Record<
   "worldquant-python-gap-audit": {
     required: [
       "Theo dõi sequence riêng theo `(feed, instrument)` và xử lý iterator theo một pass.",
-      "Phân biệt duplicate với out-of-order theo policy rõ; gap phải báo expected sequence chính xác.",
+      "Phân loại `sequence == last_sequence` là duplicate, `sequence < last_sequence` là out-of-order và `sequence > last_sequence + 1` là gap với expected sequence chính xác.",
+      "Event đầu tiên thiết lập baseline; gap hợp lệ cập nhật baseline mới, còn duplicate/out-of-order không được kéo hoặc đẩy baseline.",
       "Không giữ toàn bộ event; memory tỷ lệ với số active keys và phải nêu assumption về input ordering.",
       "Giải thích checkpoint state, deterministic output và cách resume không bỏ/misclassify event ở boundary.",
     ],
@@ -226,7 +229,7 @@ export const WORLDQUANT_CURATED_EVALUATIONS: Record<
       "Sort toàn bộ file trong memory mà không nói rõ chi phí hoặc làm mất arrival-order evidence.",
     ],
     evaluationGuide:
-      "Chấm code Python, streaming semantics và assumptions. Chấp nhận taxonomy duplicate/out-of-order khác nhau nếu ứng viên định nghĩa nhất quán.",
+      "Dùng kết quả compile/hidden tests làm evidence chính cho taxonomy và streaming state machine đã nêu trong đề. Chấm riêng memory bound, ordering assumptions và resume strategy; không chấp nhận đổi taxonomy nếu trái contract runnable.",
   },
   "worldquant-cpp-feed-api-evolution": {
     required: [

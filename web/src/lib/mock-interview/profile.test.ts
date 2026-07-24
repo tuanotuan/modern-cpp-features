@@ -6,6 +6,7 @@ import {
   selectWorldQuantQuestions,
   worldQuantMockSetsForDuration,
   WORLDQUANT_MOCK_SETS,
+  WORLDQUANT_PROFILE_VERSION,
   WORLDQUANT_ROLE_QUESTIONS,
   type MockInterviewDuration,
   type MockInterviewQuestion,
@@ -96,12 +97,44 @@ describe("WorldQuant mock profile", () => {
     );
   });
 
-  it("does not expose a role question ID without a stable revision", () => {
-    expect(WORLDQUANT_ROLE_QUESTIONS.every(
-      (question) =>
-        question.version > 0 &&
-        question.contentRevision === "worldquant-jd-2025-v1",
-    )).toBe(true);
+  it("uses profile v3 and stable revisions for every role question", () => {
+    expect(WORLDQUANT_PROFILE_VERSION).toBe(3);
+    expect(
+      WORLDQUANT_ROLE_QUESTIONS.every(
+        (question) =>
+          question.version > 0
+          && question.contentRevision.trim().length > 0,
+      ),
+    ).toBe(true);
+    expect(WORLDQUANT_MOCK_SETS.every((mockSet) => mockSet.version === 2))
+      .toBe(true);
+  });
+
+  it("publishes executable metadata only on runnable code questions", () => {
+    const executable = WORLDQUANT_ROLE_QUESTIONS.filter(
+      (question) => question.execution,
+    );
+    expect(executable.map((question) => question.id).sort()).toEqual([
+      "worldquant-cmake-delivery",
+      "worldquant-interval-stats-cpp",
+      "worldquant-order-book-update-cpp",
+      "worldquant-python-gap-audit",
+    ]);
+    for (const question of executable) {
+      expect(question.responseMode).toBe("code");
+      expect(question.code?.trim().length).toBeGreaterThan(0);
+      expect(question.execution?.specRevision).toBe(1);
+    }
+    expect(
+      WORLDQUANT_ROLE_QUESTIONS.find(
+        (question) => question.id === "worldquant-cmake-delivery",
+      ),
+    ).toMatchObject({
+      version: 2,
+      contentRevision: "worldquant-jd-2025-cmake-runner-v1",
+      language: "cmake",
+      track: "cmake",
+    });
   });
 
   it("reports bank-grounding gaps separately from curated role coverage", () => {

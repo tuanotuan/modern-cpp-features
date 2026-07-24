@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import {
   AiBudgetConfigurationError,
   AiDailyBudgetExceededError,
@@ -17,6 +19,29 @@ import {
 } from "@/lib/ai/openai";
 import { consumeCoachRequest } from "@/lib/ai/rate-limit";
 import { COACH_RESERVATION_USD_MICROS } from "@/lib/ai/usage";
+import {
+  CodeExecutionBusyError,
+  CodeExecutionConfigurationError,
+  CodeExecutionIdempotencyConflictError,
+  CodeExecutionQuotaExceededError,
+  createCodeExecutionAdminClient,
+  finishCodeExecution,
+  reserveCodeExecution,
+} from "@/lib/code-runner/admission.server";
+import {
+  codeExecutionResultSchema,
+  isSourceWithinByteLimit,
+  type CodeExecutionResult,
+} from "@/lib/code-runner/contracts";
+import {
+  getCodeRunnerConfig,
+  isCodeRunnerConfigured,
+} from "@/lib/code-runner/config.server";
+import {
+  mockExecutionSpecForQuestion,
+  type MockExecutionSpec,
+} from "@/lib/code-runner/execution-specs.server";
+import { executeMockCode } from "@/lib/code-runner/vercel-sandbox.server";
 import { loadQuestionOverrides } from "@/lib/content/question-overrides-server";
 import {
   getRepoContentManifest,
@@ -47,6 +72,9 @@ import {
 } from "@/lib/mock-interview/report-prompt";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
+
+const MAX_REPORT_REQUEST_BYTES = 80 * 1024;
 
 export async function POST(request: Request) {
   const clientKey =
@@ -67,9 +95,46 @@ export async function POST(request: Request) {
     );
   }
 
+  if (
+    !request.headers
+      .get("content-type")
+      ?.toLowerCase()
+      .startsWith("application/json")
+  ) {
+    return Response.json(
+      {
+        error: "Mock report chỉ nhận application/json.",
+        code: "unsupported_media_type",
+      },
+      { status: 415 },
+    );
+  }
+  const declaredLength = Number(
+    request.headers.get("content-length") ?? "0",
+  );
+  if (
+    Number.isFinite(declaredLength) &&
+    declaredLength > MAX_REPORT_REQUEST_BYTES
+  ) {
+    return Response.json(
+      { error: "Buổi mock vượt giới hạn báo cáo.", code: "request_too_large" },
+      { status: 413 },
+    );
+  }
+
+  const rawBody = await request.text();
+  if (
+    new TextEncoder().encode(rawBody).byteLength >
+    MAX_REPORT_REQUEST_BYTES
+  ) {
+    return Response.json(
+      { error: "Buổi mock vượt giới hạn báo cáo.", code: "request_too_large" },
+      { status: 413 },
+    );
+  }
   let body: unknown;
   try {
-    body = await request.json();
+    body = JSON.parse(rawBody);
   } catch {
     return Response.json(
       { error: "Request không phải JSON hợp lệ.", code: "invalid_json" },
@@ -89,7 +154,11 @@ export async function POST(request: Request) {
   }
   if (
     parsed.data.profileVersion !== WORLDQUANT_PROFILE_VERSION ||
-    parsed.data.items.reduce((sum, item) => sum + item.answer.length, 0) >
+    parsed.data.items.reduce(
+      (sum, item) =>
+        sum + item.response.length + item.explanation.length,
+      0,
+    ) >
       50_000
   ) {
     return Response.json(
@@ -98,16 +167,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = isSupabaseConfigured()
-    ? await createSupabaseServerClient()
-    : null;
-  const authResult = supabase ? await supabase.auth.getUser() : null;
-  if (
-    supabase &&
-    (authResult?.error ||
-      !authResult?.data.user ||
-      !isAllowedPracticeUser(authResult.data.user))
-  ) {
+  if (!isSupabaseConfigured()) {
+    return Response.json(
+      {
+        error: "Supabase chưa được cấu hình nên mock report bị khóa an toàn.",
+        code: "not_configured",
+      },
+      { status: 503 },
+    );
+  }
+  const supabase = await createSupabaseServerClient();
+  const authResult = await supabase.auth.getUser();
+  if (authResult.error || !authResult.data.user) {
     return Response.json(
       {
         error: "Đăng nhập GitHub để chấm mock interview.",
@@ -116,13 +187,22 @@ export async function POST(request: Request) {
       { status: 401 },
     );
   }
+  if (!isAllowedPracticeUser(authResult.data.user)) {
+    return Response.json(
+      {
+        error: "Tài khoản này không có quyền chấm mock interview.",
+        code: "forbidden",
+      },
+      { status: 403 },
+    );
+  }
 
   let approvals: QuestionApproval[] = [];
   let manifest = getRepoContentManifest();
   const needsQuestionBank = parsed.data.items.some(
     (item) => item.origin === "question_bank",
   );
-  if (supabase && needsQuestionBank) {
+  if (needsQuestionBank) {
     const [approvalsResult, overridesResult] = await Promise.all([
       supabase
         .from("question_approvals")
@@ -145,6 +225,11 @@ export async function POST(request: Request) {
   }
 
   const evaluationItems: MockEvaluationItem[] = [];
+  const executionTargets: Array<{
+    questionId: string;
+    source: string;
+    spec: MockExecutionSpec;
+  }> = [];
   for (const requestedItem of parsed.data.items) {
     if (requestedItem.origin === "role_profile") {
       const roleItem = worldQuantRoleQuestionForEvaluation(
@@ -164,12 +249,38 @@ export async function POST(request: Request) {
           { status: 409 },
         );
       }
+      const candidateAnswer = candidateAnswerForReport({
+        responseMode: roleItem.question.responseMode,
+        language: roleItem.question.language,
+        response: requestedItem.response,
+        explanation: requestedItem.explanation,
+      });
+      const executionSpec = mockExecutionSpecForQuestion(
+        roleItem.question,
+      );
+      if (executionSpec && requestedItem.response.trim()) {
+        if (!isSourceWithinByteLimit(requestedItem.response)) {
+          return Response.json(
+            {
+              error:
+                "Source code vượt giới hạn 8 KiB của hidden runner.",
+              code: "source_too_large",
+            },
+            { status: 413 },
+          );
+        }
+        executionTargets.push({
+          questionId: roleItem.question.id,
+          source: requestedItem.response,
+          spec: executionSpec,
+        });
+      }
       evaluationItems.push({
         questionId: roleItem.question.id,
         competency: roleItem.question.competency,
         prompt: roleItem.question.prompt,
         code: roleItem.question.code,
-        candidateAnswer: requestedItem.answer,
+        candidateAnswer,
         elapsedSeconds: requestedItem.elapsedSeconds,
         required: roleItem.evaluation.required,
         bonus: roleItem.evaluation.bonus,
@@ -225,7 +336,12 @@ export async function POST(request: Request) {
       }),
       prompt: question.prompt,
       code: question.code,
-      candidateAnswer: requestedItem.answer,
+      candidateAnswer: candidateAnswerForReport({
+        responseMode: question.taxonomy.responseMode,
+        language: lesson.language,
+        response: requestedItem.response,
+        explanation: requestedItem.explanation,
+      }),
       elapsedSeconds: requestedItem.elapsedSeconds,
       required: question.rubric.required,
       bonus: question.rubric.bonus,
@@ -236,6 +352,36 @@ export async function POST(request: Request) {
       sourceNotes: sourceNotesForQuestion(question, lesson),
       origin: "question_bank",
     });
+  }
+
+  let hiddenExecutionResults: CodeExecutionResult[] = [];
+  if (executionTargets.length && isCodeRunnerConfigured()) {
+    try {
+      hiddenExecutionResults = await runHiddenExecutionBatch({
+        userId: authResult.data.user.id,
+        idempotencyKey: parsed.data.idempotencyKey,
+        targets: executionTargets,
+      });
+    } catch (error) {
+      return hiddenExecutionErrorResponse(error);
+    }
+  }
+  const executionByQuestionId = new Map(
+    hiddenExecutionResults.map((result, index) => [
+      executionTargets[index]?.questionId,
+      result,
+    ]),
+  );
+  for (const item of evaluationItems) {
+    const evidence = executionByQuestionId.get(item.questionId);
+    if (!evidence) continue;
+    item.executionEvidence = {
+      status: evidence.status,
+      passedTests: evidence.passedTests,
+      totalTests: evidence.totalTests,
+      durationMs: evidence.durationMs,
+      toolchain: evidence.toolchain,
+    };
   }
 
   const questionCompetencies = Object.fromEntries(
@@ -277,6 +423,12 @@ export async function POST(request: Request) {
     const report = normalizeMockInterviewReport({
       rawReport: result.data,
       questionCompetencies,
+      executionByQuestionId: Object.fromEntries(
+        hiddenExecutionResults.map((execution, index) => [
+          executionTargets[index]?.questionId,
+          execution.status,
+        ]),
+      ),
     });
     const modelLabel =
       provider === "gemini"
@@ -287,6 +439,10 @@ export async function POST(request: Request) {
       report,
       model: modelLabel,
       provider,
+      executionResults: hiddenExecutionResults.map((result, index) => ({
+        questionId: executionTargets[index]?.questionId,
+        result: publicHiddenExecutionResult(result),
+      })),
       aiDailyBudget: dailyBudget,
       aiUsageRecorded: provider === "gemini" || dailyBudget !== null,
     });
@@ -374,6 +530,212 @@ export async function POST(request: Request) {
       { status: 502 },
     );
   }
+}
+
+function publicHiddenExecutionResult(
+  result: CodeExecutionResult,
+): CodeExecutionResult {
+  return {
+    ...result,
+    diagnostics: "",
+    output: "",
+    cases: [],
+  };
+}
+
+async function runHiddenExecutionBatch({
+  userId,
+  idempotencyKey,
+  targets,
+}: {
+  userId: string;
+  idempotencyKey: string;
+  targets: Array<{
+    questionId: string;
+    source: string;
+    spec: MockExecutionSpec;
+  }>;
+}) {
+  const admissionClient = createCodeExecutionAdminClient();
+  const runnerConfig = getCodeRunnerConfig();
+  const requestFingerprint = createHash("sha256")
+    .update(
+      JSON.stringify(
+        targets.map((target) => ({
+          codeHash: createHash("sha256")
+            .update(target.source)
+            .digest("hex"),
+          language: target.spec.language,
+          questionId: target.questionId,
+          questionVersion: target.spec.questionVersion,
+          specRevision: target.spec.revision,
+          toolchainSnapshotHash: createHash("sha256")
+            .update(runnerConfig.snapshotId)
+            .digest("hex"),
+        })),
+      ),
+    )
+    .digest("hex");
+  const reservation = await reserveCodeExecution(admissionClient, {
+    userId,
+    idempotencyKey,
+    purpose: "mock_report",
+    jobCount: targets.length,
+    requestFingerprint,
+  });
+  if (reservation.status !== "running") {
+    const cached = parseCachedHiddenResults(reservation.cachedResult);
+    if (cached && hiddenResultsMatchTargets(cached, targets)) {
+      return cached;
+    }
+    if (cached) throw new CodeExecutionIdempotencyConflictError();
+    throw new CodeExecutionConfigurationError(
+      "Previous hidden execution did not complete",
+    );
+  }
+  if (!reservation.isNew) {
+    throw new CodeExecutionBusyError(reservation.reservationId);
+  }
+
+  try {
+    const results: CodeExecutionResult[] = [];
+    for (const target of targets) {
+      results.push(
+        await executeMockCode({
+          spec: target.spec,
+          source: target.source,
+          suite: "hidden",
+        }),
+      );
+    }
+    await finishCodeExecution(admissionClient, {
+      userId,
+      reservationId: reservation.reservationId,
+      status: "completed",
+      cachedResult: {
+        ok: true,
+        results: results.map(publicHiddenExecutionResult),
+      },
+    });
+    return results;
+  } catch (error) {
+    await finishCodeExecution(admissionClient, {
+      userId,
+      reservationId: reservation.reservationId,
+      status: "failed",
+      cachedResult: {
+        ok: false,
+        code: "hidden_execution_failed",
+      },
+    }).catch(() => undefined);
+    throw error;
+  }
+}
+
+function parseCachedHiddenResults(
+  value: Record<string, unknown> | null,
+) {
+  if (!value || value.ok !== true) return null;
+  const parsed = codeExecutionResultSchema.array().safeParse(value.results);
+  return parsed.success ? parsed.data : null;
+}
+
+function hiddenResultsMatchTargets(
+  results: CodeExecutionResult[],
+  targets: Array<{ source: string; spec: MockExecutionSpec }>,
+) {
+  return (
+    results.length === targets.length &&
+    results.every((result, index) => {
+      const target = targets[index];
+      return Boolean(
+        target &&
+          result.suite === "hidden" &&
+          result.specRevision === target.spec.revision &&
+          result.language === target.spec.language &&
+          result.codeHash ===
+            createHash("sha256")
+              .update(target.source)
+              .digest("hex"),
+      );
+    })
+  );
+}
+
+function hiddenExecutionErrorResponse(error: unknown) {
+  if (error instanceof CodeExecutionQuotaExceededError) {
+    return Response.json(
+      {
+        error:
+          "Đã hết quota hidden tests hôm nay. Quota reset lúc 00:00 giờ Việt Nam.",
+        code: "code_execution_daily_quota",
+      },
+      { status: 429 },
+    );
+  }
+  if (error instanceof CodeExecutionBusyError) {
+    return Response.json(
+      {
+        error:
+          "Một lượt code khác đang chạy. Chờ nó kết thúc rồi tạo report lại.",
+        code: "code_execution_busy",
+      },
+      { status: 409 },
+    );
+  }
+  if (error instanceof CodeExecutionIdempotencyConflictError) {
+    return Response.json(
+      {
+        error:
+          "Execution key không còn khớp. Nhấn tạo report lại để chạy một lượt mới.",
+        code: "code_execution_retry_required",
+      },
+      { status: 409 },
+    );
+  }
+  if (error instanceof CodeExecutionConfigurationError) {
+    return Response.json(
+      {
+        error:
+          "Admission/quota cho code runner chưa sẵn sàng hoặc lượt cũ đã lỗi.",
+        code: "code_execution_retry_required",
+      },
+      { status: 503 },
+    );
+  }
+  console.error("Hidden mock execution failed", {
+    name: error instanceof Error ? error.name : "UnknownError",
+  });
+  return Response.json(
+    {
+      error:
+        "Hidden tests chưa chạy xong. Câu trả lời vẫn được giữ để thử lại.",
+      code: "code_execution_retry_required",
+    },
+    { status: 502 },
+  );
+}
+
+function candidateAnswerForReport({
+  responseMode,
+  language,
+  response,
+  explanation,
+}: {
+  responseMode: "text" | "code";
+  language: "cpp" | "python" | "cmake";
+  response: string;
+  explanation: string;
+}) {
+  if (responseMode === "text") return response.trim();
+  const source = response.trim();
+  const reasoning = explanation.trim();
+  if (!source && !reasoning) return "";
+  return `\`\`\`${language}\n${source}\n\`\`\`${
+    reasoning
+      ? `\n\nGiải thích của ứng viên:\n${reasoning}`
+      : ""
+  }`;
 }
 
 function sourceNotesForQuestion(

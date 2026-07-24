@@ -225,3 +225,47 @@ questions, approvals, and learning history are not rewritten or deleted.
 Apply it before deploying the matching app code. The migration is transactional;
 an error rolls the whole change back. CMake discovery and the visible deck remain
 disabled in this phase.
+
+## Isolated mock-interview code runner
+
+`20260729100000_create_code_execution_admission.sql` adds the atomic admission,
+idempotency, concurrency, and daily-quota layer for sample and hidden code
+execution. Apply it before enabling the runner. The RPCs are service-role-only;
+the browser cannot reserve, complete, or forge an execution result.
+
+Create a dedicated Supabase secret API key named `code_runner` and add it to
+Vercel as `CODE_RUNNER_SUPABASE_SECRET_KEY` for Production and Preview. Do not
+reuse the GitHub content-sync key, do not prefix it with `NEXT_PUBLIC_`, and do
+not expose it to client code. The web process uses it only for the two admission
+RPCs; the sandbox receives a fixed allowlisted environment with none of the app
+secrets.
+
+Create the immutable Vercel Sandbox toolchain snapshot from the linked project:
+
+```powershell
+vercel link
+vercel env pull .env.local
+npm.cmd run sandbox:snapshot
+```
+
+The bootstrap VM may access the network only while installing GCC, CMake, Ninja,
+Python, and `prlimit`. The saved snapshot and every candidate VM use deny-all
+network policy. Copy the printed snapshot ID to Vercel, then set:
+
+- `CODE_RUNNER_ENABLED=true`
+- `CODE_RUNNER_SNAPSHOT_ID=<printed immutable snapshot ID>`
+- `CODE_RUNNER_TOOLCHAIN_LABEL=Recall sandbox v1`
+- `CODE_RUNNER_SUPABASE_SECRET_KEY=<dedicated secret API key>`
+
+Redeploy after all four values exist. Each run uses a fresh non-persistent
+Firecracker microVM, an unprivileged candidate user, fixed server-owned commands,
+resource/output limits, and no ports or egress. Sample runs return compiler
+diagnostics. Hidden runs return only status and pass counts; their source,
+inputs, diagnostics, and output are neither sent to the browser nor stored in
+the admission cache.
+
+Initial per-user limits are 20 sample jobs and 12 hidden-report jobs per Vietnam
+calendar day, with one active execution batch per user. Idempotency fingerprints
+bind cached results to the exact question, execution-spec revision, and source
+hash. Infrastructure failures are recorded as `sandbox_error` and must never
+reduce the candidate score.

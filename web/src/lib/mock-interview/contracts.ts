@@ -4,6 +4,7 @@ import {
   matchesWorldQuantMockSet,
   mockCompetencyKeys,
   mockInterviewSetIds,
+  WORLDQUANT_PROFILE_VERSION,
   type MockCompetencyKey,
 } from "./profile";
 
@@ -13,9 +14,10 @@ const kebabIdSchema = z
   .max(120);
 
 export const mockInterviewReportRequestSchema = z.object({
+  idempotencyKey: z.string().uuid(),
   sessionId: z.string().uuid(),
   profileId: z.literal("worldquant-tick-data-engineer"),
-  profileVersion: z.literal(2),
+  profileVersion: z.literal(WORLDQUANT_PROFILE_VERSION),
   setId: z.enum(mockInterviewSetIds),
   setVersion: z.number().int().positive(),
   sourceRevision: z.string().regex(/^[a-f0-9]{40,64}$/),
@@ -28,13 +30,14 @@ export const mockInterviewReportRequestSchema = z.object({
         origin: z.enum(["question_bank", "role_profile"]),
         version: z.number().int().positive(),
         contentRevision: z.string().trim().min(1).max(128),
-        answer: z.string().trim().max(12_000),
+        response: z.string().max(8_000),
+        explanation: z.string().max(4_000),
         elapsedSeconds: z.number().int().min(0).max(2 * 60 * 60),
-      }),
+      }).strict(),
     )
     .min(3)
     .max(8),
-}).superRefine((request, context) => {
+}).strict().superRefine((request, context) => {
   const { items } = request;
   const seen = new Set<string>();
   items.forEach((item, index) => {
@@ -267,9 +270,21 @@ export const mockInterviewReportJsonSchema = {
 export function normalizeMockInterviewReport({
   rawReport,
   questionCompetencies,
+  executionByQuestionId = {},
 }: {
   rawReport: MockInterviewReport;
   questionCompetencies: Record<string, MockCompetencyKey>;
+  executionByQuestionId?: Record<
+    string,
+    | "passed"
+    | "tests_failed"
+    | "compile_error"
+    | "runtime_error"
+    | "time_limit"
+    | "memory_limit"
+    | "output_limit"
+    | "sandbox_error"
+  >;
 }): MockInterviewReport {
   const report = mockInterviewReportSchema.parse(rawReport);
   const expectedIds = Object.keys(questionCompetencies);
@@ -289,14 +304,22 @@ export function normalizeMockInterviewReport({
 
   const questionAssessments = expectedIds.map((questionId) => {
     const assessment = assessmentById.get(questionId)!;
+    const executionCap = executionScoreCap(
+      executionByQuestionId[questionId],
+    );
+    const score =
+      executionCap === null
+        ? assessment.score
+        : Math.min(assessment.score, executionCap);
     return {
       ...assessment,
+      score,
       verdict:
-        assessment.score >= 85
+        score >= 85
           ? "strong" as const
-          : assessment.score >= 65
+          : score >= 65
             ? "solid" as const
-            : assessment.score >= 40
+            : score >= 40
               ? "partial" as const
               : "needs_work" as const,
     };
@@ -374,6 +397,25 @@ export function normalizeMockInterviewReport({
       }))
       .sort((left, right) => left.priority - right.priority),
   };
+}
+
+function executionScoreCap(
+  status:
+    | "passed"
+    | "tests_failed"
+    | "compile_error"
+    | "runtime_error"
+    | "time_limit"
+    | "memory_limit"
+    | "output_limit"
+    | "sandbox_error"
+    | undefined,
+) {
+  if (!status || status === "passed" || status === "sandbox_error") {
+    return null;
+  }
+  if (status === "tests_failed") return 64;
+  return 39;
 }
 
 function mockCompetencyWeight(key: MockCompetencyKey) {

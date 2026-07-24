@@ -4,7 +4,7 @@ import type {
 } from "@/lib/content/schema";
 
 export const WORLDQUANT_PROFILE_ID = "worldquant-tick-data-engineer" as const;
-export const WORLDQUANT_PROFILE_VERSION = 2 as const;
+export const WORLDQUANT_PROFILE_VERSION = 3 as const;
 
 export const mockCompetencyKeys = [
   "modern_cpp",
@@ -38,6 +38,9 @@ export type MockInterviewQuestion = {
   language: ContentLanguage;
   track: ContentTrack;
   responseMode: "text" | "code";
+  execution?: {
+    specRevision: number;
+  };
   estimatedMinutes: number;
   competency: MockCompetencyKey;
   selectionTopics: string[];
@@ -124,6 +127,7 @@ export const WORLDQUANT_ROLE_QUESTIONS: MockInterviewQuestion[] = [
     language: "cpp",
     track: "cpp20",
     responseMode: "code",
+    execution: { specRevision: 1 },
     estimatedMinutes: 10,
     competency: "data_pipeline_performance",
     selectionTopics: [
@@ -178,11 +182,12 @@ struct IntervalStats {
   {
     id: "worldquant-cmake-delivery",
     origin: "role_profile",
-    version: 1,
-    contentRevision: ROLE_CONTENT_REVISION,
+    version: 2,
+    contentRevision: "worldquant-jd-2025-cmake-runner-v1",
     language: "cmake",
     track: "cmake",
-    responseMode: "text",
+    responseMode: "code",
+    execution: { specRevision: 1 },
     estimatedMinutes: 7,
     competency: "engineering_quality",
     selectionTopics: [
@@ -192,7 +197,12 @@ struct IntervalStats {
       "reproducible-build",
     ],
     prompt:
-      "Một C++ tick-processing monorepo đang dựa vào global include directories, global compiler flags và link order ngầm định nên build local được nhưng CI đôi lúc hỏng. Mày sẽ tổ chức lại CMake targets, dependencies, test pipeline và quality gates như thế nào để build reproducible mà vẫn migration dần được?",
+      "Project mẫu có `include/feed/decoder.hpp`, `src/feed_decoder.cpp` và `tests/feed_decoder_test.cpp`. Hãy hoàn thiện `CMakeLists.txt` để tạo library target `feed_decoder`, executable test `feed_decoder_tests`, khai báo usage requirements đúng scope, dùng C++20 và đăng ký test với CTest. Sau code, giải thích cách mày mở rộng sang sanitizer/CI mà không dùng global flags.",
+    code: `cmake_minimum_required(VERSION 3.20)
+project(tick_feed LANGUAGES CXX)
+
+# Hoàn thiện target graph ở đây.
+# Không dùng FetchContent hoặc tải dependency từ network.`,
   },
   {
     id: "worldquant-python-reconciliation",
@@ -240,6 +250,7 @@ struct IntervalStats {
     language: "cpp",
     track: "cpp20",
     responseMode: "code",
+    execution: { specRevision: 1 },
     estimatedMinutes: 10,
     competency: "tick_data_order_book",
     selectionTopics: [
@@ -357,6 +368,7 @@ DecodedEvent decode(std::vector<std::byte> packet) {
     language: "python",
     track: "python3",
     responseMode: "code",
+    execution: { specRevision: 1 },
     estimatedMinutes: 8,
     competency: "scripting",
     selectionTopics: [
@@ -471,42 +483,42 @@ const familyBQuestionIds = [
 export const WORLDQUANT_MOCK_SETS = [
   {
     id: "worldquant-30-a",
-    version: 1,
+    version: 2,
     durationMinutes: 30,
     number: 1,
     questionIds: familyAQuestionIds.slice(0, 4),
   },
   {
     id: "worldquant-30-b",
-    version: 1,
+    version: 2,
     durationMinutes: 30,
     number: 2,
     questionIds: familyBQuestionIds.slice(0, 4),
   },
   {
     id: "worldquant-45-a",
-    version: 1,
+    version: 2,
     durationMinutes: 45,
     number: 1,
     questionIds: familyAQuestionIds.slice(0, 5),
   },
   {
     id: "worldquant-45-b",
-    version: 1,
+    version: 2,
     durationMinutes: 45,
     number: 2,
     questionIds: familyBQuestionIds.slice(0, 5),
   },
   {
     id: "worldquant-60-a",
-    version: 1,
+    version: 2,
     durationMinutes: 60,
     number: 1,
     questionIds: familyAQuestionIds,
   },
   {
     id: "worldquant-60-b",
-    version: 1,
+    version: 2,
     durationMinutes: 60,
     number: 2,
     questionIds: familyBQuestionIds,

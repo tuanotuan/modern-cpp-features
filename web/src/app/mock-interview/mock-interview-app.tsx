@@ -10,6 +10,10 @@ import {
 } from "react";
 
 import { MonacoCodeEditor } from "@/app/scenario-code-editor";
+import {
+  codeExecutionResultSchema,
+  type CodeExecutionResult,
+} from "@/lib/code-runner/contracts";
 import type { MockInterviewReport } from "@/lib/mock-interview/contracts";
 import {
   mockCompetencyKeys,
@@ -45,6 +49,7 @@ type MockInterviewAppProps = {
   sourceRevision: string;
   bankQuestions: MockInterviewQuestion[];
   groundingCoverage: GroundingCoverage;
+  codeRunnerAvailable: boolean;
 };
 
 const EMPTY_MOCK_SESSION = "__empty_mock_session__";
@@ -83,6 +88,30 @@ function clearMockSession() {
   mockSessionListeners.forEach((listener) => listener());
 }
 
+function readStoredMockSession() {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(MOCK_INTERVIEW_STORAGE_KEY);
+  return raw ? parseMockInterviewSession(raw) : null;
+}
+
+function withoutKey<T>(record: Record<string, T>, key: string) {
+  return Object.fromEntries(
+    Object.entries(record).filter(([entryKey]) => entryKey !== key),
+  ) as Record<string, T>;
+}
+
+function clearPendingCodeRun(sessionId: string, questionId: string) {
+  const latest = readStoredMockSession();
+  if (!latest || latest.sessionId !== sessionId) return;
+  saveMockSession({
+    ...latest,
+    pendingCodeRuns: withoutKey(
+      latest.pendingCodeRuns,
+      questionId,
+    ),
+  });
+}
+
 const durationOptions: Array<{
   minutes: MockInterviewDuration;
 }> = [
@@ -113,12 +142,16 @@ export function MockInterviewApp({
   sourceRevision,
   bankQuestions,
   groundingCoverage,
+  codeRunnerAvailable,
 }: MockInterviewAppProps) {
   const [duration, setDuration] = useState<MockInterviewDuration>(45);
   const [selectedSetId, setSelectedSetId] =
     useState<MockInterviewSetId>("worldquant-45-a");
   const [now, setNow] = useState(() => Date.now());
   const [reportError, setReportError] = useState<string | null>(null);
+  const [codeRunError, setCodeRunError] = useState<string | null>(null);
+  const [runningQuestionId, setRunningQuestionId] =
+    useState<string | null>(null);
   const evaluationInFlight = useRef(false);
   const autoSubmitted = useRef(false);
   const sessionSnapshot = useSyncExternalStore(
@@ -239,6 +272,8 @@ export function MockInterviewApp({
     autoSubmitted.current = false;
     evaluationInFlight.current = false;
     setReportError(null);
+    setCodeRunError(null);
+    setRunningQuestionId(null);
     setNow(startedAt.getTime());
     saveMockSession(nextSession);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -254,13 +289,139 @@ export function MockInterviewApp({
       response: "",
       explanation: "",
     };
+    const sourceChanged =
+      field === "response" && answer.response !== value;
+    const sampleCodeRuns = sourceChanged
+      ? withoutKey(session.sampleCodeRuns, questionId)
+      : session.sampleCodeRuns;
+    const hiddenCodeRuns = sourceChanged
+      ? withoutKey(session.hiddenCodeRuns, questionId)
+      : session.hiddenCodeRuns;
+    const pendingCodeRuns = sourceChanged
+      ? withoutKey(session.pendingCodeRuns, questionId)
+      : session.pendingCodeRuns;
+    if (sourceChanged) setCodeRunError(null);
     saveMockSession({
       ...session,
       answers: {
         ...session.answers,
         [questionId]: { ...answer, [field]: value },
       },
+      sampleCodeRuns,
+      hiddenCodeRuns,
+      pendingCodeRuns,
+      reportIdempotencyKey: sourceChanged
+        ? undefined
+        : session.reportIdempotencyKey,
     });
+  }
+
+  async function runCurrentCode() {
+    if (
+      !session ||
+      session.status !== "in_progress" ||
+      !currentQuestion?.execution ||
+      currentQuestion.origin !== "role_profile" ||
+      runningQuestionId
+    ) {
+      return;
+    }
+    if (!codeRunnerAvailable) {
+      setCodeRunError(
+        "Sandbox runner chưa được cấu hình trên Vercel.",
+      );
+      return;
+    }
+    const source =
+      session.answers[currentQuestion.id]?.response ?? "";
+    if (!source.trim()) {
+      setCodeRunError("Viết code trước khi chạy sample tests.");
+      return;
+    }
+
+    const identity = session.questions[session.currentIndex];
+    if (!identity || identity.id !== currentQuestion.id) return;
+    const pending =
+      session.pendingCodeRuns[currentQuestion.id] ?? {
+        idempotencyKey: crypto.randomUUID(),
+        requestedAt: new Date().toISOString(),
+      };
+    saveMockSession({
+      ...session,
+      pendingCodeRuns: {
+        ...session.pendingCodeRuns,
+        [currentQuestion.id]: pending,
+      },
+    });
+    setCodeRunError(null);
+    setRunningQuestionId(currentQuestion.id);
+
+    try {
+      const response = await fetch("/api/mock-interview/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idempotencyKey: pending.idempotencyKey,
+          sessionId: session.sessionId,
+          profileId: session.profileId,
+          profileVersion: session.profileVersion,
+          setId: session.setId,
+          setVersion: session.setVersion,
+          sourceRevision: session.sourceRevision,
+          questionId: identity.id,
+          origin: identity.origin,
+          questionVersion: identity.version,
+          contentRevision: identity.contentRevision,
+          code: source,
+        }),
+      });
+      const payload = (await response.json()) as {
+        ok?: boolean;
+        result?: unknown;
+        error?: string;
+        code?: string;
+      };
+      const parsedResult = codeExecutionResultSchema.safeParse(
+        payload.result,
+      );
+      if (!response.ok || !payload.ok || !parsedResult.success) {
+        if (
+          payload.code !== "run_in_progress" &&
+          payload.code !== "runner_busy"
+        ) {
+          clearPendingCodeRun(session.sessionId, currentQuestion.id);
+        }
+        throw new Error(
+          payload.error || "Sandbox chưa trả kết quả hợp lệ.",
+        );
+      }
+
+      const latest = readStoredMockSession();
+      if (
+        latest?.sessionId === session.sessionId &&
+        latest.answers[currentQuestion.id]?.response === source
+      ) {
+        saveMockSession({
+          ...latest,
+          sampleCodeRuns: {
+            ...latest.sampleCodeRuns,
+            [currentQuestion.id]: parsedResult.data,
+          },
+          pendingCodeRuns: withoutKey(
+            latest.pendingCodeRuns,
+            currentQuestion.id,
+          ),
+        });
+      }
+    } catch (error) {
+      setCodeRunError(
+        error instanceof Error
+          ? error.message
+          : "Sandbox chưa chạy được. Thử lại sau.",
+      );
+    } finally {
+      setRunningQuestionId(null);
+    }
   }
 
   function moveToQuestion(nextIndex: number) {
@@ -275,6 +436,7 @@ export function MockInterviewApp({
     saveMockSession(
       commitCurrentQuestionTime(session, Date.now(), nextIndex),
     );
+    setCodeRunError(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -286,9 +448,19 @@ export function MockInterviewApp({
     ) {
       return;
     }
-    const unanswered = session.questions.filter(
-      ({ id }) => !session.answers[id]?.response.trim(),
-    ).length;
+    const unanswered = session.questions.filter((identity) => {
+      const question = questionById.get(identity.id);
+      return (
+        !question ||
+        !isQuestionAnswered(
+          question,
+          session.answers[identity.id] ?? {
+            response: "",
+            explanation: "",
+          },
+        )
+      );
+    }).length;
     if (
       unanswered > 0 &&
       !timerExpired &&
@@ -306,9 +478,12 @@ export function MockInterviewApp({
       submittedAt,
       session.currentIndex,
     );
+    const reportIdempotencyKey =
+      committed.reportIdempotencyKey ?? crypto.randomUUID();
     const evaluatingSession: MockInterviewSession = {
       ...committed,
       status: "evaluating",
+      reportIdempotencyKey,
     };
     setReportError(null);
     saveMockSession(evaluatingSession);
@@ -318,6 +493,7 @@ export function MockInterviewApp({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          idempotencyKey: reportIdempotencyKey,
           sessionId: committed.sessionId,
           profileId: committed.profileId,
           profileVersion: committed.profileVersion,
@@ -337,12 +513,14 @@ export function MockInterviewApp({
               response: "",
               explanation: "",
             };
+            const normalized = draftForSubmission(question, draft);
             return {
               questionId: identity.id,
               origin: identity.origin,
               version: identity.version,
               contentRevision: identity.contentRevision,
-              answer: candidateAnswer(question, draft),
+              response: normalized.response,
+              explanation: normalized.explanation,
               elapsedSeconds:
                 committed.elapsedByQuestion[identity.id] ?? 0,
             };
@@ -353,14 +531,39 @@ export function MockInterviewApp({
         report?: MockInterviewReport;
         model?: string;
         provider?: "openai" | "gemini";
+        executionResults?: Array<{
+          questionId: string;
+          result: unknown;
+        }>;
         error?: string;
+        code?: string;
       };
       if (!response.ok || !payload.report) {
-        throw new Error(payload.error || "AI chưa tạo được report.");
+        const requestError = new Error(
+          payload.error || "AI chưa tạo được report.",
+        ) as Error & { code?: string };
+        requestError.code = payload.code;
+        throw requestError;
       }
+      const hiddenCodeRuns = Object.fromEntries(
+        (payload.executionResults ?? []).flatMap((entry) => {
+          const parsedResult = codeExecutionResultSchema.safeParse(
+            entry.result,
+          );
+          return parsedResult.success &&
+            parsedResult.data.suite === "hidden" &&
+            committed.questions.some(
+              (question) => question.id === entry.questionId,
+            )
+            ? [[entry.questionId, parsedResult.data] as const]
+            : [];
+        }),
+      );
       const completed: MockInterviewSession = {
         ...committed,
         status: "completed",
+        reportIdempotencyKey,
+        hiddenCodeRuns,
         report: payload.report,
         reportModel: payload.model,
         reportProvider: payload.provider,
@@ -369,9 +572,17 @@ export function MockInterviewApp({
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
       autoSubmitted.current = true;
+      const requestCode =
+        error instanceof Error && "code" in error
+          ? (error as Error & { code?: string }).code
+          : undefined;
       const restored: MockInterviewSession = {
         ...committed,
         status: "in_progress",
+        reportIdempotencyKey:
+          requestCode === "code_execution_retry_required"
+            ? undefined
+            : reportIdempotencyKey,
         activeQuestionStartedAt: new Date().toISOString(),
       };
       saveMockSession(restored);
@@ -401,6 +612,8 @@ export function MockInterviewApp({
     autoSubmitted.current = false;
     evaluationInFlight.current = false;
     setReportError(null);
+    setCodeRunError(null);
+    setRunningQuestionId(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -470,9 +683,19 @@ export function MockInterviewApp({
     response: "",
     explanation: "",
   };
-  const answeredCount = session.questions.filter(({ id }) =>
-    session.answers[id]?.response.trim(),
-  ).length;
+  const answeredCount = session.questions.filter((identity) => {
+    const question = questionById.get(identity.id);
+    return Boolean(
+      question &&
+        isQuestionAnswered(
+          question,
+          session.answers[identity.id] ?? {
+            response: "",
+            explanation: "",
+          },
+        ),
+    );
+  }).length;
   const progress =
     ((session.currentIndex + 1) / session.questions.length) * 100;
 
@@ -543,7 +766,8 @@ export function MockInterviewApp({
                 <InlineCode text={currentQuestion.prompt} />
               </h1>
 
-              {currentQuestion.code ? (
+              {currentQuestion.code &&
+              currentQuestion.responseMode !== "code" ? (
                 <pre className="mt-7 max-h-[26rem] overflow-auto rounded-2xl bg-[#102d26] p-5 font-mono text-[13px] leading-6 text-[#e8f4ec]">
                   <code>{currentQuestion.code}</code>
                 </pre>
@@ -558,7 +782,11 @@ export function MockInterviewApp({
                           Candidate solution
                         </span>
                         <span className="text-[10px] text-white/45">
-                          Không compile trong Phase A
+                          {currentQuestion.execution
+                            ? codeRunnerAvailable
+                              ? "Sandbox cô lập · sample tests"
+                              : "Sandbox chưa được cấu hình"
+                            : "AI review · không có executable contract"}
                         </span>
                       </div>
                       <MonacoCodeEditor
@@ -576,6 +804,51 @@ export function MockInterviewApp({
                         placeholder="Viết solution của mày ở đây…"
                       />
                     </div>
+                    {currentQuestion.execution ? (
+                      <div className="rounded-2xl border border-[#173f35]/15 bg-[#f8faf5] p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-bold text-[#29493d]">
+                              Chạy code thật
+                            </p>
+                            <p className="mt-1 text-xs leading-5 text-[#64736c]">
+                              Sample tests hiện chi tiết; hidden tests chỉ chạy
+                              khi kết thúc buổi.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => void runCurrentCode()}
+                            disabled={
+                              !codeRunnerAvailable ||
+                              session.status === "evaluating" ||
+                              runningQuestionId !== null
+                            }
+                            className="rounded-xl bg-[#173f35] px-4 py-2.5 text-sm font-bold text-white disabled:cursor-wait disabled:opacity-45"
+                          >
+                            {runningQuestionId === currentQuestion.id
+                              ? "Đang compile & test…"
+                              : "Chạy sample tests"}
+                          </button>
+                        </div>
+                        {session.sampleCodeRuns[currentQuestion.id] ? (
+                          <ExecutionResultPanel
+                            result={
+                              session.sampleCodeRuns[currentQuestion.id]
+                            }
+                            compact={false}
+                          />
+                        ) : null}
+                        {codeRunError ? (
+                          <p
+                            role="alert"
+                            className="mt-3 rounded-xl border border-[#ba4b2f]/20 bg-[#f8e8df] px-3 py-2 text-xs leading-5 text-[#8e3825]"
+                          >
+                            {codeRunError}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <label className="block text-sm font-bold text-[#29493d]">
                       Complexity, assumptions và trade-offs
                       <textarea
@@ -657,7 +930,7 @@ export function MockInterviewApp({
                 className="rounded-xl bg-[#d7ff91] px-5 py-3 text-sm font-bold text-[#173f35] shadow-sm disabled:cursor-wait disabled:opacity-55"
               >
                 {session.status === "evaluating"
-                  ? "AI đang tạo report…"
+                  ? "Đang chạy hidden tests & tạo report…"
                   : remainingSeconds === 0
                     ? "Thử tạo report lại"
                     : "Kết thúc & tạo report"}
@@ -1097,6 +1370,8 @@ function MockReport({
             {questions.map((question, index) => {
               const assessment = assessmentById.get(question.id);
               const answer = session.answers[question.id];
+              const hiddenExecution =
+                session.hiddenCodeRuns[question.id];
               if (!assessment) return null;
               return (
                 <details
@@ -1117,6 +1392,17 @@ function MockReport({
                     </span>
                   </summary>
                   <div className="mt-5 space-y-5 border-t border-[#173f35]/10 pt-5">
+                    {hiddenExecution ? (
+                      <div>
+                        <p className="text-xs font-bold text-[#356b58]">
+                          Hidden tests trong sandbox
+                        </p>
+                        <ExecutionResultPanel
+                          result={hiddenExecution}
+                          compact
+                        />
+                      </div>
+                    ) : null}
                     <div>
                       <p className="text-xs font-bold text-[#356b58]">
                         Câu trả lời của mày
@@ -1191,6 +1477,106 @@ function ReportList({
   );
 }
 
+const executionStatusLabels: Record<
+  CodeExecutionResult["status"],
+  string
+> = {
+  passed: "Đã qua",
+  tests_failed: "Sai hidden/sample test",
+  compile_error: "Lỗi biên dịch",
+  runtime_error: "Lỗi khi chạy",
+  time_limit: "Quá thời gian",
+  memory_limit: "Quá bộ nhớ",
+  output_limit: "Output quá lớn",
+  sandbox_error: "Lỗi hạ tầng sandbox",
+};
+
+function ExecutionResultPanel({
+  result,
+  compact,
+}: {
+  result: CodeExecutionResult;
+  compact: boolean;
+}) {
+  const positive = result.status === "passed";
+  const infrastructureError = result.status === "sandbox_error";
+  return (
+    <div
+      className={`mt-3 rounded-xl border p-4 ${
+        positive
+          ? "border-[#79b82a]/25 bg-[#eaf8cf]"
+          : infrastructureError
+            ? "border-[#173f35]/12 bg-[#edf0e8]"
+            : "border-[#ba4b2f]/20 bg-[#f8e8df]"
+      }`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <strong
+          className={
+            positive
+              ? "text-[#245748]"
+              : infrastructureError
+                ? "text-[#52645c]"
+                : "text-[#8e3825]"
+          }
+        >
+          {executionStatusLabels[result.status]}
+        </strong>
+        <span className="font-mono text-[10px] text-[#64736c]">
+          {result.passedTests}/{result.totalTests} tests ·{" "}
+          {result.durationMs}ms · {result.toolchain}
+        </span>
+      </div>
+      {result.suite === "sample" && result.cases.length ? (
+        <ul className="mt-3 space-y-2 text-xs leading-5 text-[#52645c]">
+          {result.cases.map((testCase) => (
+            <li key={testCase.name} className="flex gap-2">
+              <span
+                className={
+                  testCase.passed
+                    ? "text-[#67a41d]"
+                    : "text-[#ba4b2f]"
+                }
+              >
+                {testCase.passed ? "✓" : "×"}
+              </span>
+              <span>
+                <strong>{testCase.name}</strong>
+                {testCase.message ? ` — ${testCase.message}` : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {!compact && result.diagnostics ? (
+        <div className="mt-3">
+          <p className="font-mono text-[10px] font-bold tracking-[0.12em] text-[#64736c] uppercase">
+            Compiler diagnostics
+          </p>
+          <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-[#102d26] p-3 font-mono text-[11px] leading-5 text-[#e8f4ec]">
+            {result.diagnostics}
+          </pre>
+        </div>
+      ) : null}
+      {!compact && result.output ? (
+        <div className="mt-3">
+          <p className="font-mono text-[10px] font-bold tracking-[0.12em] text-[#64736c] uppercase">
+            Test output
+          </p>
+          <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-lg bg-[#102d26] p-3 font-mono text-[11px] leading-5 text-[#e8f4ec]">
+            {result.output}
+          </pre>
+        </div>
+      ) : null}
+      {result.suite === "hidden" ? (
+        <p className="mt-2 text-[11px] leading-5 text-[#64736c]">
+          Chỉ hiện tổng hợp để không làm lộ hidden test cases.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function InlineCode({ text }: { text: string }) {
   const segments = text.split(/(`[^`\n]+`)/g);
   return (
@@ -1240,19 +1626,46 @@ function candidateAnswer(
   question: MockInterviewQuestion,
   answer: { response: string; explanation: string },
 ) {
-  if (question.responseMode === "text") return answer.response.trim();
+  const normalized = draftForSubmission(question, answer);
+  if (question.responseMode === "text") {
+    return normalized.response.trim();
+  }
   const language =
     question.language === "cpp"
       ? "cpp"
       : question.language === "python"
         ? "python"
         : "cmake";
-  const response = answer.response.trim();
-  const explanation = answer.explanation.trim();
+  const response = normalized.response.trim();
+  const explanation = normalized.explanation.trim();
   if (!response && !explanation) return "";
   return `\`\`\`${language}\n${response}\n\`\`\`${
     explanation ? `\n\nGiải thích của ứng viên:\n${explanation}` : ""
   }`;
+}
+
+function draftForSubmission(
+  question: MockInterviewQuestion,
+  draft: { response: string; explanation: string },
+) {
+  const untouchedStarter =
+    question.responseMode === "code" &&
+    Boolean(question.code) &&
+    draft.response.trim() === question.code?.trim();
+  return {
+    response: untouchedStarter ? "" : draft.response,
+    explanation: draft.explanation,
+  };
+}
+
+function isQuestionAnswered(
+  question: MockInterviewQuestion,
+  draft: { response: string; explanation: string },
+) {
+  const normalized = draftForSubmission(question, draft);
+  return Boolean(
+    normalized.response.trim() || normalized.explanation.trim(),
+  );
 }
 
 function formatClock(seconds: number) {

@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { CodeExecutionResult } from "@/lib/code-runner/contracts";
+
 import type { MockCompetencyKey } from "./profile";
 import { mockCompetencyLabels } from "./profile";
 import { worldQuantSystemInstruction } from "./profile-server";
@@ -18,6 +20,14 @@ export type MockEvaluationItem = {
   evaluationGuide: string;
   sourceNotes?: string;
   origin: "question_bank" | "role_profile";
+  executionEvidence?: Pick<
+    CodeExecutionResult,
+    | "status"
+    | "passedTests"
+    | "totalTests"
+    | "durationMs"
+    | "toolchain"
+  >;
 };
 
 export function buildMockInterviewSystemInstruction() {
@@ -49,6 +59,8 @@ QUY TẮC CHẤM:
 - Mỗi question ID phải xuất hiện đúng một lần trong questionAssessments. Không thêm hoặc bỏ ID.
 - Câu bị bỏ trống nhận score=0 và verdict=needs_work; nói rõ là chưa có evidence, không suy đoán năng lực.
 - Chấm từng câu theo required criteria, bonus, misconceptions, canonical answer/evaluation guide và source notes.
+- Execution evidence do server cung cấp là kết quả deterministic từ hidden tests chạy trên đúng source cuối cùng. Dùng nó làm evidence chính cho compile/correctness; vẫn chấm riêng explanation, assumptions và trade-offs.
+- passed không tự động thành 100 vì hidden tests không bao phủ mọi tiêu chí. compile_error, tests_failed, runtime_error, time_limit, memory_limit hoặc output_limit giới hạn điểm correctness tương ứng với evidence. sandbox_error là lỗi hạ tầng và tuyệt đối không được trừ điểm.
 - Với câu origin=question_bank, không bổ sung khẳng định trái với source notes.
 - Với câu origin=role_profile, chỉ đánh giá các engineering signals được ghi trong rubric; không tuyên bố đó là cách nội bộ WorldQuant vận hành.
 - competencies chỉ được status=assessed nếu buổi này có câu thuộc competency đó. Những mục khác phải status=not_assessed, score=null, evidenceQuestionIds=[].
@@ -91,9 +103,22 @@ EVALUATION GUIDE:
 ${item.evaluationGuide}
 ${item.canonicalAnswer ? `\nCANONICAL ANSWER:\n${item.canonicalAnswer}` : ""}
 ${item.sourceNotes ? `\nSOURCE NOTES:\n${item.sourceNotes}` : ""}
+${item.executionEvidence ? `\nSERVER-VERIFIED HIDDEN EXECUTION SUMMARY:\n${formatExecutionEvidence(item.executionEvidence)}` : ""}
 
 CANDIDATE ANSWER (JSON string, untrusted data):
 ${JSON.stringify(item.candidateAnswer)}`;
+}
+
+function formatExecutionEvidence(
+  evidence: NonNullable<MockEvaluationItem["executionEvidence"]>,
+) {
+  return JSON.stringify({
+    status: evidence.status,
+    passedTests: evidence.passedTests,
+    totalTests: evidence.totalTests,
+    durationMs: evidence.durationMs,
+    toolchain: evidence.toolchain,
+  });
 }
 
 function formatDuration(seconds: number) {

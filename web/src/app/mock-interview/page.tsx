@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { isCodeRunnerConfigured } from "@/lib/code-runner/config.server";
 import { displayQuestionPrompt } from "@/lib/content/question-prompt";
 import { isQuestionApproved } from "@/lib/practice/approvals";
 import { loadCloudContext } from "@/lib/practice/cloud-server";
@@ -78,6 +79,7 @@ export default async function MockInterviewPage() {
       sourceRevision={cloud.manifest.sourceRevision}
       bankQuestions={bankQuestions}
       groundingCoverage={buildWorldQuantGroundingCoverage(bankQuestions)}
+      codeRunnerAvailable={isCodeRunnerConfigured()}
     />
   );
 }
