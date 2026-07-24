@@ -14,7 +14,6 @@ import type { MockInterviewReport } from "@/lib/mock-interview/contracts";
 import {
   mockCompetencyKeys,
   mockCompetencyLabels,
-  mockDurationQuestionCounts,
   worldQuantMockSetById,
   worldQuantMockSetsForDuration,
   WORLDQUANT_PROFILE,
@@ -788,9 +787,6 @@ function MockSetup({
                         }`}
                       />
                     </span>
-                    <span className="mt-1 block text-xs text-white/55">
-                      {mockDurationQuestionCounts[option.minutes]} câu
-                    </span>
                   </button>
                 );
               })}
@@ -815,12 +811,13 @@ function MockSetup({
                   >
                     <span className="flex items-center justify-between gap-3">
                       <strong>Bộ đề {mockSet.number}</strong>
-                      <span className="font-mono text-[10px] text-white/45">
-                        v{mockSet.version}
-                      </span>
-                    </span>
-                    <span className="mt-1 block text-xs leading-5 text-white/55">
-                      {mockSet.questionIds.length} câu · thứ tự cố định
+                      <span
+                        className={`size-3 rounded-full border ${
+                          active
+                            ? "border-[#d7ff91] bg-[#d7ff91]"
+                            : "border-white/30"
+                        }`}
+                      />
                     </span>
                   </button>
                 );
@@ -831,12 +828,10 @@ function MockSetup({
               onClick={onStart}
               className="mt-5 w-full rounded-2xl bg-[#d7ff91] px-5 py-3.5 text-sm font-bold text-[#173f35] transition hover:-translate-y-0.5"
             >
-              Bắt đầu bộ đề {selectedSet?.number ?? 1} ·{" "}
-              {mockDurationQuestionCounts[duration]} câu →
+              Bắt đầu bộ đề {selectedSet?.number ?? 1} →
             </button>
             <p className="mt-4 text-center text-[11px] leading-5 text-white/45">
-              Bộ đề và thứ tự câu được cố định. Timer cùng câu trả lời được lưu
-              local nên F5 không làm mất buổi.
+              Timer và câu trả lời được tự lưu local nên F5 không làm mất buổi.
             </p>
           </aside>
         </section>
