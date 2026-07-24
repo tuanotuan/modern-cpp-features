@@ -2133,6 +2133,9 @@ function AccountControl({
   if (account) {
     return (
       <div className="flex items-center gap-2">
+        <HeaderNavLink href="/mock-interview">
+          Mock
+        </HeaderNavLink>
         <HeaderNavLink
           href={`/stats?deck=${selectedDeck}`}
         >

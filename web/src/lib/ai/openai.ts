@@ -4,6 +4,10 @@ import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 
 import type { GeneratedLesson, Question } from "@/lib/content/schema";
+import {
+  mockInterviewReportSchema,
+  type MockInterviewReport,
+} from "../mock-interview/contracts";
 
 import {
   coachFeedbackSchema,
@@ -111,6 +115,37 @@ export async function answerCoachFollowUpWithOpenAI({
     throw new Error("OpenAI returned an unknown source section");
   }
   return result;
+}
+
+export async function evaluateMockInterviewWithOpenAI({
+  instructions,
+  prompt,
+  safetyIdentifier,
+}: {
+  instructions: string;
+  prompt: string;
+  safetyIdentifier: string;
+}): Promise<OpenAIStructuredResult<MockInterviewReport>> {
+  const model = openAIModel("luna");
+  const response = await openAIClient().responses.parse({
+    model,
+    store: false,
+    safety_identifier: safetyIdentifier,
+    instructions,
+    input: prompt,
+    reasoning: { effort: "medium" },
+    max_output_tokens: 4200,
+    text: {
+      format: zodTextFormat(mockInterviewReportSchema, "mock_interview_report"),
+      verbosity: "medium",
+    },
+  });
+
+  return parsedResult(
+    response,
+    model,
+    "OpenAI returned an empty mock interview report",
+  );
 }
 
 export function openAIClient() {
