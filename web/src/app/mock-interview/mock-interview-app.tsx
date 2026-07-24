@@ -15,16 +15,17 @@ import {
   mockCompetencyKeys,
   mockCompetencyLabels,
   mockDurationQuestionCounts,
-  selectWorldQuantQuestions,
+  worldQuantMockSetById,
+  worldQuantMockSetsForDuration,
   WORLDQUANT_PROFILE,
-  WORLDQUANT_PROFILE_ID,
-  WORLDQUANT_PROFILE_VERSION,
   WORLDQUANT_ROLE_QUESTIONS,
   type MockCompetencyKey,
   type MockInterviewDuration,
   type MockInterviewQuestion,
+  type MockInterviewSetId,
 } from "@/lib/mock-interview/profile";
 import {
+  createMockInterviewSession,
   MOCK_INTERVIEW_STORAGE_KEY,
   parseMockInterviewSession,
   serializeMockInterviewSession,
@@ -117,6 +118,8 @@ export function MockInterviewApp({
   groundingCoverage,
 }: MockInterviewAppProps) {
   const [duration, setDuration] = useState<MockInterviewDuration>(45);
+  const [selectedSetId, setSelectedSetId] =
+    useState<MockInterviewSetId>("worldquant-45-a");
   const [now, setNow] = useState(() => Date.now());
   const [reportError, setReportError] = useState<string | null>(null);
   const evaluationInFlight = useRef(false);
@@ -168,7 +171,7 @@ export function MockInterviewApp({
       : null;
   const hydrated = sessionSnapshot !== null;
   const notice = staleSession
-    ? "Question bank đã đổi nên buổi cũ không được khôi phục để tránh chấm sai version."
+    ? "Nội dung bộ đề hoặc question bank đã đổi nên buổi cũ không được khôi phục để tránh chấm sai version."
     : sessionSnapshot !== null &&
         sessionSnapshot !== EMPTY_MOCK_SESSION &&
         !storedSession
@@ -199,6 +202,9 @@ export function MockInterviewApp({
     [questionById, session?.questions],
   );
   const currentQuestion = sessionQuestions[session?.currentIndex ?? 0];
+  const currentMockSet = session
+    ? worldQuantMockSetById(session.setId)
+    : undefined;
   const remainingSeconds = session
     ? Math.max(
         0,
@@ -224,37 +230,15 @@ export function MockInterviewApp({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remainingSeconds, session?.sessionId, session?.status]);
 
-  function startInterview(selectedDuration: MockInterviewDuration) {
+  function startInterview(setId: MockInterviewSetId) {
     const sessionId = crypto.randomUUID();
-    const selectedQuestions = selectWorldQuantQuestions({
-      durationMinutes: selectedDuration,
-      bankQuestions,
-      seed: sessionId,
-    });
     const startedAt = new Date();
-    const nextSession: MockInterviewSession = {
-      schemaVersion: 1,
+    const nextSession = createMockInterviewSession({
       sessionId,
-      profileId: WORLDQUANT_PROFILE_ID,
-      profileVersion: WORLDQUANT_PROFILE_VERSION,
+      setId,
       sourceRevision,
-      durationMinutes: selectedDuration,
-      status: "in_progress",
-      startedAt: startedAt.toISOString(),
-      deadlineAt: new Date(
-        startedAt.getTime() + selectedDuration * 60_000,
-      ).toISOString(),
-      questions: selectedQuestions.map((question) => ({
-        id: question.id,
-        origin: question.origin,
-        version: question.version,
-        contentRevision: question.contentRevision,
-      })),
-      currentIndex: 0,
-      answers: {},
-      elapsedByQuestion: {},
-      activeQuestionStartedAt: startedAt.toISOString(),
-    };
+      startedAt,
+    });
     autoSubmitted.current = false;
     evaluationInFlight.current = false;
     setReportError(null);
@@ -340,6 +324,8 @@ export function MockInterviewApp({
           sessionId: committed.sessionId,
           profileId: committed.profileId,
           profileVersion: committed.profileVersion,
+          setId: committed.setId,
+          setVersion: committed.setVersion,
           sourceRevision: committed.sourceRevision,
           durationMinutes: committed.durationMinutes,
           elapsedSeconds: Math.max(
@@ -410,6 +396,10 @@ export function MockInterviewApp({
     ) {
       return;
     }
+    if (session) {
+      setDuration(session.durationMinutes);
+      setSelectedSetId(session.setId);
+    }
     clearMockSession();
     autoSubmitted.current = false;
     evaluationInFlight.current = false;
@@ -432,8 +422,14 @@ export function MockInterviewApp({
       <MockSetup
         account={account}
         duration={duration}
-        onDuration={setDuration}
-        onStart={() => startInterview(duration)}
+        selectedSetId={selectedSetId}
+        onDuration={(nextDuration) => {
+          const firstSet = worldQuantMockSetsForDuration(nextDuration)[0];
+          setDuration(nextDuration);
+          if (firstSet) setSelectedSetId(firstSet.id);
+        }}
+        onSet={setSelectedSetId}
+        onStart={() => startInterview(selectedSetId)}
         bankQuestionCount={bankQuestions.length}
         groundingCoverage={groundingCoverage}
         notice={notice}
@@ -448,6 +444,7 @@ export function MockInterviewApp({
         session={session}
         questions={sessionQuestions}
         onReset={resetInterview}
+        onReplay={() => startInterview(session.setId)}
       />
     );
   }
@@ -493,7 +490,8 @@ export function MockInterviewApp({
             <div>
               <p className="font-semibold">Mock interview</p>
               <p className="text-xs text-[#64736c]">
-                {WORLDQUANT_PROFILE.role}
+                Bộ {currentMockSet?.variant ?? "?"} ·{" "}
+                {currentMockSet?.title ?? WORLDQUANT_PROFILE.role}
               </p>
             </div>
           </div>
@@ -678,7 +676,9 @@ export function MockInterviewApp({
 function MockSetup({
   account,
   duration,
+  selectedSetId,
   onDuration,
+  onSet,
   onStart,
   bankQuestionCount,
   groundingCoverage,
@@ -686,12 +686,17 @@ function MockSetup({
 }: {
   account: MockInterviewAppProps["account"];
   duration: MockInterviewDuration;
+  selectedSetId: MockInterviewSetId;
   onDuration: (duration: MockInterviewDuration) => void;
+  onSet: (setId: MockInterviewSetId) => void;
   onStart: () => void;
   bankQuestionCount: number;
   groundingCoverage: GroundingCoverage;
   notice: string | null;
 }) {
+  const availableSets = worldQuantMockSetsForDuration(duration);
+  const selectedSet = worldQuantMockSetById(selectedSetId);
+
   return (
     <main className="min-h-screen px-4 py-5 sm:px-7 lg:px-10">
       <div className="mx-auto max-w-6xl">
@@ -792,15 +797,50 @@ function MockSetup({
                 );
               })}
             </div>
+            <p className="mt-6 font-mono text-[11px] font-bold tracking-[0.16em] text-[#d7ff91] uppercase">
+              Chọn bộ đề
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              {availableSets.map((mockSet) => {
+                const active = mockSet.id === selectedSetId;
+                return (
+                  <button
+                    key={mockSet.id}
+                    type="button"
+                    onClick={() => onSet(mockSet.id)}
+                    aria-pressed={active}
+                    className={`rounded-2xl border p-4 text-left transition ${
+                      active
+                        ? "border-[#d7ff91] bg-[#d7ff91]/12"
+                        : "border-white/12 bg-white/5 hover:bg-white/9"
+                    }`}
+                  >
+                    <span className="flex items-center justify-between gap-3">
+                      <strong>
+                        Bộ {mockSet.variant} · {mockSet.title}
+                      </strong>
+                      <span className="font-mono text-[10px] text-white/45">
+                        v{mockSet.version}
+                      </span>
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-white/55">
+                      {mockSet.description}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
             <button
               type="button"
               onClick={onStart}
               className="mt-5 w-full rounded-2xl bg-[#d7ff91] px-5 py-3.5 text-sm font-bold text-[#173f35] transition hover:-translate-y-0.5"
             >
-              Bắt đầu {mockDurationQuestionCounts[duration]} câu →
+              Bắt đầu bộ {selectedSet?.variant ?? "A"} ·{" "}
+              {mockDurationQuestionCounts[duration]} câu →
             </button>
             <p className="mt-4 text-center text-[11px] leading-5 text-white/45">
-              Timer và câu trả lời được lưu local nên F5 không làm mất buổi.
+              Bộ đề và thứ tự câu được cố định. Timer cùng câu trả lời được lưu
+              local nên F5 không làm mất buổi.
             </p>
           </aside>
         </section>
@@ -808,10 +848,10 @@ function MockSetup({
         <section className="grid gap-5 pb-10 lg:grid-cols-2">
           <article className="rounded-[2rem] border border-[#173f35]/12 bg-white/62 p-6 sm:p-7">
             <p className="font-mono text-[10px] font-bold tracking-[0.16em] text-[#356b58] uppercase">
-              Grounding status
+              Question bank cho bộ mới
             </p>
             <h2 className="mt-2 text-2xl font-semibold">
-              {bankQuestionCount} câu đã duyệt có thể tái sử dụng
+              {bankQuestionCount} câu đã duyệt sẵn sàng để tạo thêm bộ
             </h2>
             <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3">
               {mockCompetencyKeys.map((key) => (
@@ -854,8 +894,8 @@ function MockSetup({
                     .map((key) => mockCompetencyLabels[key])
                     .join(", ")}
                 </strong>
-                . Sau này thêm knowledge tương ứng thì mock sẽ ưu tiên câu đã
-                duyệt từ ngân hàng.
+                . Sau này thêm knowledge tương ứng thì có thể tạo bộ version
+                mới từ ngân hàng; 6 bộ hiện tại sẽ không âm thầm đổi câu.
               </p>
             ) : null}
           </article>
@@ -874,14 +914,17 @@ function MockReport({
   session,
   questions,
   onReset,
+  onReplay,
 }: {
   account: MockInterviewAppProps["account"];
   session: MockInterviewSession;
   questions: MockInterviewQuestion[];
   onReset: () => void;
+  onReplay: () => void;
 }) {
   const report = session.report;
   if (!report) return null;
+  const mockSet = worldQuantMockSetById(session.setId);
   const assessmentById = new Map(
     report.questionAssessments.map((assessment) => [
       assessment.questionId,
@@ -914,9 +957,16 @@ function MockReport({
             <button
               type="button"
               onClick={onReset}
+              className="rounded-xl border border-[#173f35]/15 bg-white/65 px-4 py-2 text-sm font-bold"
+            >
+              Chọn bộ khác
+            </button>
+            <button
+              type="button"
+              onClick={onReplay}
               className="rounded-xl bg-[#173f35] px-4 py-2 text-sm font-bold text-white"
             >
-              Mock lại
+              Luyện lại bộ này
             </button>
             <span className="rounded-full border border-[#173f35]/15 bg-white/65 px-4 py-2 text-xs font-semibold">
               @{account.login ?? account.displayName}
@@ -940,6 +990,10 @@ function MockReport({
               {report.hiringSignal}
             </p>
             <div className="mt-6 border-t border-white/12 pt-4 font-mono text-[10px] leading-5 text-white/42">
+              <p>
+                Bộ {mockSet?.variant ?? "?"} ·{" "}
+                {mockSet?.title ?? session.setId} · v{session.setVersion}
+              </p>
               <p>{session.durationMinutes} phút · {questions.length} câu</p>
               <p>{session.reportModel ?? "AI model"}</p>
               <p>{session.reportProvider ?? "provider"} · chấm một lần cuối buổi</p>

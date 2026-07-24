@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  mockInterviewReportRequestSchema,
   normalizeMockInterviewReport,
   type MockInterviewReport,
 } from "./contracts";
 import {
   mockCompetencyKeys,
+  WORLDQUANT_MOCK_SETS,
+  WORLDQUANT_ROLE_QUESTIONS,
   type MockCompetencyKey,
+  type MockInterviewSet,
 } from "./profile";
 
 function competency(status: "assessed" | "not_assessed" = "assessed") {
@@ -27,6 +31,67 @@ function allCompetencies(
     mockCompetencyKeys.map((key) => [key, competency(status)]),
   ) as unknown as MockInterviewReport["competencies"];
 }
+
+function reportRequestForSet(mockSet: MockInterviewSet) {
+  const questionById = new Map(
+    WORLDQUANT_ROLE_QUESTIONS.map((question) => [question.id, question]),
+  );
+  return {
+    sessionId: "9f58ceae-6ce7-4d56-bf6e-2be2256cc063",
+    profileId: "worldquant-tick-data-engineer",
+    profileVersion: 2,
+    setId: mockSet.id,
+    setVersion: mockSet.version,
+    sourceRevision: "a".repeat(40),
+    durationMinutes: mockSet.durationMinutes,
+    elapsedSeconds: 60,
+    items: mockSet.questionIds.map((questionId) => {
+      const question = questionById.get(questionId)!;
+      return {
+        questionId,
+        origin: question.origin,
+        version: question.version,
+        contentRevision: question.contentRevision,
+        answer: "A candidate answer.",
+        elapsedSeconds: 30,
+      };
+    }),
+  };
+}
+
+describe("mock interview report requests", () => {
+  it("accepts the exact versioned composition of all six stored sets", () => {
+    for (const mockSet of WORLDQUANT_MOCK_SETS) {
+      expect(
+        mockInterviewReportRequestSchema.safeParse(
+          reportRequestForSet(mockSet),
+        ).success,
+      ).toBe(true);
+    }
+  });
+
+  it("rejects a wrong set version, duration or question order", () => {
+    const request = reportRequestForSet(WORLDQUANT_MOCK_SETS[0]);
+    expect(
+      mockInterviewReportRequestSchema.safeParse({
+        ...request,
+        setVersion: 99,
+      }).success,
+    ).toBe(false);
+    expect(
+      mockInterviewReportRequestSchema.safeParse({
+        ...request,
+        durationMinutes: 45,
+      }).success,
+    ).toBe(false);
+    expect(
+      mockInterviewReportRequestSchema.safeParse({
+        ...request,
+        items: [...request.items].reverse(),
+      }).success,
+    ).toBe(false);
+  });
+});
 
 describe("mock interview report normalization", () => {
   it("derives assessed competency and overall scores only from asked questions", () => {

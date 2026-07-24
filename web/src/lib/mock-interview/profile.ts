@@ -4,7 +4,7 @@ import type {
 } from "@/lib/content/schema";
 
 export const WORLDQUANT_PROFILE_ID = "worldquant-tick-data-engineer" as const;
-export const WORLDQUANT_PROFILE_VERSION = 1 as const;
+export const WORLDQUANT_PROFILE_VERSION = 2 as const;
 
 export const mockCompetencyKeys = [
   "modern_cpp",
@@ -18,6 +18,15 @@ export const mockCompetencyKeys = [
 export type MockCompetencyKey = (typeof mockCompetencyKeys)[number];
 export type MockQuestionOrigin = "question_bank" | "role_profile";
 export type MockInterviewDuration = 30 | 45 | 60;
+export const mockInterviewSetIds = [
+  "worldquant-30-a",
+  "worldquant-30-b",
+  "worldquant-45-a",
+  "worldquant-45-b",
+  "worldquant-60-a",
+  "worldquant-60-b",
+] as const;
+export type MockInterviewSetId = (typeof mockInterviewSetIds)[number];
 
 export type MockInterviewQuestion = {
   id: string;
@@ -32,6 +41,16 @@ export type MockInterviewQuestion = {
   estimatedMinutes: number;
   competency: MockCompetencyKey;
   selectionTopics: string[];
+};
+
+export type MockInterviewSet = {
+  id: MockInterviewSetId;
+  version: number;
+  durationMinutes: MockInterviewDuration;
+  variant: "A" | "B";
+  title: string;
+  description: string;
+  questionIds: readonly string[];
 };
 
 export const mockDurationQuestionCounts: Record<
@@ -88,7 +107,7 @@ export const WORLDQUANT_ROLE_QUESTIONS: MockInterviewQuestion[] = [
     language: "cpp",
     track: "cpp20",
     responseMode: "text",
-    estimatedMinutes: 8,
+    estimatedMinutes: 7,
     competency: "tick_data_order_book",
     selectionTopics: [
       "tick-data",
@@ -107,7 +126,7 @@ export const WORLDQUANT_ROLE_QUESTIONS: MockInterviewQuestion[] = [
     language: "cpp",
     track: "cpp20",
     responseMode: "code",
-    estimatedMinutes: 12,
+    estimatedMinutes: 10,
     competency: "data_pipeline_performance",
     selectionTopics: [
       "tick-data",
@@ -147,7 +166,7 @@ struct IntervalStats {
     language: "cpp",
     track: "cpp20",
     responseMode: "text",
-    estimatedMinutes: 8,
+    estimatedMinutes: 7,
     competency: "communication_ownership",
     selectionTopics: [
       "legacy-migration",
@@ -215,33 +234,337 @@ struct IntervalStats {
     prompt:
       "Answer in English: A researcher reports that one interval feature changed after migration, but the requirement is ambiguous and the owner is in another time zone. Walk the interviewer through how you would investigate, communicate risk, agree on expected behavior, and own the resolution.",
   },
+  {
+    id: "worldquant-order-book-update-cpp",
+    origin: "role_profile",
+    version: 1,
+    contentRevision: ROLE_CONTENT_REVISION,
+    language: "cpp",
+    track: "cpp20",
+    responseMode: "code",
+    estimatedMinutes: 10,
+    competency: "tick_data_order_book",
+    selectionTopics: [
+      "order-book",
+      "sequencing",
+      "fixed-point",
+      "correctness",
+    ],
+    prompt:
+      "Hoàn thiện phần lõi của L2 order book dưới đây. `apply` phải xử lý duplicate, gap, insert/update/delete level mà không làm hỏng state. Sau phần code, giải thích invariant, complexity và cách mày resync khi mất sequence.",
+    code: `#include <cstdint>
+#include <functional>
+#include <map>
+
+enum class Side { bid, ask };
+
+struct LevelUpdate {
+    std::uint64_t sequence;
+    Side side;
+    std::int64_t price_ticks;
+    std::int64_t quantity; // 0 means delete
+};
+
+class OrderBook {
+public:
+    // Return false when the update cannot be applied safely.
+    bool apply(const LevelUpdate& update);
+
+private:
+    std::uint64_t last_sequence_{};
+    std::map<std::int64_t, std::int64_t, std::greater<>> bids_;
+    std::map<std::int64_t, std::int64_t> asks_;
+};`,
+  },
+  {
+    id: "worldquant-cpp-event-lifetime",
+    origin: "role_profile",
+    version: 1,
+    contentRevision: ROLE_CONTENT_REVISION,
+    language: "cpp",
+    track: "cpp20",
+    responseMode: "code",
+    estimatedMinutes: 7,
+    competency: "modern_cpp",
+    selectionTopics: [
+      "lifetime",
+      "ownership",
+      "string-view",
+      "span",
+    ],
+    prompt:
+      "Đoạn code decode market event dưới đây có lỗi lifetime. Hãy chỉ ra đường đi đến dangling view và viết lại API để caller biết rõ ownership, vẫn hạn chế copy trên hot path. Giải thích khi nào thiết kế zero-copy của mày còn hợp lệ.",
+    code: `#include <cstddef>
+#include <span>
+#include <string_view>
+#include <vector>
+
+struct DecodedEvent {
+    std::string_view symbol;
+    std::span<const std::byte> payload;
+};
+
+DecodedEvent decode(std::vector<std::byte> packet) {
+    // Assume the first bytes contain a symbol followed by payload.
+    return {
+        std::string_view(
+            reinterpret_cast<const char*>(packet.data()), 4),
+        std::span<const std::byte>(packet).subspan(4)
+    };
+}`,
+  },
+  {
+    id: "worldquant-partitioned-pipeline-backpressure",
+    origin: "role_profile",
+    version: 1,
+    contentRevision: ROLE_CONTENT_REVISION,
+    language: "cpp",
+    track: "cpp20",
+    responseMode: "text",
+    estimatedMinutes: 8,
+    competency: "data_pipeline_performance",
+    selectionTopics: [
+      "concurrency",
+      "partitioning",
+      "backpressure",
+      "hot-key",
+    ],
+    prompt:
+      "Một tick pipeline cần scale qua nhiều worker nhưng vẫn giữ đúng thứ tự theo instrument. Hãy thiết kế partitioning, bounded queues và backpressure. Mày xử lý hot instrument, worker failure, shutdown và đo latency/throughput ra sao để tối ưu không phá correctness?",
+  },
+  {
+    id: "worldquant-feed-regression-testing",
+    origin: "role_profile",
+    version: 1,
+    contentRevision: ROLE_CONTENT_REVISION,
+    language: "cmake",
+    track: "cmake",
+    responseMode: "text",
+    estimatedMinutes: 7,
+    competency: "engineering_quality",
+    selectionTopics: [
+      "testing",
+      "ci-cd",
+      "golden-data",
+      "benchmark",
+    ],
+    prompt:
+      "Mày sắp merge decoder cho một tick feed mới. Hãy thiết kế test pyramid và CI gates để bắt malformed packet, sequence gap, timezone/session boundary, numerical regression và performance regression. Những artifact nào phải được version hóa để lỗi production có thể replay chính xác?",
+  },
+  {
+    id: "worldquant-python-gap-audit",
+    origin: "role_profile",
+    version: 1,
+    contentRevision: ROLE_CONTENT_REVISION,
+    language: "python",
+    track: "python3",
+    responseMode: "code",
+    estimatedMinutes: 8,
+    competency: "scripting",
+    selectionTopics: [
+      "python",
+      "streaming-data",
+      "sequencing",
+      "audit",
+    ],
+    prompt:
+      "Cài đặt `audit_sequences` theo kiểu streaming: phát hiện duplicate, gap và out-of-order riêng cho từng `(feed, instrument)` mà không load toàn bộ file. Sau code, nêu memory bound, giả định về input ordering và cách mở rộng để resume một job dài.",
+    code: `from dataclasses import dataclass
+from typing import Iterable, Iterator, Literal
+
+@dataclass(frozen=True)
+class Event:
+    feed: str
+    instrument: str
+    sequence: int
+
+@dataclass(frozen=True)
+class Issue:
+    kind: Literal["duplicate", "gap", "out_of_order"]
+    event: Event
+    expected_sequence: int
+
+def audit_sequences(events: Iterable[Event]) -> Iterator[Issue]:
+    ...`,
+  },
+  {
+    id: "worldquant-cpp-feed-api-evolution",
+    origin: "role_profile",
+    version: 1,
+    contentRevision: ROLE_CONTENT_REVISION,
+    language: "cpp",
+    track: "cpp20",
+    responseMode: "text",
+    estimatedMinutes: 6,
+    competency: "modern_cpp",
+    selectionTopics: [
+      "api-design",
+      "value-semantics",
+      "compatibility",
+      "modern-cpp",
+    ],
+    prompt:
+      "Platform phải hỗ trợ thêm nhiều feed trong khi một số component legacy còn build bằng C++11 và platform mới dùng C++20/23. Hãy thiết kế boundary/API giữa decoder và normalized tick model: ownership, error handling, ABI/versioning và cách rollout để thêm feed không buộc rebuild hoặc sửa toàn hệ thống.",
+  },
+  {
+    id: "worldquant-production-data-incident",
+    origin: "role_profile",
+    version: 1,
+    contentRevision: ROLE_CONTENT_REVISION,
+    language: "cpp",
+    track: "cpp20",
+    responseMode: "text",
+    estimatedMinutes: 6,
+    competency: "communication_ownership",
+    selectionTopics: [
+      "incident-response",
+      "data-quality",
+      "risk",
+      "ownership",
+    ],
+    prompt:
+      "Answer in English: Ten minutes before market open, monitoring shows stale prices for one venue after a deployment. Researchers are waiting for data and the feed owner is offline. Explain your first 30 minutes: how you contain risk, choose rollback or forward-fix, communicate status, preserve evidence, and close the incident.",
+  },
+  {
+    id: "worldquant-parallel-replay-determinism",
+    origin: "role_profile",
+    version: 1,
+    contentRevision: ROLE_CONTENT_REVISION,
+    language: "cpp",
+    track: "cpp20",
+    responseMode: "text",
+    estimatedMinutes: 7,
+    competency: "data_pipeline_performance",
+    selectionTopics: [
+      "parallelism",
+      "determinism",
+      "replay",
+      "floating-point",
+    ],
+    prompt:
+      "Historical replay đang chạy một luồng và quá chậm. Mày sẽ parallelize theo ngày, venue hoặc instrument như thế nào mà output interval features vẫn deterministic và đủ parity với bản cũ? Thảo luận ordering, reduction, floating-point, memory, checkpoint và benchmark methodology.",
+  },
 ];
 
 const curatedById = new Map(
   WORLDQUANT_ROLE_QUESTIONS.map((question) => [question.id, question]),
 );
 
-const curatedIdsByDuration: Record<MockInterviewDuration, string[]> = {
-  30: [
-    "worldquant-tick-feed-correctness",
-    "worldquant-interval-stats-cpp",
-    "worldquant-legacy-migration",
-  ],
-  45: [
-    "worldquant-tick-feed-correctness",
-    "worldquant-interval-stats-cpp",
-    "worldquant-legacy-migration",
-    "worldquant-cmake-delivery",
-  ],
-  60: [
-    "worldquant-tick-feed-correctness",
-    "worldquant-interval-stats-cpp",
-    "worldquant-legacy-migration",
-    "worldquant-cmake-delivery",
-    "worldquant-python-reconciliation",
-    "worldquant-researcher-collaboration",
-  ],
-};
+const familyAQuestionIds = [
+  "worldquant-tick-feed-correctness",
+  "worldquant-cpp-feed-api-evolution",
+  "worldquant-interval-stats-cpp",
+  "worldquant-legacy-migration",
+  "worldquant-cmake-delivery",
+  "worldquant-python-reconciliation",
+  "worldquant-researcher-collaboration",
+] as const;
+
+const familyBQuestionIds = [
+  "worldquant-order-book-update-cpp",
+  "worldquant-cpp-event-lifetime",
+  "worldquant-parallel-replay-determinism",
+  "worldquant-production-data-incident",
+  "worldquant-feed-regression-testing",
+  "worldquant-python-gap-audit",
+  "worldquant-partitioned-pipeline-backpressure",
+] as const;
+
+export const WORLDQUANT_MOCK_SETS = [
+  {
+    id: "worldquant-30-a",
+    version: 1,
+    durationMinutes: 30,
+    variant: "A",
+    title: "Core correctness",
+    description: "C++ correctness, tick ingest và migration ownership.",
+    questionIds: familyAQuestionIds.slice(0, 4),
+  },
+  {
+    id: "worldquant-30-b",
+    version: 1,
+    durationMinutes: 30,
+    variant: "B",
+    title: "Realtime foundations",
+    description: "Order book, lifetime, deterministic replay và incident response.",
+    questionIds: familyBQuestionIds.slice(0, 4),
+  },
+  {
+    id: "worldquant-45-a",
+    version: 1,
+    durationMinutes: 45,
+    variant: "A",
+    title: "Platform migration",
+    description: "Bộ Core correctness mở rộng thêm build và delivery.",
+    questionIds: familyAQuestionIds.slice(0, 5),
+  },
+  {
+    id: "worldquant-45-b",
+    version: 1,
+    durationMinutes: 45,
+    variant: "B",
+    title: "Realtime delivery",
+    description: "Bộ Realtime foundations mở rộng thêm testing và CI.",
+    questionIds: familyBQuestionIds.slice(0, 5),
+  },
+  {
+    id: "worldquant-60-a",
+    version: 1,
+    durationMinutes: 60,
+    variant: "A",
+    title: "Full platform ownership",
+    description: "Full loop từ C++, tick data tới CMake, Python và English.",
+    questionIds: familyAQuestionIds,
+  },
+  {
+    id: "worldquant-60-b",
+    version: 1,
+    durationMinutes: 60,
+    variant: "B",
+    title: "Production resilience",
+    description: "Full loop thiên về order book, replay và vận hành production.",
+    questionIds: familyBQuestionIds,
+  },
+] as const satisfies readonly MockInterviewSet[];
+
+const mockSetById = new Map(
+  WORLDQUANT_MOCK_SETS.map((mockSet) => [mockSet.id, mockSet]),
+);
+
+export function worldQuantMockSetsForDuration(
+  durationMinutes: MockInterviewDuration,
+) {
+  return WORLDQUANT_MOCK_SETS.filter(
+    (mockSet) => mockSet.durationMinutes === durationMinutes,
+  );
+}
+
+export function worldQuantMockSetById(setId: MockInterviewSetId) {
+  return mockSetById.get(setId);
+}
+
+export function matchesWorldQuantMockSet({
+  setId,
+  setVersion,
+  durationMinutes,
+  questionIds,
+}: {
+  setId: MockInterviewSetId;
+  setVersion: number;
+  durationMinutes: MockInterviewDuration;
+  questionIds: readonly string[];
+}) {
+  const mockSet = worldQuantMockSetById(setId);
+  return Boolean(
+    mockSet &&
+      mockSet.version === setVersion &&
+      mockSet.durationMinutes === durationMinutes &&
+      mockSet.questionIds.length === questionIds.length &&
+      mockSet.questionIds.every(
+        (questionId, index) => questionId === questionIds[index],
+      ),
+  );
+}
 
 const performanceTopics = new Set([
   "alignment",
@@ -301,86 +624,19 @@ export function inferMockCompetency({
 }
 
 export function selectWorldQuantQuestions({
-  durationMinutes,
-  bankQuestions,
-  seed,
+  setId,
 }: {
-  durationMinutes: MockInterviewDuration;
-  bankQuestions: MockInterviewQuestion[];
-  seed: string;
+  setId: MockInterviewSetId;
 }): MockInterviewQuestion[] {
-  const curated = curatedIdsByDuration[durationMinutes]
-    .map((id) => curatedById.get(id))
-    .filter((question): question is MockInterviewQuestion => Boolean(question));
-  const requiredCount = mockDurationQuestionCounts[durationMinutes];
-  const rankedBank = [...bankQuestions]
-    .filter((question) => question.origin === "question_bank")
-    .map((question) => ({
-      question,
-      score: roleRelevanceScore(question) + seededNoise(`${seed}:${question.id}`),
-    }))
-    .sort((left, right) => right.score - left.score)
-    .map(({ question }) => question);
-  const usedBankIds = new Set<string>();
-  const roleRound = curated.map((roleQuestion) => {
-    const groundedReplacement = rankedBank.find(
-      (candidate) =>
-        !usedBankIds.has(candidate.id) &&
-        canGroundRoleRound(candidate, roleQuestion),
-    );
-    if (!groundedReplacement) return roleQuestion;
-    usedBankIds.add(groundedReplacement.id);
-    return groundedReplacement;
+  const mockSet = worldQuantMockSetById(setId);
+  if (!mockSet) throw new Error(`Unknown mock interview set: ${setId}`);
+  return mockSet.questionIds.map((questionId) => {
+    const question = curatedById.get(questionId);
+    if (!question) {
+      throw new Error(`${setId} references an unknown question: ${questionId}`);
+    }
+    return question;
   });
-  const bankCount = Math.max(0, requiredCount - roleRound.length);
-
-  const selectedBank: MockInterviewQuestion[] = [];
-  const selectedLessons = new Set<string>();
-  for (const question of rankedBank) {
-    if (usedBankIds.has(question.id)) continue;
-    const lessonKey =
-      question.selectionTopics.find((topic) => topic.startsWith("lesson::")) ??
-      question.id;
-    if (selectedLessons.has(lessonKey)) continue;
-    selectedBank.push(question);
-    selectedLessons.add(lessonKey);
-    if (selectedBank.length === bankCount) break;
-  }
-
-  const fallback = WORLDQUANT_ROLE_QUESTIONS.filter(
-    (question) => !roleRound.some((item) => item.id === question.id),
-  );
-  const questions = [
-    ...selectedBank,
-    ...roleRound,
-    ...fallback.slice(
-      0,
-      Math.max(0, requiredCount - selectedBank.length - roleRound.length),
-    ),
-  ].slice(0, requiredCount);
-
-  return questions;
-}
-
-function canGroundRoleRound(
-  candidate: MockInterviewQuestion,
-  roleQuestion: MockInterviewQuestion,
-) {
-  if (candidate.competency !== roleQuestion.competency) return false;
-  if (roleQuestion.competency === "tick_data_order_book") return true;
-  if (
-    roleQuestion.competency === "engineering_quality" ||
-    roleQuestion.competency === "scripting"
-  ) {
-    return true;
-  }
-  if (roleQuestion.id === "worldquant-interval-stats-cpp") {
-    return (
-      candidate.responseMode === "code" &&
-      candidate.selectionTopics.some((topic) => tickTopics.has(topic))
-    );
-  }
-  return false;
 }
 
 export function buildWorldQuantGroundingCoverage(
@@ -398,24 +654,19 @@ export function buildWorldQuantGroundingCoverage(
   };
 }
 
-function roleRelevanceScore(question: MockInterviewQuestion) {
-  let score = 0;
-  if (question.language === "cpp") score += 40;
-  if (question.responseMode === "code") score += 25;
-  if (question.competency === "data_pipeline_performance") score += 30;
-  if (question.competency === "modern_cpp") score += 20;
-  for (const topic of question.selectionTopics) {
-    if (performanceTopics.has(topic)) score += 5;
-    if (tickTopics.has(topic)) score += 12;
+for (const mockSet of WORLDQUANT_MOCK_SETS) {
+  if (
+    mockSet.questionIds.length !==
+    mockDurationQuestionCounts[mockSet.durationMinutes]
+  ) {
+    throw new Error(`${mockSet.id} has the wrong question count`);
   }
-  return score;
-}
-
-function seededNoise(value: string) {
-  let hash = 2166136261;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
+  if (new Set(mockSet.questionIds).size !== mockSet.questionIds.length) {
+    throw new Error(`${mockSet.id} contains duplicate questions`);
   }
-  return (hash >>> 0) / 0xffffffff;
+  for (const questionId of mockSet.questionIds) {
+    if (!curatedById.has(questionId)) {
+      throw new Error(`${mockSet.id} references unknown question ${questionId}`);
+    }
+  }
 }

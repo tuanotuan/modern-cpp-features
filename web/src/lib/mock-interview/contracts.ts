@@ -1,7 +1,9 @@
 import { z } from "zod";
 
 import {
+  matchesWorldQuantMockSet,
   mockCompetencyKeys,
+  mockInterviewSetIds,
   type MockCompetencyKey,
 } from "./profile";
 
@@ -13,7 +15,9 @@ const kebabIdSchema = z
 export const mockInterviewReportRequestSchema = z.object({
   sessionId: z.string().uuid(),
   profileId: z.literal("worldquant-tick-data-engineer"),
-  profileVersion: z.literal(1),
+  profileVersion: z.literal(2),
+  setId: z.enum(mockInterviewSetIds),
+  setVersion: z.number().int().positive(),
   sourceRevision: z.string().regex(/^[a-f0-9]{40,64}$/),
   durationMinutes: z.union([z.literal(30), z.literal(45), z.literal(60)]),
   elapsedSeconds: z.number().int().min(0).max(4 * 60 * 60),
@@ -30,7 +34,8 @@ export const mockInterviewReportRequestSchema = z.object({
     )
     .min(3)
     .max(8),
-}).superRefine(({ items }, context) => {
+}).superRefine((request, context) => {
+  const { items } = request;
   const seen = new Set<string>();
   items.forEach((item, index) => {
     if (seen.has(item.questionId)) {
@@ -42,6 +47,20 @@ export const mockInterviewReportRequestSchema = z.object({
     }
     seen.add(item.questionId);
   });
+  if (
+    !matchesWorldQuantMockSet({
+      setId: request.setId,
+      setVersion: request.setVersion,
+      durationMinutes: request.durationMinutes,
+      questionIds: items.map((item) => item.questionId),
+    })
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["setId"],
+      message: "Mock report request does not match its versioned question set",
+    });
+  }
 });
 
 const mockVerdictSchema = z.enum([
