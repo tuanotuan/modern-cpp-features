@@ -1,6 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
 
 import type { GeneratedLesson, Question } from "@/lib/content/schema";
+import {
+  mockInterviewReportJsonSchema,
+  mockInterviewReportSchema,
+  type MockInterviewReport,
+} from "../mock-interview/contracts";
 
 import {
   coachFeedbackJsonSchema,
@@ -144,6 +149,46 @@ export async function answerCoachFollowUpWithGemini({
 
   return {
     data,
+    model: geminiFallbackModel(),
+    usage: tokenUsage(interaction.usage),
+  };
+}
+
+export async function evaluateMockInterviewWithGemini({
+  instructions,
+  prompt,
+}: {
+  instructions: string;
+  prompt: string;
+}): Promise<GeminiStructuredResult<MockInterviewReport>> {
+  const interaction = await geminiClient().interactions.create(
+    {
+      model: geminiFallbackModel(),
+      store: false,
+      system_instruction: instructions,
+      input: prompt,
+      generation_config: {
+        thinking_level: "high",
+        temperature: 0.15,
+        max_output_tokens: 4200,
+      },
+      response_format: {
+        type: "text",
+        mime_type: "application/json",
+        schema: mockInterviewReportJsonSchema,
+      },
+    },
+    { timeout: 60_000, maxRetries: 1 },
+  );
+
+  if (!interaction.output_text) {
+    throw new Error("Gemini returned an empty mock interview report");
+  }
+
+  return {
+    data: mockInterviewReportSchema.parse(
+      JSON.parse(interaction.output_text),
+    ),
     model: geminiFallbackModel(),
     usage: tokenUsage(interaction.usage),
   };

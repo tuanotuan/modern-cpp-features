@@ -106,6 +106,9 @@ export default async function StatsPage({
             <Link className="rounded-xl px-4 py-2 text-sm font-bold hover:bg-white/60" href={`/?deck=${selectedDeck}`}>
               Luyện tập
             </Link>
+            <Link className="rounded-xl px-4 py-2 text-sm font-bold hover:bg-white/60" href="/mock-interview">
+              Mock interview
+            </Link>
             <Link className="rounded-xl px-4 py-2 text-sm font-bold hover:bg-white/60" href="/admin">
               Admin
             </Link>

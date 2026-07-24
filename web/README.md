@@ -26,7 +26,10 @@ Phase 0–5 provides:
 - Gemini Free fallback for grading and follow-ups after the app OpenAI budget is exhausted;
 - a private web Review Queue with exact-version/hash bulk approval;
 - GitHub Actions reconciliation for note additions, edits, renames, and deletes.
-- separate C++ and Python practice decks with per-deck queues and analytics.
+- separate C++, Python, and CMake practice decks with per-deck queues and analytics;
+- a WorldQuant-targeted tick-data engineering mock interview with an absolute
+  timer, F5-safe local session, hidden hints, mixed question-bank/JD scenarios,
+  and one grounded AI report at the end (without mutating the Anki schedule).
 
 ## Local commands
 

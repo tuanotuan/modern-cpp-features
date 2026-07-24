@@ -30,6 +30,7 @@ const MODEL_RATES_USD_PER_MILLION: Record<string, ModelRates> = {
 export const COACH_RESERVATION_USD_MICROS = {
   luna: 100_000,
   terra: 150_000,
+  mockReport: 100_000,
 } as const;
 
 export const DAILY_BUDGET_DAYS = 30;

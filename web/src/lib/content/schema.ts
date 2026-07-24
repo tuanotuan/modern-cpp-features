@@ -21,6 +21,7 @@ export const contentTrackSchema = z.enum([
   "python3",
   "cmake",
 ]);
+export type ContentTrack = z.infer<typeof contentTrackSchema>;
 
 // Compatibility export while the UI still calls a language track "standard".
 export const cppStandardSchema = contentTrackSchema;
